@@ -14,18 +14,16 @@ export function meta() {
 const STATUS_TABS: { label: string; value: OrderStatus | "all" }[] = [
   { label: "All", value: "all" },
   { label: "Pending", value: "pending" },
-  { label: "Processing", value: "processing" },
-  { label: "Shipped", value: "shipped" },
-  { label: "Delivered", value: "delivered" },
-  { label: "Cancelled", value: "cancelled" },
+  { label: "Confirmed", value: "confirmed" },
+  { label: "Fulfilled", value: "fulfilled" },
+  { label: "Canceled", value: "canceled" },
 ];
 
 const STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
-  pending: ["processing", "cancelled"],
-  processing: ["shipped", "cancelled"],
-  shipped: ["delivered"],
-  delivered: [],
-  cancelled: [],
+  pending: ["confirmed", "canceled"],
+  confirmed: ["fulfilled"],
+  fulfilled: [],
+  canceled: [],
 };
 
 export default function Orders() {
@@ -58,9 +56,9 @@ export default function Orders() {
   async function handleStatusChange(order: Order, newStatus: OrderStatus) {
     setUpdatingId(order.id);
     try {
-      await updateOrderStatus(order.id, newStatus).catch(() => {});
+      const updated = await updateOrderStatus(order.id, newStatus);
       setOrders((os) =>
-        os.map((o) => (o.id === order.id ? { ...o, status: newStatus } : o))
+        os.map((o) => (o.id === order.id ? updated : o))
       );
     } finally {
       setUpdatingId(null);
@@ -215,19 +213,19 @@ function OrderRows({
           </span>
         </td>
         <td className="px-5 py-3.5 text-[#1C1B1F]">
-          {order.customerEmail}
+          {order.customer_id}
         </td>
         <td className="px-5 py-3.5 text-[#6B6480]">
-          {order.itemCount} {order.itemCount === 1 ? "item" : "items"}
+          {order.items.length} {order.items.length === 1 ? "item" : "items"}
         </td>
         <td className="px-5 py-3.5 font-semibold text-[#1C1B1F]">
-          ${order.total.toFixed(0)}
+          {formatCents(order.total_cents)}
         </td>
         <td className="px-5 py-3.5">
           <OrderStatusBadge status={order.status} />
         </td>
         <td className="px-5 py-3.5 text-[#9D98B3] text-xs">
-          {new Date(order.createdAt).toLocaleDateString("en-US", {
+          {new Date(order.created_at).toLocaleDateString("en-US", {
             month: "short",
             day: "numeric",
             year: "numeric",
@@ -243,7 +241,7 @@ function OrderRows({
                   onClick={() => onStatusChange(next)}
                   className={[
                     "rounded-lg px-3 py-1.5 text-xs font-semibold capitalize transition disabled:opacity-50",
-                    next === "cancelled"
+                    next === "canceled"
                       ? "border border-red-200 text-red-600 hover:bg-red-50"
                       : "border border-[#E5E3EE] text-[#6B6480] hover:border-[#6D4AFF]/40 hover:bg-[#F8F7FC] hover:text-[#6D4AFF]",
                   ].join(" ")}
@@ -272,11 +270,11 @@ function OrderRows({
                   >
                     <div className="flex items-center gap-3">
                       <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#F4F3F8] text-xs font-bold text-[#6D4AFF]">
-                        {item.productName.slice(0, 2).toUpperCase()}
+                        {item.sku.slice(0, 2).toUpperCase()}
                       </div>
                       <div>
                         <span className="font-medium text-[#1C1B1F]">
-                          {item.productName}
+                          {item.sku}
                         </span>
                         <span className="ml-2 text-[#9D98B3]">
                           × {item.quantity}
@@ -284,14 +282,14 @@ function OrderRows({
                       </div>
                     </div>
                     <span className="font-semibold text-[#1C1B1F]">
-                      ${item.price.toFixed(0)}
+                      {formatCents(item.unit_price_cents * item.quantity)}
                     </span>
                   </div>
                 ))}
               </div>
               <div className="mt-3 flex items-center justify-between border-t border-[#E5E3EE] pt-3 text-sm font-bold text-[#1C1B1F]">
                 <span>Order total</span>
-                <span>${order.total.toFixed(0)}</span>
+                <span>{formatCents(order.total_cents)}</span>
               </div>
             </div>
           </td>
@@ -299,4 +297,12 @@ function OrderRows({
       )}
     </>
   );
+}
+
+function formatCents(cents: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 0,
+  }).format(cents / 100);
 }

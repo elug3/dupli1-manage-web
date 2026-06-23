@@ -3,6 +3,7 @@ export default [
     route("auth/session/login", "routes/auth.session.login.tsx"),
     route("auth/session/refresh", "routes/auth.session.refresh.tsx"),
     route("auth/session/logout", "routes/auth.session.logout.tsx"),
+    route("auth/session/me", "routes/auth.session.me.tsx"),
     route("login", "routes/login.tsx"),
     layout("routes/admin.tsx", [
         index("routes/dashboard.tsx"),

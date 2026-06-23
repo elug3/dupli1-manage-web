@@ -68,8 +68,8 @@ function StatsGrid({
   products: Product[];
   loading: boolean;
 }) {
-  const active = products.filter((p) => p.status === "active").length;
-  const outOfStock = products.filter((p) => p.stock === 0).length;
+  const active = products.length;
+  const outOfStock = products.filter((p) => (p.stock ?? 0) === 0).length;
 
   const cards = [
     {
@@ -87,9 +87,9 @@ function StatsGrid({
       color: "bg-blue-50 text-blue-600",
     },
     {
-      label: "Active products",
+      label: "Catalog items",
       value: loading ? "…" : String(active),
-      sub: loading ? null : `${outOfStock} out of stock`,
+      sub: loading ? null : "From product search",
       icon: <BoxIcon />,
       color: "bg-emerald-50 text-emerald-600",
     },
@@ -170,16 +170,16 @@ function RecentOrdersTable({ orders }: { orders: Order[] }) {
                     {order.id}
                   </td>
                   <td className="px-5 py-3.5 text-[#1C1B1F]">
-                    {order.customerEmail}
+                    {order.customer_id}
                   </td>
                   <td className="px-5 py-3.5 font-semibold text-[#1C1B1F]">
-                    {formatCurrency(order.total)}
+                    {formatCurrency(order.total_cents / 100)}
                   </td>
                   <td className="px-5 py-3.5">
                     <OrderStatusBadge status={order.status} />
                   </td>
                   <td className="px-5 py-3.5 text-[#9D98B3]">
-                    {formatDate(order.createdAt)}
+                    {formatDate(order.created_at)}
                   </td>
                 </tr>
               ))
@@ -192,8 +192,8 @@ function RecentOrdersTable({ orders }: { orders: Order[] }) {
 }
 
 function QuickPanel({ products }: { products: Product[] }) {
-  const outOfStock = products.filter((p) => p.stock === 0);
-  const lowStock = products.filter((p) => p.stock > 0 && p.stock <= 5);
+  const outOfStock = products.filter((p) => (p.stock ?? 0) === 0);
+  const lowStock = products.filter((p) => (p.stock ?? 0) > 0 && (p.stock ?? 0) <= 5);
 
   return (
     <div className="space-y-4">
@@ -207,7 +207,7 @@ function QuickPanel({ products }: { products: Product[] }) {
             <span className="rounded-lg bg-violet-50 p-1.5 text-violet-600">
               <PlusIcon />
             </span>
-            Add new product
+            Browse catalog
           </Link>
           <Link
             to="/orders"
@@ -262,10 +262,9 @@ function QuickPanel({ products }: { products: Product[] }) {
 export function OrderStatusBadge({ status }: { status: Order["status"] }) {
   const map: Record<Order["status"], { label: string; class: string }> = {
     pending: { label: "Pending", class: "bg-amber-100 text-amber-800" },
-    processing: { label: "Processing", class: "bg-blue-100 text-blue-800" },
-    shipped: { label: "Shipped", class: "bg-violet-100 text-violet-800" },
-    delivered: { label: "Delivered", class: "bg-emerald-100 text-emerald-800" },
-    cancelled: { label: "Cancelled", class: "bg-slate-100 text-slate-600" },
+    confirmed: { label: "Confirmed", class: "bg-blue-100 text-blue-800" },
+    fulfilled: { label: "Fulfilled", class: "bg-emerald-100 text-emerald-800" },
+    canceled: { label: "Canceled", class: "bg-slate-100 text-slate-600" },
   };
   const { label, class: cls } = map[status];
   return (

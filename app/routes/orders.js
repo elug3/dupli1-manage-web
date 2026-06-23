@@ -8,17 +8,15 @@ export function meta() {
 const STATUS_TABS = [
     { label: "All", value: "all" },
     { label: "Pending", value: "pending" },
-    { label: "Processing", value: "processing" },
-    { label: "Shipped", value: "shipped" },
-    { label: "Delivered", value: "delivered" },
-    { label: "Cancelled", value: "cancelled" },
+    { label: "Confirmed", value: "confirmed" },
+    { label: "Fulfilled", value: "fulfilled" },
+    { label: "Canceled", value: "canceled" },
 ];
 const STATUS_TRANSITIONS = {
-    pending: ["processing", "cancelled"],
-    processing: ["shipped", "cancelled"],
-    shipped: ["delivered"],
-    delivered: [],
-    cancelled: [],
+    pending: ["confirmed", "canceled"],
+    confirmed: ["fulfilled"],
+    fulfilled: [],
+    canceled: [],
 };
 export default function Orders() {
     const [orders, setOrders] = useState([]);
@@ -42,8 +40,8 @@ export default function Orders() {
     async function handleStatusChange(order, newStatus) {
         setUpdatingId(order.id);
         try {
-            await updateOrderStatus(order.id, newStatus).catch(() => { });
-            setOrders((os) => os.map((o) => (o.id === order.id ? { ...o, status: newStatus } : o)));
+            const updated = await updateOrderStatus(order.id, newStatus);
+            setOrders((os) => os.map((o) => (o.id === order.id ? updated : o)));
         }
         finally {
             setUpdatingId(null);
@@ -79,14 +77,21 @@ function OrderRows({ order, expanded, updating, onToggle, onStatusChange, }) {
     return (_jsxs(_Fragment, { children: [_jsxs("tr", { className: [
                     "border-b border-[#F0EEF8] cursor-pointer transition-colors",
                     expanded ? "bg-[#F8F7FC]" : "hover:bg-[#FAFAFA]",
-                ].join(" "), onClick: onToggle, children: [_jsx("td", { className: "px-5 py-3.5", children: _jsx("span", { className: "font-mono text-xs font-semibold text-[#1C1B1F]", children: order.id }) }), _jsx("td", { className: "px-5 py-3.5 text-[#1C1B1F]", children: order.customerEmail }), _jsxs("td", { className: "px-5 py-3.5 text-[#6B6480]", children: [order.itemCount, " ", order.itemCount === 1 ? "item" : "items"] }), _jsxs("td", { className: "px-5 py-3.5 font-semibold text-[#1C1B1F]", children: ["$", order.total.toFixed(0)] }), _jsx("td", { className: "px-5 py-3.5", children: _jsx(OrderStatusBadge, { status: order.status }) }), _jsx("td", { className: "px-5 py-3.5 text-[#9D98B3] text-xs", children: new Date(order.createdAt).toLocaleDateString("en-US", {
+                ].join(" "), onClick: onToggle, children: [_jsx("td", { className: "px-5 py-3.5", children: _jsx("span", { className: "font-mono text-xs font-semibold text-[#1C1B1F]", children: order.id }) }), _jsx("td", { className: "px-5 py-3.5 text-[#1C1B1F]", children: order.customer_id }), _jsxs("td", { className: "px-5 py-3.5 text-[#6B6480]", children: [order.items.length, " ", order.items.length === 1 ? "item" : "items"] }), _jsx("td", { className: "px-5 py-3.5 font-semibold text-[#1C1B1F]", children: formatCents(order.total_cents) }), _jsx("td", { className: "px-5 py-3.5", children: _jsx(OrderStatusBadge, { status: order.status }) }), _jsx("td", { className: "px-5 py-3.5 text-[#9D98B3] text-xs", children: new Date(order.created_at).toLocaleDateString("en-US", {
                             month: "short",
                             day: "numeric",
                             year: "numeric",
                         }) }), _jsx("td", { className: "px-5 py-3.5 text-right", onClick: (e) => e.stopPropagation(), children: transitions.length > 0 && (_jsx("div", { className: "flex items-center justify-end gap-1", children: transitions.map((next) => (_jsx("button", { disabled: updating, onClick: () => onStatusChange(next), className: [
                                     "rounded-lg px-3 py-1.5 text-xs font-semibold capitalize transition disabled:opacity-50",
-                                    next === "cancelled"
+                                    next === "canceled"
                                         ? "border border-red-200 text-red-600 hover:bg-red-50"
                                         : "border border-[#E5E3EE] text-[#6B6480] hover:border-[#6D4AFF]/40 hover:bg-[#F8F7FC] hover:text-[#6D4AFF]",
-                                ].join(" "), children: updating ? "…" : `→ ${next}` }, next))) })) })] }), expanded && (_jsx("tr", { className: "border-b border-[#F0EEF8] bg-[#F4F3F8]/60", children: _jsx("td", { colSpan: 7, className: "px-8 py-4", children: _jsxs("div", { className: "rounded-xl border border-[#E5E3EE] bg-white p-4", children: [_jsx("p", { className: "mb-3 text-xs font-semibold uppercase tracking-wide text-[#9D98B3]", children: "Order items" }), _jsx("div", { className: "space-y-2", children: order.items.map((item, i) => (_jsxs("div", { className: "flex items-center justify-between text-sm", children: [_jsxs("div", { className: "flex items-center gap-3", children: [_jsx("div", { className: "flex h-8 w-8 items-center justify-center rounded-lg bg-[#F4F3F8] text-xs font-bold text-[#6D4AFF]", children: item.productName.slice(0, 2).toUpperCase() }), _jsxs("div", { children: [_jsx("span", { className: "font-medium text-[#1C1B1F]", children: item.productName }), _jsxs("span", { className: "ml-2 text-[#9D98B3]", children: ["\u00D7 ", item.quantity] })] })] }), _jsxs("span", { className: "font-semibold text-[#1C1B1F]", children: ["$", item.price.toFixed(0)] })] }, i))) }), _jsxs("div", { className: "mt-3 flex items-center justify-between border-t border-[#E5E3EE] pt-3 text-sm font-bold text-[#1C1B1F]", children: [_jsx("span", { children: "Order total" }), _jsxs("span", { children: ["$", order.total.toFixed(0)] })] })] }) }) }))] }));
+                                ].join(" "), children: updating ? "…" : `→ ${next}` }, next))) })) })] }), expanded && (_jsx("tr", { className: "border-b border-[#F0EEF8] bg-[#F4F3F8]/60", children: _jsx("td", { colSpan: 7, className: "px-8 py-4", children: _jsxs("div", { className: "rounded-xl border border-[#E5E3EE] bg-white p-4", children: [_jsx("p", { className: "mb-3 text-xs font-semibold uppercase tracking-wide text-[#9D98B3]", children: "Order items" }), _jsx("div", { className: "space-y-2", children: order.items.map((item, i) => (_jsxs("div", { className: "flex items-center justify-between text-sm", children: [_jsxs("div", { className: "flex items-center gap-3", children: [_jsx("div", { className: "flex h-8 w-8 items-center justify-center rounded-lg bg-[#F4F3F8] text-xs font-bold text-[#6D4AFF]", children: item.sku.slice(0, 2).toUpperCase() }), _jsxs("div", { children: [_jsx("span", { className: "font-medium text-[#1C1B1F]", children: item.sku }), _jsxs("span", { className: "ml-2 text-[#9D98B3]", children: ["\u00D7 ", item.quantity] })] })] }), _jsx("span", { className: "font-semibold text-[#1C1B1F]", children: formatCents(item.unit_price_cents * item.quantity) })] }, i))) }), _jsxs("div", { className: "mt-3 flex items-center justify-between border-t border-[#E5E3EE] pt-3 text-sm font-bold text-[#1C1B1F]", children: [_jsx("span", { children: "Order total" }), _jsx("span", { children: formatCents(order.total_cents) })] })] }) }) }))] }));
+}
+function formatCents(cents) {
+    return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        minimumFractionDigits: 0,
+    }).format(cents / 100);
 }

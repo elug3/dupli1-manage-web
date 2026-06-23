@@ -83,7 +83,7 @@ export default function AdminLayout() {
             <SidebarLink to="/orders" icon={<OrdersIcon />} label="Orders" />
             <SidebarLink to="/coupons" icon={<CouponsIcon />} label="Coupons" />
             <SidebarLink to="/analytics" icon={<AnalyticsIcon />} label="Analytics" />
-            <SidebarLink to="/users" icon={<UsersIcon />} label="Users" />
+            <SidebarLink to="/users" icon={<UsersIcon />} label="Register" />
           </div>
 
           <div className="mt-4 border-t border-white/10 pt-4">
