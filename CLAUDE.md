@@ -47,11 +47,15 @@ Admin-only endpoints live under the same `schick` service routes (see `../schick
 
 ## Auth
 
-Reuse the same JWT/refresh-token pattern from `schick-web`:
+Server-side session storage keeps refresh tokens off the browser:
 
-- Tokens stored in `localStorage` as `schick_at` (access) and `schick_rt` (refresh).
-- `authedFetch` wraps `fetch`, attaches `Authorization: Bearer <token>`, and transparently retries once after a 401 by hitting `/api/v1/auth/refresh`.
-- Copy or extract `app/lib/auth.ts` from `../schick-web` as the starting point.
+- Access token only in `localStorage` as `schick_at`.
+- Refresh token stored in the SSR server's in-memory session cache, keyed by `session_id`.
+- `schick_sid` httpOnly cookie carries the session id; the browser never sees the refresh token.
+- `POST /auth/session/login`, `/auth/session/refresh`, `/auth/session/logout` proxy auth to the Go backend and manage the session cookie.
+- `authedFetch` wraps `fetch`, attaches `Authorization: Bearer <token>`, and transparently retries once after a 401 by hitting `/auth/session/refresh`.
+
+Set `SCHICK_API_URL` (default `http://localhost:8080`) for server-side backend calls in production.
 
 ## Architecture
 

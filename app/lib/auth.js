@@ -1,25 +1,22 @@
+const SESSION_FETCH = { credentials: "include" };
 function post(url, body) {
     return fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        headers: body ? { "Content-Type": "application/json" } : undefined,
+        body: body ? JSON.stringify(body) : undefined,
+        ...SESSION_FETCH,
     });
 }
-function readTokens() {
+function readAccessToken() {
     try {
-        const a = localStorage.getItem("schick_at");
-        const r = localStorage.getItem("schick_rt");
-        if (!a || !r)
-            return null;
-        return { access_token: a, refresh_token: r };
+        return localStorage.getItem("schick_at");
     }
     catch {
         return null;
     }
 }
-function storeTokens(t) {
-    localStorage.setItem("schick_at", t.access_token);
-    localStorage.setItem("schick_rt", t.refresh_token);
+function storeAccessToken(accessToken) {
+    localStorage.setItem("schick_at", accessToken);
 }
 export function clearTokens() {
     try {
@@ -31,25 +28,24 @@ export function clearTokens() {
     }
 }
 async function tryRefresh() {
-    const tokens = readTokens();
-    if (!tokens)
-        return false;
-    const res = await post("/api/v1/auth/refresh", {
-        refresh_token: tokens.refresh_token,
-    });
+    const res = await post("/auth/session/refresh");
     if (!res.ok) {
         clearTokens();
         return false;
     }
-    storeTokens((await res.json()));
+    const body = (await res.json());
+    storeAccessToken(body.access_token);
     return true;
 }
 export async function getMe() {
-    const tokens = readTokens();
-    if (!tokens)
+    const accessToken = readAccessToken();
+    if (!accessToken) {
+        if (await tryRefresh())
+            return getMe();
         return null;
+    }
     const res = await fetch("/api/v1/auth/me", {
-        headers: { Authorization: `Bearer ${tokens.access_token}` },
+        headers: { Authorization: `Bearer ${accessToken}` },
     });
     if (res.status === 401) {
         if (await tryRefresh())
@@ -70,22 +66,28 @@ async function errorMessage(res, fallback) {
     }
 }
 export async function login(email, password) {
-    const res = await post("/api/v1/auth/login", { email, password });
+    const res = await post("/auth/session/login", { email, password });
     if (!res.ok)
         throw new Error(await errorMessage(res, "Login failed"));
-    storeTokens((await res.json()));
+    const body = (await res.json());
+    clearTokens();
+    storeAccessToken(body.access_token);
 }
 export async function authedFetch(url, init = {}) {
-    const tokens = readTokens();
-    if (!tokens)
-        throw new Error("Not authenticated");
+    let accessToken = readAccessToken();
+    if (!accessToken) {
+        if (!(await tryRefresh())) {
+            throw new Error("Not authenticated");
+        }
+        accessToken = readAccessToken();
+    }
     const headers = new Headers(init.headers);
-    headers.set("Authorization", `Bearer ${tokens.access_token}`);
+    headers.set("Authorization", `Bearer ${accessToken}`);
     const res = await fetch(url, { ...init, headers });
     if (res.status === 401) {
         if (await tryRefresh()) {
-            const refreshed = readTokens();
-            headers.set("Authorization", `Bearer ${refreshed.access_token}`);
+            const refreshed = readAccessToken();
+            headers.set("Authorization", `Bearer ${refreshed}`);
             return fetch(url, { ...init, headers });
         }
         clearTokens();
@@ -94,11 +96,6 @@ export async function authedFetch(url, init = {}) {
     return res;
 }
 export async function logout() {
-    const tokens = readTokens();
-    if (tokens) {
-        await post("/api/v1/auth/logout", {
-            refresh_token: tokens.refresh_token,
-        }).catch(() => { });
-    }
+    await post("/auth/session/logout").catch(() => { });
     clearTokens();
 }

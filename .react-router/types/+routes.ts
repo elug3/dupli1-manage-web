@@ -14,6 +14,15 @@ type Pages = {
   "/": {
     params: {};
   };
+  "/auth/session/login": {
+    params: {};
+  };
+  "/auth/session/refresh": {
+    params: {};
+  };
+  "/auth/session/logout": {
+    params: {};
+  };
   "/login": {
     params: {};
   };
@@ -48,7 +57,19 @@ type Pages = {
 type RouteFiles = {
   "root.js": {
     id: "root";
-    page: "/" | "/login" | "/products" | "/products/new" | "/products/:id" | "/orders" | "/coupons" | "/analytics" | "/users" | "/settings";
+    page: "/" | "/auth/session/login" | "/auth/session/refresh" | "/auth/session/logout" | "/login" | "/products" | "/products/new" | "/products/:id" | "/orders" | "/coupons" | "/analytics" | "/users" | "/settings";
+  };
+  "routes/auth.session.login.tsx": {
+    id: "routes/auth.session.login";
+    page: "/auth/session/login";
+  };
+  "routes/auth.session.refresh.tsx": {
+    id: "routes/auth.session.refresh";
+    page: "/auth/session/refresh";
+  };
+  "routes/auth.session.logout.tsx": {
+    id: "routes/auth.session.logout";
+    page: "/auth/session/logout";
   };
   "routes/login.tsx": {
     id: "routes/login";
@@ -98,6 +119,9 @@ type RouteFiles = {
 
 type RouteModules = {
   "root": typeof import("./app/root.js");
+  "routes/auth.session.login": typeof import("./app/routes/auth.session.login.tsx");
+  "routes/auth.session.refresh": typeof import("./app/routes/auth.session.refresh.tsx");
+  "routes/auth.session.logout": typeof import("./app/routes/auth.session.logout.tsx");
   "routes/login": typeof import("./app/routes/login.tsx");
   "routes/admin": typeof import("./app/routes/admin.tsx");
   "routes/dashboard": typeof import("./app/routes/dashboard.tsx");

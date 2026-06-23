@@ -1,5 +1,8 @@
 import { index, layout, route, } from "@react-router/dev/routes";
 export default [
+    route("auth/session/login", "routes/auth.session.login.tsx"),
+    route("auth/session/refresh", "routes/auth.session.refresh.tsx"),
+    route("auth/session/logout", "routes/auth.session.logout.tsx"),
     route("login", "routes/login.tsx"),
     layout("routes/admin.tsx", [
         index("routes/dashboard.tsx"),
