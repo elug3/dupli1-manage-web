@@ -8,12 +8,15 @@ import {
   createSession,
   deleteSession,
   getRefreshToken,
-  updateSessionRefreshToken,
+  getSession,
 } from "./session-store";
 
-interface TokenPair {
-  access_token: string;
+interface LoginResponse {
   refresh_token: string;
+}
+
+interface RefreshResponse {
+  token: string;
 }
 
 function jsonResponse(
@@ -34,6 +37,17 @@ async function readError(res: Response, fallback: string): Promise<string> {
   }
 }
 
+async function exchangeRefreshToken(
+  refreshToken: string
+): Promise<{ accessToken: string } | null> {
+  const res = await backendPost("auth", "/api/v1/auth/refresh", {
+    refresh_token: refreshToken,
+  });
+  if (!res.ok) return null;
+  const body = (await res.json()) as RefreshResponse;
+  return { accessToken: body.token };
+}
+
 export async function handleSessionLogin(request: Request): Promise<Response> {
   let email: string;
   let password: string;
@@ -51,7 +65,7 @@ export async function handleSessionLogin(request: Request): Promise<Response> {
     return jsonResponse({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const res = await backendPost("/api/v1/auth/login", { email, password });
+  const res = await backendPost("auth", "/api/v1/auth/login", { email, password });
   if (!res.ok) {
     return jsonResponse(
       { error: await readError(res, "Login failed") },
@@ -59,11 +73,16 @@ export async function handleSessionLogin(request: Request): Promise<Response> {
     );
   }
 
-  const tokens = (await res.json()) as TokenPair;
-  const sessionId = createSession(tokens.refresh_token);
+  const { refresh_token } = (await res.json()) as LoginResponse;
+  const exchanged = await exchangeRefreshToken(refresh_token);
+  if (!exchanged) {
+    return jsonResponse({ error: "Failed to establish session" }, { status: 502 });
+  }
+
+  const sessionId = createSession(refresh_token, email);
 
   return jsonResponse(
-    { access_token: tokens.access_token },
+    { access_token: exchanged.accessToken },
     { headers: { "Set-Cookie": setSessionCookieHeader(sessionId) } }
   );
 }
@@ -82,8 +101,8 @@ export async function handleSessionRefresh(request: Request): Promise<Response> 
     });
   }
 
-  const res = await backendPost("/api/v1/auth/refresh", { refresh_token: refreshToken });
-  if (!res.ok) {
+  const exchanged = await exchangeRefreshToken(refreshToken);
+  if (!exchanged) {
     deleteSession(sessionId);
     return jsonResponse({ error: "Session expired" }, {
       status: 401,
@@ -91,26 +110,35 @@ export async function handleSessionRefresh(request: Request): Promise<Response> 
     });
   }
 
-  const tokens = (await res.json()) as TokenPair;
-  updateSessionRefreshToken(sessionId, tokens.refresh_token);
-
-  return jsonResponse({ access_token: tokens.access_token });
+  return jsonResponse({ access_token: exchanged.accessToken });
 }
 
 export async function handleSessionLogout(request: Request): Promise<Response> {
   const sessionId = getSessionId(request);
   if (sessionId) {
-    const refreshToken = getRefreshToken(sessionId);
-    if (refreshToken) {
-      await backendPost("/api/v1/auth/logout", {
-        refresh_token: refreshToken,
-      }).catch(() => {});
-    }
+    await backendPost("auth", "/api/v1/auth/logout").catch(() => {});
     deleteSession(sessionId);
   }
 
-  return jsonResponse(
-    { ok: true },
-    { headers: { "Set-Cookie": clearSessionCookieHeader() } }
-  );
+  return new Response(null, {
+    status: 204,
+    headers: { "Set-Cookie": clearSessionCookieHeader() },
+  });
+}
+
+export async function handleSessionMe(request: Request): Promise<Response> {
+  const sessionId = getSessionId(request);
+  if (!sessionId) {
+    return jsonResponse({ error: "No session" }, { status: 401 });
+  }
+
+  const session = getSession(sessionId);
+  if (!session) {
+    return jsonResponse({ error: "Session expired" }, {
+      status: 401,
+      headers: { "Set-Cookie": clearSessionCookieHeader() },
+    });
+  }
+
+  return jsonResponse({ email: session.email });
 }

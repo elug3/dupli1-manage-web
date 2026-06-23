@@ -1,5 +1,6 @@
 interface SessionRecord {
   refreshToken: string;
+  email: string;
   createdAt: number;
 }
 
@@ -16,21 +17,25 @@ function pruneExpired(): void {
   }
 }
 
-export function createSession(refreshToken: string): string {
+export function createSession(refreshToken: string, email: string): string {
   pruneExpired();
   const sessionId = crypto.randomUUID();
-  sessions.set(sessionId, { refreshToken, createdAt: Date.now() });
+  sessions.set(sessionId, { refreshToken, email, createdAt: Date.now() });
   return sessionId;
 }
 
-export function getRefreshToken(sessionId: string): string | null {
+export function getSession(sessionId: string): SessionRecord | null {
   const record = sessions.get(sessionId);
   if (!record) return null;
   if (Date.now() - record.createdAt > SESSION_TTL_MS) {
     sessions.delete(sessionId);
     return null;
   }
-  return record.refreshToken;
+  return record;
+}
+
+export function getRefreshToken(sessionId: string): string | null {
+  return getSession(sessionId)?.refreshToken ?? null;
 }
 
 export function updateSessionRefreshToken(
@@ -39,7 +44,7 @@ export function updateSessionRefreshToken(
 ): void {
   const record = sessions.get(sessionId);
   if (!record) return;
-  sessions.set(sessionId, { refreshToken, createdAt: record.createdAt });
+  sessions.set(sessionId, { ...record, refreshToken });
 }
 
 export function deleteSession(sessionId: string): void {

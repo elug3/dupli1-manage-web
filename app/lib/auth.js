@@ -44,9 +44,7 @@ export async function getMe() {
             return getMe();
         return null;
     }
-    const res = await fetch("/api/v1/auth/me", {
-        headers: { Authorization: `Bearer ${accessToken}` },
-    });
+    const res = await fetch("/auth/session/me", SESSION_FETCH);
     if (res.status === 401) {
         if (await tryRefresh())
             return getMe();
@@ -54,7 +52,8 @@ export async function getMe() {
     }
     if (!res.ok)
         return null;
-    return res.json();
+    const body = (await res.json());
+    return { id: "", email: body.email };
 }
 async function errorMessage(res, fallback) {
     try {

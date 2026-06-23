@@ -2,6 +2,11 @@ import { reactRouter } from "@react-router/dev/vite";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
 
+/** Strip gateway prefix so upstream receives paths as documented. */
+function stripGatewayPrefix(prefix: string) {
+  return (path: string) => path.replace(new RegExp(`^${prefix}`), "") || "/";
+}
+
 export default defineConfig({
   plugins: [tailwindcss(), reactRouter()],
   resolve: {
@@ -9,17 +14,25 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      "/api/v1": {
+      "/auth": {
         target: "http://localhost:8080",
         changeOrigin: true,
+        rewrite: stripGatewayPrefix("/auth"),
       },
-      "/health": {
+      "/product": {
         target: "http://localhost:8080",
         changeOrigin: true,
+        rewrite: stripGatewayPrefix("/product"),
       },
-      "/api": {
-        target: "http://localhost:8081",
+      "/inventory": {
+        target: "http://localhost:8080",
         changeOrigin: true,
+        rewrite: stripGatewayPrefix("/inventory"),
+      },
+      "/order": {
+        target: "http://localhost:8080",
+        changeOrigin: true,
+        rewrite: stripGatewayPrefix("/order"),
       },
     },
   },

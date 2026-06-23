@@ -1,293 +1,298 @@
 import { authedFetch } from "./auth";
+import {
+  inventoryPath,
+  orderPath,
+  productPath,
+  authPath,
+} from "./gateway";
 
-export type ProductStatus = "active" | "draft" | "archived";
-export type OrderStatus =
-  | "pending"
-  | "processing"
-  | "shipped"
-  | "delivered"
-  | "cancelled";
+// ── Product catalog (read-only search) ───────────────────────────────────────
+
+export const PRODUCT_CATEGORIES = [
+  "consultations",
+  "shoes",
+  "outerwear",
+  "bottoms",
+  "bags",
+  "clocks",
+] as const;
+
+export type ProductCategory = (typeof PRODUCT_CATEGORIES)[number];
+
+export type ProductSearchHit = Record<string, unknown>;
+
+export interface ProductSearchResponse {
+  total: number;
+  results: ProductSearchHit[];
+}
 
 export interface Product {
   id: string;
   name: string;
   category: string;
-  price: number;
-  cost?: number;
-  stock: number;
-  description: string;
-  imageUrls?: string[];
+  price?: number;
+  stock?: number;
+  description?: string;
   brand?: string;
   color?: string;
   material?: string;
-  status: ProductStatus;
-  createdAt: string;
+  sku?: string;
+  status?: string;
+  raw: ProductSearchHit;
 }
 
+function hitId(hit: ProductSearchHit, index: number): string {
+  const id = hit.id ?? hit.sku ?? hit.title;
+  return typeof id === "string" ? id : `item-${index}`;
+}
+
+function hitName(hit: ProductSearchHit): string {
+  const name = hit.name ?? hit.title ?? hit.sku;
+  return typeof name === "string" ? name : "Untitled";
+}
+
+function hitNumber(hit: ProductSearchHit, key: string): number | undefined {
+  const value = hit[key];
+  return typeof value === "number" ? value : undefined;
+}
+
+function hitString(hit: ProductSearchHit, key: string): string | undefined {
+  const value = hit[key];
+  return typeof value === "string" ? value : undefined;
+}
+
+export function mapSearchHit(
+  hit: ProductSearchHit,
+  category: string,
+  index = 0
+): Product {
+  return {
+    id: hitId(hit, index),
+    name: hitName(hit),
+    category,
+    price: hitNumber(hit, "price") ?? hitNumber(hit, "unit_price_cents"),
+    stock: hitNumber(hit, "stock") ?? hitNumber(hit, "quantity"),
+    description: hitString(hit, "description"),
+    brand: hitString(hit, "brand"),
+    color: hitString(hit, "color"),
+    material: hitString(hit, "material"),
+    sku: hitString(hit, "sku"),
+    status: hitString(hit, "status"),
+    raw: hit,
+  };
+}
+
+async function readError(res: Response, fallback: string): Promise<string> {
+  try {
+    const body = (await res.json()) as { error?: string };
+    return body.error ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+export async function getCategories(): Promise<string[]> {
+  const res = await authedFetch(productPath("/api/categories"));
+  if (!res.ok) throw new Error(await readError(res, "Failed to fetch categories"));
+  const data = (await res.json()) as { categories: string[] };
+  return data.categories;
+}
+
+export async function getFilters(
+  category: string
+): Promise<{ category: string; filters: string[] }> {
+  const res = await authedFetch(
+    productPath(`/api/filters?category=${encodeURIComponent(category)}`)
+  );
+  if (!res.ok) throw new Error(await readError(res, "Failed to fetch filters"));
+  return res.json() as Promise<{ category: string; filters: string[] }>;
+}
+
+export async function searchProducts(
+  category: string,
+  filters: Record<string, string> = {}
+): Promise<Product[]> {
+  const params = new URLSearchParams({ category, ...filters });
+  const res = await authedFetch(
+    productPath(`/api/products/search?${params.toString()}`)
+  );
+  if (!res.ok) throw new Error(await readError(res, "Failed to search products"));
+  const data = (await res.json()) as ProductSearchResponse;
+  return (data.results ?? []).map((hit, i) => mapSearchHit(hit, category, i));
+}
+
+export async function getProducts(category = "shoes"): Promise<Product[]> {
+  return searchProducts(category);
+}
+
+export async function getProduct(
+  category: string,
+  id: string
+): Promise<Product | null> {
+  const products = await searchProducts(category);
+  return products.find((p) => p.id === id || p.sku === id) ?? null;
+}
+
+// ── Orders ───────────────────────────────────────────────────────────────────
+
+export type OrderStatus = "pending" | "confirmed" | "canceled" | "fulfilled";
+
 export interface OrderItem {
-  productId: string;
-  productName: string;
+  sku: string;
   quantity: number;
-  price: number;
+  unit_price_cents: number;
 }
 
 export interface Order {
   id: string;
-  customerEmail: string;
+  customer_id: string;
+  reservation_id?: string;
   items: OrderItem[];
-  itemCount: number;
-  total: number;
   status: OrderStatus;
-  createdAt: string;
+  total_cents: number;
+  created_at: string;
+  updated_at: string;
 }
 
+export interface OrdersResponse {
+  total: number;
+  orders: Order[];
+}
+
+export async function getOrders(customerId?: string): Promise<Order[]> {
+  const query = customerId
+    ? `?customer_id=${encodeURIComponent(customerId)}`
+    : "";
+  const res = await authedFetch(orderPath(`/api/v1/orders${query}`));
+  if (!res.ok) throw new Error(await readError(res, "Failed to fetch orders"));
+  const data = (await res.json()) as OrdersResponse;
+  return data.orders ?? [];
+}
+
+export async function getOrder(id: string): Promise<Order> {
+  const res = await authedFetch(orderPath(`/api/v1/orders/${id}`));
+  if (!res.ok) throw new Error(await readError(res, "Order not found"));
+  return res.json() as Promise<Order>;
+}
+
+export async function updateOrderStatus(
+  id: string,
+  status: OrderStatus
+): Promise<Order> {
+  const res = await authedFetch(orderPath(`/api/v1/orders/${id}/status`), {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  });
+  if (!res.ok) throw new Error(await readError(res, "Failed to update order"));
+  return res.json() as Promise<Order>;
+}
+
+// ── Inventory ────────────────────────────────────────────────────────────────
+
+export interface StockItem {
+  sku: string;
+  quantity: number;
+  reserved: number;
+  updated_at: string;
+}
+
+export async function getInventory(sku: string): Promise<StockItem> {
+  const res = await authedFetch(
+    inventoryPath(`/api/v1/inventory/${encodeURIComponent(sku)}`)
+  );
+  if (!res.ok) throw new Error(await readError(res, "Stock item not found"));
+  return res.json() as Promise<StockItem>;
+}
+
+export async function setInventory(
+  sku: string,
+  quantity: number
+): Promise<StockItem> {
+  const res = await authedFetch(
+    inventoryPath(`/api/v1/inventory/${encodeURIComponent(sku)}`),
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ quantity }),
+    }
+  );
+  if (!res.ok) throw new Error(await readError(res, "Failed to update stock"));
+  return res.json() as Promise<StockItem>;
+}
+
+export async function adjustInventory(
+  sku: string,
+  delta: number
+): Promise<StockItem> {
+  const res = await authedFetch(
+    inventoryPath(`/api/v1/inventory/${encodeURIComponent(sku)}/adjust`),
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ delta }),
+    }
+  );
+  if (!res.ok) throw new Error(await readError(res, "Failed to adjust stock"));
+  return res.json() as Promise<StockItem>;
+}
+
+// ── Auth (register) ──────────────────────────────────────────────────────────
+
+export async function registerUser(
+  email: string,
+  password: string
+): Promise<{ user_id: string }> {
+  const res = await fetch(authPath("/api/v1/auth/register"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!res.ok) throw new Error(await readError(res, "Failed to register user"));
+  return res.json() as Promise<{ user_id: string }>;
+}
+
+// ── Dashboard / Analytics ──────────────────────────────────────────────────────
+
 export interface DashboardStats {
-  activeProducts: number;
+  productCount: number;
+  orderCount: number;
+}
+
+export async function getDashboardStats(): Promise<DashboardStats> {
+  const [products, orders] = await Promise.all([
+    getProducts().catch(() => [] as Product[]),
+    getOrders().catch(() => [] as Order[]),
+  ]);
+  return { productCount: products.length, orderCount: orders.length };
 }
 
 export interface AnalyticsSummary {
   revenue7d: number;
   revenue30d: number;
-  revenue90d: number;
   orders7d: number;
   orders30d: number;
-  topCategories: { category: string; revenue: number; orders: number }[];
-  topProducts: { id: string; name: string; sold: number; revenue: number }[];
-}
-
-// ── Products ─────────────────────────────────────────────────────────────────
-// Routes through Vite proxy: /api → localhost:8081 (product service)
-
-export async function getProducts(): Promise<Product[]> {
-  const res = await authedFetch("/api/products");
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(body.error ?? "Failed to fetch products");
-  }
-  return res.json() as Promise<Product[]>;
-}
-
-export async function getProduct(id: string): Promise<Product> {
-  const res = await authedFetch(`/api/products/${id}`);
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(body.error ?? "Product not found");
-  }
-  return res.json() as Promise<Product>;
-}
-
-export async function createProduct(
-  data: Omit<Product, "id" | "createdAt">
-): Promise<Product> {
-  const res = await authedFetch("/api/products", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(body.error ?? "Failed to create product");
-  }
-  return res.json() as Promise<Product>;
-}
-
-export async function updateProduct(
-  id: string,
-  data: Partial<Omit<Product, "id" | "createdAt">>
-): Promise<Product> {
-  const res = await authedFetch(`/api/products/${id}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(body.error ?? "Failed to update product");
-  }
-  return res.json() as Promise<Product>;
-}
-
-export async function deleteProduct(id: string): Promise<void> {
-  const res = await authedFetch(`/api/products/${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error("Failed to delete product");
-}
-
-// Uses XHR so callers can track upload progress for large files.
-export function uploadProductImage(
-  id: string,
-  file: File,
-  onProgress?: (pct: number) => void
-): Promise<Product> {
-  return new Promise((resolve, reject) => {
-    const token = localStorage.getItem("schick_at") ?? "";
-    const fd = new FormData();
-    fd.append("image", file);
-    const xhr = new XMLHttpRequest();
-    xhr.open("PUT", `/api/products/${id}/image`);
-    xhr.setRequestHeader("Authorization", `Bearer ${token}`);
-    if (onProgress) {
-      xhr.upload.addEventListener("progress", (e) => {
-        if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
-      });
-    }
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try { resolve(JSON.parse(xhr.responseText) as Product); }
-        catch { reject(new Error("Invalid response from server")); }
-      } else {
-        try {
-          const b = JSON.parse(xhr.responseText) as { error?: string };
-          reject(new Error(b.error ?? `Upload failed (${xhr.status})`));
-        } catch { reject(new Error(`Upload failed (${xhr.status})`)); }
-      }
-    };
-    xhr.onerror = () => reject(new Error("Network error during upload"));
-    xhr.send(fd);
-  });
-}
-
-// ── Users ────────────────────────────────────────────────────────────────────
-// Routes through Vite proxy: /api/v1 → localhost:8080 (auth service)
-
-export type UserRole = "owner" | "admin" | "user";
-
-export interface AdminUser {
-  id: string;
-  email: string;
-  role: UserRole;
-  createdAt: string;
-}
-
-export async function getUsers(): Promise<AdminUser[]> {
-  const res = await authedFetch("/api/v1/users");
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(body.error ?? "Failed to fetch users");
-  }
-  return res.json() as Promise<AdminUser[]>;
-}
-
-export async function updateUserRole(id: string, role: UserRole): Promise<AdminUser> {
-  const res = await authedFetch(`/api/v1/users/${id}/role`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ role }),
-  });
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(body.error ?? "Failed to update role");
-  }
-  return res.json() as Promise<AdminUser>;
-}
-
-export async function createUser(data: {
-  email: string;
-  password: string;
-  role: UserRole;
-}): Promise<AdminUser> {
-  const res = await authedFetch("/api/v1/users", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    let detail = "";
-    try {
-      const body = JSON.parse(text) as { error?: string; message?: string; detail?: string };
-      detail = body.error ?? body.message ?? body.detail ?? text;
-    } catch {
-      detail = text;
-    }
-    throw new Error(detail || `${res.status} ${res.statusText}`);
-  }
-  return res.json() as Promise<AdminUser>;
-}
-
-export async function deleteUser(id: string): Promise<void> {
-  const res = await authedFetch(`/api/v1/users/${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error("Failed to delete user");
-}
-
-// ── Coupons ──────────────────────────────────────────────────────────────────
-// Routes through Vite proxy: /api → localhost:8081 (product service)
-
-export interface AdminCoupon {
-  code: string;
-  discount: number;   // fraction, e.g. 0.30 = 30 %
-  description: string;
-  expires: string;
-  active: boolean;
-}
-
-export async function getCoupons(): Promise<AdminCoupon[]> {
-  const res = await authedFetch("/api/coupons");
-  if (!res.ok) throw new Error("Failed to fetch coupons");
-  const data = (await res.json()) as { total: number; results: AdminCoupon[] | null };
-  return data.results ?? [];
-}
-
-export async function createCoupon(data: AdminCoupon): Promise<AdminCoupon> {
-  const res = await authedFetch("/api/coupons", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(body.error ?? "Failed to create coupon");
-  }
-  return res.json() as Promise<AdminCoupon>;
-}
-
-export async function updateCoupon(
-  code: string,
-  data: Partial<Omit<AdminCoupon, "code">>
-): Promise<AdminCoupon> {
-  const res = await authedFetch(`/api/coupons/${encodeURIComponent(code)}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(body.error ?? "Failed to update coupon");
-  }
-  return res.json() as Promise<AdminCoupon>;
-}
-
-export async function deleteCoupon(code: string): Promise<void> {
-  const res = await authedFetch(`/api/coupons/${encodeURIComponent(code)}`, {
-    method: "DELETE",
-  });
-  if (!res.ok) throw new Error("Failed to delete coupon");
-}
-
-// ── Orders ───────────────────────────────────────────────────────────────────
-// Not yet implemented in the backend — returns empty list.
-
-export async function getOrders(): Promise<Order[]> {
-  return [];
-}
-
-export async function updateOrderStatus(
-  _id: string,
-  _status: OrderStatus
-): Promise<void> {
-  // not yet implemented
-}
-
-// ── Analytics / Dashboard ────────────────────────────────────────────────────
-// Not yet implemented in the backend.
-// getDashboardStats derives active product count from the products API.
-
-export async function getDashboardStats(): Promise<DashboardStats> {
-  const products = await getProducts();
-  return {
-    activeProducts: products.filter((p) => p.status === "active").length,
-  };
 }
 
 export async function getAnalytics(): Promise<AnalyticsSummary | null> {
-  return null;
+  const orders = await getOrders().catch(() => [] as Order[]);
+  if (orders.length === 0) return null;
+
+  const now = Date.now();
+  const day = 24 * 60 * 60 * 1000;
+  const within = (days: number) => (o: Order) =>
+    now - new Date(o.created_at).getTime() <= days * day;
+
+  const sumRevenue = (list: Order[]) =>
+    list.reduce((sum, o) => sum + o.total_cents, 0);
+
+  const last7 = orders.filter(within(7));
+  const last30 = orders.filter(within(30));
+
+  return {
+    revenue7d: sumRevenue(last7),
+    revenue30d: sumRevenue(last30),
+    orders7d: last7.length,
+    orders30d: last30.length,
+  };
 }

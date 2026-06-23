@@ -58,9 +58,7 @@ export async function getMe(): Promise<User | null> {
     return null;
   }
 
-  const res = await fetch("/api/v1/auth/me", {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const res = await fetch("/auth/session/me", SESSION_FETCH);
 
   if (res.status === 401) {
     if (await tryRefresh()) return getMe();
@@ -68,7 +66,8 @@ export async function getMe(): Promise<User | null> {
   }
 
   if (!res.ok) return null;
-  return res.json() as Promise<User>;
+  const body = (await res.json()) as { email: string };
+  return { id: "", email: body.email };
 }
 
 async function errorMessage(res: Response, fallback: string): Promise<string> {

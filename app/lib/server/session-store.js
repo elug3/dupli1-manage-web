@@ -8,13 +8,13 @@ function pruneExpired() {
         }
     }
 }
-export function createSession(refreshToken) {
+export function createSession(refreshToken, email) {
     pruneExpired();
     const sessionId = crypto.randomUUID();
-    sessions.set(sessionId, { refreshToken, createdAt: Date.now() });
+    sessions.set(sessionId, { refreshToken, email, createdAt: Date.now() });
     return sessionId;
 }
-export function getRefreshToken(sessionId) {
+export function getSession(sessionId) {
     const record = sessions.get(sessionId);
     if (!record)
         return null;
@@ -22,13 +22,16 @@ export function getRefreshToken(sessionId) {
         sessions.delete(sessionId);
         return null;
     }
-    return record.refreshToken;
+    return record;
+}
+export function getRefreshToken(sessionId) {
+    return getSession(sessionId)?.refreshToken ?? null;
 }
 export function updateSessionRefreshToken(sessionId, refreshToken) {
     const record = sessions.get(sessionId);
     if (!record)
         return;
-    sessions.set(sessionId, { refreshToken, createdAt: record.createdAt });
+    sessions.set(sessionId, { ...record, refreshToken });
 }
 export function deleteSession(sessionId) {
     sessions.delete(sessionId);
