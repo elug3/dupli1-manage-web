@@ -54,7 +54,7 @@ export default function ProductDetail() {
         ← Back to products
       </Link>
 
-      <div className="rounded-2xl border border-[#E5E3EE] bg-white p-8 shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
+      <div className="rounded-2xl border border-[#E5E3EE] bg-white p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)] sm:p-8">
         <h1 className="text-2xl font-bold text-[#1C1B1F]">{product.name}</h1>
         <p className="mt-1 text-sm capitalize text-[#6B6480]">{product.category}</p>
 

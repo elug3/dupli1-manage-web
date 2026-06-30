@@ -46,14 +46,14 @@ function PageHeader() {
   });
 
   return (
-    <div className="flex items-start justify-between">
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div>
-        <h1 className="text-2xl font-bold text-[#1C1B1F]">Dashboard</h1>
+        <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">Dashboard</h1>
         <p className="mt-0.5 text-sm text-[#6B6480]">{formatted}</p>
       </div>
       <Link
         to="/orders"
-        className="rounded-xl bg-[#6D4AFF] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#5A38E8] active:scale-[0.98]"
+        className="w-full rounded-xl bg-[#6D4AFF] px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-[#5A38E8] active:scale-[0.98] sm:w-auto"
       >
         View all orders
       </Link>
@@ -139,8 +139,8 @@ function RecentOrdersTable({ orders }: { orders: Order[] }) {
           View all →
         </Link>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto md:overflow-visible">
+        <table className="hidden w-full text-sm md:table">
           <thead>
             <tr className="border-b border-[#F0EEF8] text-left">
               {["Order", "Customer", "Total", "Status", "Date"].map((h) => (
@@ -186,6 +186,32 @@ function RecentOrdersTable({ orders }: { orders: Order[] }) {
             )}
           </tbody>
         </table>
+      </div>
+
+      <div className="divide-y divide-[#F0EEF8] md:hidden">
+        {orders.length === 0 ? (
+          <div className="px-4 py-10 text-center text-[#9D98B3]">No orders yet</div>
+        ) : (
+          orders.map((order) => (
+            <div key={order.id} className="space-y-2 px-4 py-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate font-mono text-xs font-medium text-[#1C1B1F]">
+                    {order.id}
+                  </p>
+                  <p className="mt-1 text-sm text-[#6B6480]">{order.customer_id}</p>
+                </div>
+                <OrderStatusBadge status={order.status} />
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-semibold text-[#1C1B1F]">
+                  {formatCurrency(order.total_cents / 100)}
+                </span>
+                <span className="text-[#9D98B3]">{formatDate(order.created_at)}</span>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );

@@ -27,7 +27,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
     <html lang="en">
       <head>
         <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1, viewport-fit=cover"
+        />
+        <meta name="theme-color" content="#1C1340" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <Meta />
         <Links />
       </head>
@@ -59,8 +66,8 @@ export function ErrorBoundary({ error }: { error: unknown }) {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#F4F3F8]">
-      <div className="rounded-2xl bg-white p-10 text-center shadow-sm">
+    <main className="flex min-h-dvh items-center justify-center bg-[#F4F3F8] px-4">
+      <div className="w-full max-w-md rounded-2xl bg-white p-6 text-center shadow-sm sm:p-10">
         <h1 className="text-2xl font-bold text-[#1C1B1F]">{message}</h1>
         <p className="mt-2 text-sm text-[#6B6480]">{details}</p>
       </div>

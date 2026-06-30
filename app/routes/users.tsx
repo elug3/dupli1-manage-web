@@ -35,7 +35,7 @@ export default function Users() {
   return (
     <div className="mx-auto max-w-lg space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-[#1C1B1F]">Register user</h1>
+        <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">Register user</h1>
         <p className="mt-0.5 text-sm text-[#6B6480]">
           Create accounts via <code className="text-xs">POST /auth/api/v1/auth/register</code>
         </p>

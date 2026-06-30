@@ -77,7 +77,7 @@ export default function Settings() {
     <div className="space-y-8 max-w-2xl">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-[#1C1B1F]">Settings</h1>
+        <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">Settings</h1>
         <p className="mt-0.5 text-sm text-[#6B6480]">
           Manage your store configuration
         </p>
@@ -144,7 +144,7 @@ export default function Settings() {
             </Field>
           </div>
 
-          <div className="flex items-center justify-between rounded-xl border border-[#E5E3EE] bg-[#FAFAFA] px-4 py-3">
+          <div className="flex flex-col gap-3 rounded-xl border border-[#E5E3EE] bg-[#FAFAFA] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-medium text-[#1C1B1F]">
                 Maintenance mode
@@ -222,7 +222,7 @@ export default function Settings() {
           ).map(({ key, label, desc }) => (
             <div
               key={key}
-              className="flex items-center justify-between rounded-xl border border-[#E5E3EE] bg-[#FAFAFA] px-4 py-3"
+              className="flex flex-col gap-3 rounded-xl border border-[#E5E3EE] bg-[#FAFAFA] px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
             >
               <div>
                 <p className="text-sm font-medium text-[#1C1B1F]">{label}</p>
@@ -262,7 +262,7 @@ export default function Settings() {
       {/* Danger zone */}
       <Section title="Danger zone" description="Irreversible actions.">
         <div className="rounded-xl border border-red-200 bg-red-50 p-5">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-red-900">
                 Clear all product data

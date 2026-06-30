@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { type User, getMe, logout } from "~/lib/auth";
 
 export default function AdminLayout() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [user, setUser] = useState<User | null>(null);
   const [checking, setChecking] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -18,6 +19,17 @@ export default function AdminLayout() {
       .finally(() => setChecking(false));
   }, [navigate]);
 
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    document.body.style.overflow = sidebarOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [sidebarOpen]);
+
   async function handleLogout() {
     await logout();
     navigate("/login", { replace: true });
@@ -25,7 +37,7 @@ export default function AdminLayout() {
 
   if (checking) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F4F3F8]">
+      <div className="flex min-h-dvh items-center justify-center bg-[#F4F3F8]">
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#6D4AFF] border-t-transparent" />
           <span className="text-sm text-[#6B6480]">Loading…</span>
@@ -37,21 +49,23 @@ export default function AdminLayout() {
   if (!user) return null;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#F4F3F8]">
+    <div className="flex min-h-dvh overflow-hidden bg-[#F4F3F8]">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-20 bg-black/40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
         />
       )}
 
       {/* Sidebar */}
       <aside
         className={[
-          "fixed inset-y-0 left-0 z-30 flex w-64 flex-col bg-[#1C1340] transition-transform duration-200 lg:static lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-30 flex w-[min(16rem,85vw)] flex-col bg-[#1C1340] pt-[env(safe-area-inset-top)] transition-transform duration-200 lg:static lg:w-64 lg:translate-x-0 lg:pt-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full",
         ].join(" ")}
+        aria-label="Main navigation"
       >
         {/* Logo */}
         <div className="flex h-16 items-center gap-3 border-b border-white/10 px-5">
@@ -65,7 +79,7 @@ export default function AdminLayout() {
               />
             </svg>
           </div>
-          <div>
+          <div className="min-w-0 flex-1">
             <div className="text-sm font-bold leading-tight text-white">
               Schick
             </div>
@@ -73,26 +87,34 @@ export default function AdminLayout() {
               Admin
             </div>
           </div>
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(false)}
+            className="rounded-lg p-2 text-[#9D98B3] transition hover:bg-white/10 hover:text-white lg:hidden"
+            aria-label="Close menu"
+          >
+            <CloseIcon />
+          </button>
         </div>
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto px-3 py-4">
           <div className="space-y-0.5">
-            <SidebarLink to="/" icon={<DashboardIcon />} label="Dashboard" exact />
-            <SidebarLink to="/products" icon={<ProductsIcon />} label="Products" />
-            <SidebarLink to="/orders" icon={<OrdersIcon />} label="Orders" />
-            <SidebarLink to="/coupons" icon={<CouponsIcon />} label="Coupons" />
-            <SidebarLink to="/analytics" icon={<AnalyticsIcon />} label="Analytics" />
-            <SidebarLink to="/users" icon={<UsersIcon />} label="Register" />
+            <SidebarLink to="/" icon={<DashboardIcon />} label="Dashboard" exact onNavigate={() => setSidebarOpen(false)} />
+            <SidebarLink to="/products" icon={<ProductsIcon />} label="Products" onNavigate={() => setSidebarOpen(false)} />
+            <SidebarLink to="/orders" icon={<OrdersIcon />} label="Orders" onNavigate={() => setSidebarOpen(false)} />
+            <SidebarLink to="/coupons" icon={<CouponsIcon />} label="Coupons" onNavigate={() => setSidebarOpen(false)} />
+            <SidebarLink to="/analytics" icon={<AnalyticsIcon />} label="Analytics" onNavigate={() => setSidebarOpen(false)} />
+            <SidebarLink to="/users" icon={<UsersIcon />} label="Register" onNavigate={() => setSidebarOpen(false)} />
           </div>
 
           <div className="mt-4 border-t border-white/10 pt-4">
-            <SidebarLink to="/settings" icon={<SettingsIcon />} label="Settings" />
+            <SidebarLink to="/settings" icon={<SettingsIcon />} label="Settings" onNavigate={() => setSidebarOpen(false)} />
           </div>
         </nav>
 
         {/* User footer */}
-        <div className="border-t border-white/10 p-3">
+        <div className="border-t border-white/10 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] lg:pb-3">
           <div className="flex items-center gap-3 rounded-xl px-2 py-2">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#6D4AFF]/30 text-xs font-bold text-[#B4A8FF]">
               {user.email[0].toUpperCase()}
@@ -117,27 +139,30 @@ export default function AdminLayout() {
       </aside>
 
       {/* Main content */}
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {/* Top header */}
-        <header className="flex h-16 shrink-0 items-center gap-3 border-b border-[#E5E3EE] bg-white px-5">
+        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-[#E5E3EE] bg-white px-4 pt-[env(safe-area-inset-top)] sm:h-16 sm:gap-3 sm:px-5 lg:pt-0">
           <button
+            type="button"
             onClick={() => setSidebarOpen(true)}
-            className="rounded-lg p-1.5 text-[#6B6480] hover:bg-[#F4F3F8] lg:hidden"
+            className="-ml-1 rounded-lg p-2 text-[#6B6480] hover:bg-[#F4F3F8] lg:hidden"
+            aria-label="Open menu"
+            aria-expanded={sidebarOpen}
           >
             <HamburgerIcon />
           </button>
           <div className="flex-1" />
-          <div className="flex items-center gap-2 rounded-full bg-[#F4F3F8] px-3 py-1.5">
+          <div className="flex items-center gap-2 rounded-full bg-[#F4F3F8] px-2.5 py-1.5 sm:px-3">
             <div className="h-2 w-2 rounded-full bg-emerald-500" />
-            <span className="text-xs font-medium text-[#6B6480]">
+            <span className="hidden text-xs font-medium text-[#6B6480] sm:inline">
               Backend online
             </span>
           </div>
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-7xl p-6">
+        <main className="flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]">
+          <div className="mx-auto max-w-7xl p-4 sm:p-6">
             <Outlet />
           </div>
         </main>
@@ -151,16 +176,19 @@ function SidebarLink({
   icon,
   label,
   exact,
+  onNavigate,
 }: {
   to: string;
   icon: React.ReactNode;
   label: string;
   exact?: boolean;
+  onNavigate?: () => void;
 }) {
   return (
     <NavLink
       to={to}
       end={exact}
+      onClick={onNavigate}
       className={({ isActive }) =>
         [
           "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
@@ -301,6 +329,19 @@ function HamburgerIcon() {
     <svg className="size-5" viewBox="0 0 24 24" fill="none">
       <path
         d="M4 6h16M4 12h16M4 18h16"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg className="size-5" viewBox="0 0 24 24" fill="none">
+      <path
+        d="M6 6l12 12M18 6L6 18"
         stroke="currentColor"
         strokeWidth="1.8"
         strokeLinecap="round"

@@ -28,7 +28,7 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[#F4F3F8] px-4">
+    <div className="flex min-h-dvh flex-col items-center justify-center bg-[#F4F3F8] px-4 py-8">
       <div className="w-full max-w-sm">
         {/* Logo mark */}
         <div className="mb-8 flex flex-col items-center">

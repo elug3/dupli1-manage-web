@@ -28,7 +28,7 @@ export default function Analytics() {
     return (
       <div className="space-y-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#1C1B1F]">Analytics</h1>
+          <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">Analytics</h1>
           <p className="mt-0.5 text-sm text-[#6B6480]">
             Derived from order service data
           </p>
@@ -50,9 +50,9 @@ export default function Analytics() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#1C1B1F]">Analytics</h1>
+          <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">Analytics</h1>
           <p className="mt-0.5 text-sm text-[#6B6480]">
             Derived from order service totals
           </p>

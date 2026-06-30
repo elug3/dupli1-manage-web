@@ -14,7 +14,7 @@ export const links = () => [
     },
 ];
 export function Layout({ children }) {
-    return (_jsxs("html", { lang: "en", children: [_jsxs("head", { children: [_jsx("meta", { charSet: "utf-8" }), _jsx("meta", { name: "viewport", content: "width=device-width, initial-scale=1" }), _jsx(Meta, {}), _jsx(Links, {})] }), _jsxs("body", { children: [children, _jsx(ScrollRestoration, {}), _jsx(Scripts, {})] })] }));
+    return (_jsxs("html", { lang: "en", children: [_jsxs("head", { children: [_jsx("meta", { charSet: "utf-8" }), _jsx("meta", { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" }), _jsx("meta", { name: "theme-color", content: "#1C1340" }), _jsx("meta", { name: "mobile-web-app-capable", content: "yes" }), _jsx("meta", { name: "apple-mobile-web-app-capable", content: "yes" }), _jsx("meta", { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" }), _jsx(Meta, {}), _jsx(Links, {})] }), _jsxs("body", { children: [children, _jsx(ScrollRestoration, {}), _jsx(Scripts, {})] })] }));
 }
 export default function App() {
     return _jsx(Outlet, {});
@@ -32,5 +32,5 @@ export function ErrorBoundary({ error }) {
     else if (import.meta.env?.DEV && error instanceof Error) {
         details = error.message;
     }
-    return (_jsx("main", { className: "flex min-h-screen items-center justify-center bg-[#F4F3F8]", children: _jsxs("div", { className: "rounded-2xl bg-white p-10 text-center shadow-sm", children: [_jsx("h1", { className: "text-2xl font-bold text-[#1C1B1F]", children: message }), _jsx("p", { className: "mt-2 text-sm text-[#6B6480]", children: details })] }) }));
+    return (_jsx("main", { className: "flex min-h-dvh items-center justify-center bg-[#F4F3F8] px-4", children: _jsxs("div", { className: "w-full max-w-md rounded-2xl bg-white p-6 text-center shadow-sm sm:p-10", children: [_jsx("h1", { className: "text-2xl font-bold text-[#1C1B1F]", children: message }), _jsx("p", { className: "mt-2 text-sm text-[#6B6480]", children: details })] }) }));
 }

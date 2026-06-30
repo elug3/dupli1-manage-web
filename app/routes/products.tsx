@@ -46,7 +46,7 @@ export default function Products() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#1C1B1F]">Products</h1>
+          <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">Products</h1>
           <p className="mt-0.5 text-sm text-[#6B6480]">
             Read-only catalog search via the product service
           </p>
@@ -94,8 +94,36 @@ export default function Products() {
             No products found in this category
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <>
+            <div className="divide-y divide-[#F0EEF8] md:hidden">
+              {products.map((product) => (
+                <div key={product.id} className="space-y-3 p-4">
+                  <div>
+                    <p className="font-medium text-[#1C1B1F]">{product.name}</p>
+                    <p className="mt-1 font-mono text-xs text-[#6B6480]">
+                      {product.sku ?? "—"}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2 text-xs text-[#6B6480]">
+                    <span className="rounded-full bg-[#F4F3F8] px-2.5 py-1">
+                      {product.brand ?? "No brand"}
+                    </span>
+                    <span className="rounded-full bg-[#F4F3F8] px-2.5 py-1 capitalize">
+                      {product.category}
+                    </span>
+                  </div>
+                  <Link
+                    to={`/products/${encodeURIComponent(product.id)}?category=${encodeURIComponent(product.category)}`}
+                    className="inline-flex text-xs font-semibold text-[#6D4AFF] hover:underline"
+                  >
+                    Details →
+                  </Link>
+                </div>
+              ))}
+            </div>
+
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[#F0EEF8] bg-[#FAFAFA] text-left">
                   {["Name", "SKU", "Brand", "Category", ""].map((h) => (
@@ -138,7 +166,8 @@ export default function Products() {
                 ))}
               </tbody>
             </table>
-          </div>
+            </div>
+          </>
         )}
       </div>
     </div>
