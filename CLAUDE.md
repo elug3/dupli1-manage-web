@@ -84,6 +84,18 @@ app/
 
 Route modules use React Router 7 conventions: `loader` for data fetching, `action` for mutations, `default` export for the component.
 
+## Production access
+
+The admin dashboard is **not** exposed on the public internet. In production:
+
+- `schick-manage-web` runs in **private subnets** with no public IP and no ALB attachment.
+- Managers connect via the **WireGuard VPN** (`schick-internal-vpn`), then open:
+
+  **http://manage.schick.local:3000**
+
+- API calls from manage-web reach backends via `SCHICK_GATEWAY_URL=http://proxy.schick.local` (internal nginx gateway).
+- The customer storefront (`schick-web`) remains public via `schick-prod-alb`.
+
 ## Sibling Projects
 
 | Repo | Purpose |
