@@ -30,6 +30,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # IAM role trust policy must include repo:elug3/dupli1-manage-web:ref:refs/heads/master
+      # (and dupli1-web for the storefront) after the schick → dupli1 rename.
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
