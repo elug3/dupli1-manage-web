@@ -44,13 +44,20 @@ export default function Products() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">Products</h1>
           <p className="mt-0.5 text-sm text-[#6B6480]">
-            Read-only catalog search via the product service
+            Catalog search via the product service
           </p>
         </div>
+        <Link
+          to="/products/new"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#6D4AFF] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#5A38E8] active:scale-[0.98] sm:w-auto"
+        >
+          <PlusIcon />
+          New product
+        </Link>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -171,5 +178,18 @@ export default function Products() {
         )}
       </div>
     </div>
+  );
+}
+
+function PlusIcon() {
+  return (
+    <svg className="size-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 5v14M5 12h14"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }

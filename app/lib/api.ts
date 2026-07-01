@@ -146,6 +146,27 @@ export async function getProduct(
   return products.find((p) => p.id === id || p.sku === id) ?? null;
 }
 
+export interface CreateBagProductInput {
+  title: string;
+  sku: string;
+  brand: string;
+  color: string;
+  material: string;
+}
+
+export async function createBagProduct(
+  input: CreateBagProductInput
+): Promise<Product> {
+  const res = await authedFetch(productPath("/api/v1/products/bags"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) throw new Error(await readError(res, "Failed to create product"));
+  const hit = (await res.json()) as ProductSearchHit;
+  return mapSearchHit(hit, "bags");
+}
+
 // ── Orders ───────────────────────────────────────────────────────────────────
 
 export type OrderStatus = "pending" | "confirmed" | "canceled" | "fulfilled";
