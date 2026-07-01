@@ -15,8 +15,10 @@ WireGuard VPN for accessing the Dupli1 production VPC (`10.0.0.0/16`) from outsi
 The admin UI is **VPN-only** — it is not on the public ALB.
 
 1. Connect your WireGuard tunnel.
-2. Open **http://manage.dupli1.local:3000**
+2. Open **http://manage.dupli1.local**
 3. Sign in with your admin credentials.
+
+The ECS task listens on **port 80**. The manage-web task has its own private IP (`manage.dupli1.local`), separate from the API gateway at `proxy.dupli1.local`.
 
 Backend API traffic uses the internal gateway at `http://proxy.dupli1.local`.
 

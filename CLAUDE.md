@@ -91,7 +91,7 @@ The admin dashboard is **not** exposed on the public internet. In production:
 - `dupli1-manage-web` runs in **private subnets** with no public IP and no ALB attachment.
 - Managers connect via the **WireGuard VPN** (`dupli1-internal-vpn`), then open:
 
-  **http://manage.dupli1.local:3000**
+  **http://manage.dupli1.local**
 
 - API calls from manage-web reach backends via `DUPLI1_GATEWAY_URL=http://proxy.dupli1.local` (internal nginx gateway).
 - The customer storefront (`dupli1-web`) remains public via `dupli1-prod-alb`.
