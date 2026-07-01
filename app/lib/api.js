@@ -85,6 +85,17 @@ export async function getProduct(category, id) {
     const products = await searchProducts(category);
     return products.find((p) => p.id === id || p.sku === id) ?? null;
 }
+export async function createBagProduct(input) {
+    const res = await authedFetch(productPath("/api/v1/products/bags"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+    });
+    if (!res.ok)
+        throw new Error(await readError(res, "Failed to create product"));
+    const hit = (await res.json());
+    return mapSearchHit(hit, "bags");
+}
 export async function getOrders(customerId) {
     // The order service requires customer_id; there is no list-all endpoint yet.
     if (!customerId)
