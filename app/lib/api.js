@@ -25,21 +25,32 @@ function hitString(hit, key) {
     const value = hit[key];
     return typeof value === "string" ? value : undefined;
 }
-export function mapSearchHit(hit, category, index = 0) {
+function hitStringArray(hit, key) {
+    const value = hit[key];
+    if (!Array.isArray(value))
+        return undefined;
+    const strings = value.filter((v) => typeof v === "string");
+    return strings.length > 0 ? strings : undefined;
+}
+export function mapProduct(hit, category, index = 0) {
     return {
         id: hitId(hit, index),
         name: hitName(hit),
-        category,
+        category: category ?? hitString(hit, "category") ?? "bags",
         price: hitNumber(hit, "price") ?? hitNumber(hit, "unit_price_cents"),
         stock: hitNumber(hit, "stock") ?? hitNumber(hit, "quantity"),
         description: hitString(hit, "description"),
         brand: hitString(hit, "brand"),
         color: hitString(hit, "color"),
         material: hitString(hit, "material"),
-        sku: hitString(hit, "sku"),
+        sku: hitString(hit, "sku") ?? hitString(hit, "id"),
         status: hitString(hit, "status"),
+        imageUrls: hitStringArray(hit, "imageUrls"),
         raw: hit,
     };
+}
+export function mapSearchHit(hit, category, index = 0) {
+    return mapProduct(hit, category, index);
 }
 async function readError(res, fallback) {
     try {
@@ -84,6 +95,22 @@ export async function getProducts(category = "bags") {
 export async function getProduct(category, id) {
     const products = await searchProducts(category);
     return products.find((p) => p.id === id || p.sku === id) ?? null;
+}
+export async function getManageProduct(id) {
+    const res = await authedFetch(productPath(`/api/v1/products/${encodeURIComponent(id)}/manage`));
+    if (!res.ok)
+        throw new Error(await readError(res, "Product not found"));
+    const hit = (await res.json());
+    return mapProduct(hit);
+}
+export async function uploadProductImage(id, file) {
+    const form = new FormData();
+    form.append("image", file);
+    const res = await authedFetch(productPath(`/api/v1/products/${encodeURIComponent(id)}/image`), { method: "PUT", body: form });
+    if (!res.ok)
+        throw new Error(await readError(res, "Failed to upload image"));
+    const hit = (await res.json());
+    return mapProduct(hit);
 }
 export async function createBagProduct(input) {
     const res = await authedFetch(productPath("/api/v1/products/bags"), {

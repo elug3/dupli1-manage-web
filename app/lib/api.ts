@@ -37,6 +37,7 @@ export interface Product {
   material?: string;
   sku?: string;
   status?: string;
+  imageUrls?: string[];
   raw: ProductSearchHit;
 }
 
@@ -60,25 +61,41 @@ function hitString(hit: ProductSearchHit, key: string): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
 
-export function mapSearchHit(
+function hitStringArray(hit: ProductSearchHit, key: string): string[] | undefined {
+  const value = hit[key];
+  if (!Array.isArray(value)) return undefined;
+  const strings = value.filter((v): v is string => typeof v === "string");
+  return strings.length > 0 ? strings : undefined;
+}
+
+export function mapProduct(
   hit: ProductSearchHit,
-  category: string,
+  category?: string,
   index = 0
 ): Product {
   return {
     id: hitId(hit, index),
     name: hitName(hit),
-    category,
+    category: category ?? hitString(hit, "category") ?? "bags",
     price: hitNumber(hit, "price") ?? hitNumber(hit, "unit_price_cents"),
     stock: hitNumber(hit, "stock") ?? hitNumber(hit, "quantity"),
     description: hitString(hit, "description"),
     brand: hitString(hit, "brand"),
     color: hitString(hit, "color"),
     material: hitString(hit, "material"),
-    sku: hitString(hit, "sku"),
+    sku: hitString(hit, "sku") ?? hitString(hit, "id"),
     status: hitString(hit, "status"),
+    imageUrls: hitStringArray(hit, "imageUrls"),
     raw: hit,
   };
+}
+
+export function mapSearchHit(
+  hit: ProductSearchHit,
+  category: string,
+  index = 0
+): Product {
+  return mapProduct(hit, category, index);
 }
 
 async function readError(res: Response, fallback: string): Promise<string> {
@@ -144,6 +161,30 @@ export async function getProduct(
 ): Promise<Product | null> {
   const products = await searchProducts(category);
   return products.find((p) => p.id === id || p.sku === id) ?? null;
+}
+
+export async function getManageProduct(id: string): Promise<Product> {
+  const res = await authedFetch(
+    productPath(`/api/v1/products/${encodeURIComponent(id)}/manage`)
+  );
+  if (!res.ok) throw new Error(await readError(res, "Product not found"));
+  const hit = (await res.json()) as ProductSearchHit;
+  return mapProduct(hit);
+}
+
+export async function uploadProductImage(
+  id: string,
+  file: File
+): Promise<Product> {
+  const form = new FormData();
+  form.append("image", file);
+  const res = await authedFetch(
+    productPath(`/api/v1/products/${encodeURIComponent(id)}/image`),
+    { method: "PUT", body: form }
+  );
+  if (!res.ok) throw new Error(await readError(res, "Failed to upload image"));
+  const hit = (await res.json()) as ProductSearchHit;
+  return mapProduct(hit);
 }
 
 export interface CreateBagProductInput {
