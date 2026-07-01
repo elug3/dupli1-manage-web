@@ -1,14 +1,5 @@
 import { authedFetch } from "./auth";
-import { inventoryPath, orderPath, productPath, } from "./gateway";
-// ── Product catalog (read-only search) ───────────────────────────────────────
-export const PRODUCT_CATEGORIES = [
-    "consultations",
-    "shoes",
-    "outerwear",
-    "bottoms",
-    "bags",
-    "clocks",
-];
+import { authPath, inventoryPath, orderPath, productPath, } from "./gateway";
 function hitId(hit, index) {
     const id = hit.id ?? hit.sku ?? hit.title;
     return typeof id === "string" ? id : `item-${index}`;
@@ -62,15 +53,15 @@ async function readError(res, fallback) {
     }
 }
 const BAG_FILTERS = ["brand", "color", "material"];
-const SUPPORTED_CATEGORIES = ["bags"];
-export async function getCategories() {
-    return [...SUPPORTED_CATEGORIES];
-}
-export async function getFilters(category) {
-    if (!SUPPORTED_CATEGORIES.includes(category.toLowerCase())) {
-        return { category, filters: [] };
-    }
-    return { category, filters: [...BAG_FILTERS] };
+/** List all products (all statuses). Requires auth. */
+export async function listAllProducts() {
+    const res = await authedFetch(productPath("/api/v1/products"));
+    if (!res.ok)
+        throw new Error(await readError(res, "Failed to list products"));
+    const hits = (await res.json());
+    if (!Array.isArray(hits))
+        return [];
+    return hits.map((hit, i) => mapProduct(hit, undefined, i));
 }
 export async function searchProducts(category, filters = {}) {
     if (category.toLowerCase() !== "bags")
@@ -89,8 +80,8 @@ export async function searchProducts(category, filters = {}) {
     const results = Array.isArray(data.results) ? data.results : [];
     return results.map((hit, i) => mapSearchHit(hit, category, i));
 }
-export async function getProducts(category = "bags") {
-    return searchProducts(category);
+export async function getProducts() {
+    return listAllProducts();
 }
 export async function getProduct(category, id) {
     const products = await searchProducts(category);
@@ -113,25 +104,89 @@ export async function uploadProductImage(id, file) {
     return mapProduct(hit);
 }
 export async function createBagProduct(input) {
-    const res = await authedFetch(productPath("/api/v1/products/bags"), {
+    const res = await authedFetch(productPath("/api/v1/products"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            name: input.name,
+            id: input.id,
+            brand: input.brand,
+            color: input.color,
+            material: input.material,
+            category: "bags",
+        }),
+    });
+    if (!res.ok)
+        throw new Error(await readError(res, "Failed to create product"));
+    const hit = (await res.json());
+    return mapProduct(hit, "bags");
+}
+export async function updateProduct(id, input) {
+    const res = await authedFetch(productPath(`/api/v1/products/${encodeURIComponent(id)}`), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+    });
+    if (!res.ok)
+        throw new Error(await readError(res, "Failed to update product"));
+    const hit = (await res.json());
+    return mapProduct(hit);
+}
+export async function deleteProduct(id) {
+    const res = await authedFetch(productPath(`/api/v1/products/${encodeURIComponent(id)}`), { method: "DELETE" });
+    if (!res.ok)
+        throw new Error(await readError(res, "Failed to delete product"));
+}
+export async function getCoupons() {
+    const res = await authedFetch(productPath("/api/v1/coupons"));
+    if (!res.ok)
+        throw new Error(await readError(res, "Failed to fetch coupons"));
+    const data = (await res.json());
+    return Array.isArray(data.results) ? data.results : [];
+}
+export async function createCoupon(input) {
+    const res = await authedFetch(productPath("/api/v1/coupons"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(input),
     });
     if (!res.ok)
-        throw new Error(await readError(res, "Failed to create product"));
-    const hit = (await res.json());
-    return mapSearchHit(hit, "bags");
+        throw new Error(await readError(res, "Failed to create coupon"));
+    return res.json();
 }
-export async function getOrders(customerId) {
-    // The order service requires customer_id; there is no list-all endpoint yet.
-    if (!customerId)
-        return [];
+export async function updateCoupon(code, input) {
+    const res = await authedFetch(productPath(`/api/v1/coupons/${encodeURIComponent(code)}`), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+    });
+    if (!res.ok)
+        throw new Error(await readError(res, "Failed to update coupon"));
+    return res.json();
+}
+export async function deleteCoupon(code) {
+    const res = await authedFetch(productPath(`/api/v1/coupons/${encodeURIComponent(code)}`), { method: "DELETE" });
+    if (!res.ok)
+        throw new Error(await readError(res, "Failed to delete coupon"));
+}
+async function fetchCustomerOrders(customerId) {
     const res = await authedFetch(orderPath(`/api/v1/orders?customer_id=${encodeURIComponent(customerId)}`));
     if (!res.ok)
         throw new Error(await readError(res, "Failed to fetch orders"));
     const data = (await res.json());
     return data.orders ?? [];
+}
+export async function getOrders(customerId) {
+    if (customerId) {
+        return fetchCustomerOrders(customerId);
+    }
+    const users = await listUsers().catch(() => []);
+    if (users.length === 0)
+        return [];
+    const batches = await Promise.all(users.map((u) => fetchCustomerOrders(u.user_id).catch(() => [])));
+    const merged = batches.flat();
+    merged.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    return merged;
 }
 export async function getOrder(id) {
     const res = await authedFetch(orderPath(`/api/v1/orders/${id}`));
@@ -175,7 +230,13 @@ export async function adjustInventory(sku, delta) {
         throw new Error(await readError(res, "Failed to adjust stock"));
     return res.json();
 }
-// ── Auth (register) ──────────────────────────────────────────────────────────
+export async function listUsers() {
+    const res = await authedFetch(authPath("/api/v1/auth/users"));
+    if (!res.ok)
+        throw new Error(await readError(res, "Failed to list users"));
+    const data = (await res.json());
+    return data.users ?? [];
+}
 export async function registerUser(email, password) {
     const res = await fetch("/auth/session/register", {
         method: "POST",
