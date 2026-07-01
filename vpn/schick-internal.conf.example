@@ -1,0 +1,12 @@
+[Interface]
+# Generate keys: wg genkey | tee privatekey | wg pubkey > publickey
+PrivateKey = <CLIENT_PRIVATE_KEY>
+Address = 10.8.0.x/32
+DNS = 10.0.0.2
+
+[Peer]
+# internal-vpn EC2 WireGuard server
+PublicKey = <SERVER_PUBLIC_KEY>
+Endpoint = <VPN_PUBLIC_IP>:51820
+AllowedIPs = 10.0.0.0/16, 10.8.0.0/24
+PersistentKeepalive = 25
