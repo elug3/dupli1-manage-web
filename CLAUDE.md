@@ -37,24 +37,34 @@ All services run on port `8080` internally. The nginx gateway strips its locatio
 | `/inventory/` | dupli1-inventory |
 | `/order/` | dupli1-order |
 
-Client paths use the gateway prefix, e.g. `GET /product/api/categories`. The Vite dev proxy rewrites prefixes the same way nginx does.
+Client paths use the gateway prefix, e.g. `GET /product/api/v1/products`. The Vite dev proxy rewrites prefixes the same way nginx does.
 
 Set `DUPLI1_GATEWAY_URL` (default `http://localhost:8080`) for SSR server-side backend calls.
 
 ### Auth (`/auth`)
 
-- `POST /auth/api/v1/auth/register` — create account
+- `POST /auth/api/v1/auth/register` — create account (Bearer service token or admin role)
 - `POST /auth/api/v1/auth/login` — returns `{ refresh_token }`
 - `POST /auth/api/v1/auth/refresh` — `{ refresh_token }` → `{ token }` (access token)
 - `POST /auth/api/v1/auth/logout` — `204`
+- `GET /auth/api/v1/auth/me` — current user profile
+- `GET /auth/api/v1/auth/users` — list users (admin)
 
 ### Product (`/product`)
 
-Read-only catalog search: `/product/api/categories`, `/product/api/filters`, `/product/api/products/search`.
+- `GET /product/api/v1/products/bags` — public bag search (`brand`, `color`, `material` query params)
+- `GET /product/api/v1/products` — list all products (auth)
+- `POST /product/api/v1/products` — create product (auth)
+- `GET /product/api/v1/products/{id}/manage` — product detail for admin (auth)
+- `PUT /product/api/v1/products/{id}` — update product (auth)
+- `DELETE /product/api/v1/products/{id}` — delete product (auth)
+- `PUT /product/api/v1/products/{id}/image` — upload image (auth, multipart field `image`)
+- `GET|POST /product/api/v1/coupons`, `PUT|DELETE /product/api/v1/coupons/{code}` — coupon CRUD (auth)
 
 ### Order (`/order`)
 
-`/order/api/v1/orders`, `/order/api/v1/orders/{id}`, `PUT /order/api/v1/orders/{id}/status`.
+- `GET /order/api/v1/orders?customer_id=` — list orders for a customer (auth; admin aggregates across users)
+- `GET /order/api/v1/orders/{id}`, `PUT /order/api/v1/orders/{id}/status`
 
 ### Inventory (`/inventory`)
 

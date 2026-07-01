@@ -1,46 +1,49 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
-import {
-  type Product,
-  PRODUCT_CATEGORIES,
-  getCategories,
-  searchProducts,
-} from "~/lib/api";
+import { type Product, listAllProducts } from "~/lib/api";
 
 export function meta() {
   return [{ title: "Products | Dupli1 Admin" }];
 }
 
 export default function Products() {
-  const [categories, setCategories] = useState<string[]>([...PRODUCT_CATEGORIES]);
-  const [activeCategory, setActiveCategory] = useState("bags");
-  const [products, setProducts] = useState<Product[]>([]);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [activeCategory, setActiveCategory] = useState("all");
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getCategories()
-      .then((cats) => {
-        if (cats.length > 0) setCategories(cats);
-      })
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
     setLoading(true);
     setError(null);
-    const filters: Record<string, string> = {};
-    if (search.trim()) filters.title = search.trim();
-
-    searchProducts(activeCategory, filters)
-      .then(setProducts)
+    listAllProducts()
+      .then(setAllProducts)
       .catch((err) => {
-        setProducts([]);
+        setAllProducts([]);
         setError(err instanceof Error ? err.message : "Failed to load products");
       })
       .finally(() => setLoading(false));
-  }, [activeCategory, search]);
+  }, []);
+
+  const categories = useMemo(() => {
+    const cats = new Set(allProducts.map((p) => p.category.toLowerCase()));
+    return ["all", ...Array.from(cats).sort()];
+  }, [allProducts]);
+
+  const products = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    return allProducts.filter((p) => {
+      if (activeCategory !== "all" && p.category.toLowerCase() !== activeCategory) {
+        return false;
+      }
+      if (!needle) return true;
+      return (
+        p.name.toLowerCase().includes(needle) ||
+        p.id.toLowerCase().includes(needle) ||
+        (p.brand?.toLowerCase().includes(needle) ?? false)
+      );
+    });
+  }, [allProducts, activeCategory, search]);
 
   return (
     <div className="space-y-6">
@@ -48,7 +51,7 @@ export default function Products() {
         <div>
           <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">Products</h1>
           <p className="mt-0.5 text-sm text-[#6B6480]">
-            Catalog search via the product service
+            Full catalog via <code className="text-xs">GET /product/api/v1/products</code>
           </p>
         </div>
         <Link
@@ -79,7 +82,7 @@ export default function Products() {
 
       <input
         type="search"
-        placeholder="Filter by title…"
+        placeholder="Filter by name, ID, or brand…"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         className="w-full max-w-md rounded-xl border border-[#E5E3EE] bg-white px-4 py-2.5 text-sm outline-none focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/20"
@@ -98,7 +101,7 @@ export default function Products() {
           </div>
         ) : products.length === 0 ? (
           <div className="px-5 py-16 text-center text-[#9D98B3]">
-            No products found in this category
+            No products found
           </div>
         ) : (
           <>
@@ -108,7 +111,7 @@ export default function Products() {
                   <div>
                     <p className="font-medium text-[#1C1B1F]">{product.name}</p>
                     <p className="mt-1 font-mono text-xs text-[#6B6480]">
-                      {product.sku ?? "—"}
+                      {product.id}
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2 text-xs text-[#6B6480]">
@@ -118,6 +121,11 @@ export default function Products() {
                     <span className="rounded-full bg-[#F4F3F8] px-2.5 py-1 capitalize">
                       {product.category}
                     </span>
+                    {product.status && (
+                      <span className="rounded-full bg-[#F4F3F8] px-2.5 py-1 capitalize">
+                        {product.status}
+                      </span>
+                    )}
                   </div>
                   <Link
                     to={`/products/${encodeURIComponent(product.id)}?category=${encodeURIComponent(product.category)}`}
@@ -133,7 +141,7 @@ export default function Products() {
               <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[#F0EEF8] bg-[#FAFAFA] text-left">
-                  {["Name", "SKU", "Brand", "Category", ""].map((h) => (
+                  {["Name", "ID", "Brand", "Category", "Status", ""].map((h) => (
                     <th
                       key={h}
                       className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-[#9D98B3]"
@@ -153,13 +161,16 @@ export default function Products() {
                       {product.name}
                     </td>
                     <td className="px-5 py-3.5 font-mono text-xs text-[#6B6480]">
-                      {product.sku ?? "—"}
+                      {product.id}
                     </td>
                     <td className="px-5 py-3.5 text-[#6B6480]">
                       {product.brand ?? "—"}
                     </td>
                     <td className="px-5 py-3.5 capitalize text-[#6B6480]">
                       {product.category}
+                    </td>
+                    <td className="px-5 py-3.5 capitalize text-[#6B6480]">
+                      {product.status ?? "—"}
                     </td>
                     <td className="px-5 py-3.5 text-right">
                       <Link

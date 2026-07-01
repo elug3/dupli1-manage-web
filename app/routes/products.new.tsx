@@ -13,8 +13,8 @@ const inputCls =
 export default function NewProduct() {
   const navigate = useNavigate();
   const { notify } = useNotify();
-  const [title, setTitle] = useState("");
-  const [sku, setSku] = useState("");
+  const [name, setName] = useState("");
+  const [id, setId] = useState("");
   const [brand, setBrand] = useState("");
   const [color, setColor] = useState("");
   const [material, setMaterial] = useState("");
@@ -25,8 +25,8 @@ export default function NewProduct() {
     setLoading(true);
     try {
       const product = await createBagProduct({
-        title: title.trim(),
-        sku: sku.trim(),
+        name: name.trim(),
+        id: id.trim(),
         brand: brand.trim(),
         color: color.trim(),
         material: material.trim(),
@@ -55,7 +55,7 @@ export default function NewProduct() {
         <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">New product</h1>
         <p className="mt-0.5 text-sm text-[#6B6480]">
           Add a bag to the catalog via{" "}
-          <code className="text-xs">POST /product/api/v1/products/bags</code>
+          <code className="text-xs">POST /product/api/v1/products</code>
         </p>
       </div>
 
@@ -63,25 +63,25 @@ export default function NewProduct() {
         onSubmit={handleSubmit}
         className="space-y-4 rounded-2xl border border-[#E5E3EE] bg-white p-6 shadow-[0_1px_4px_rgba(28,27,31,0.04)]"
       >
-        <Field label="Title" id="title" required>
+        <Field label="Name" id="name" required>
           <input
-            id="title"
+            id="name"
             type="text"
             required
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
             className={inputCls}
             placeholder="Leather tote bag"
           />
         </Field>
 
-        <Field label="SKU" id="sku" required>
+        <Field label="Product ID" id="id" required>
           <input
-            id="sku"
+            id="id"
             type="text"
             required
-            value={sku}
-            onChange={(e) => setSku(e.target.value)}
+            value={id}
+            onChange={(e) => setId(e.target.value)}
             className={inputCls}
             placeholder="BAG-001"
           />
