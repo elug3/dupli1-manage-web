@@ -91,7 +91,9 @@ The admin dashboard is **not** exposed on the public internet. In production:
 - `schick-manage-web` runs in **private subnets** with no public IP and no ALB attachment.
 - Managers connect via the **WireGuard VPN** (`schick-internal-vpn`), then open:
 
-  **http://manage.schick.local**
+  **http://manage.schick.internal**
+
+  Use `schick.internal` (not `schick.local`) on Android — Chrome treats `.local` as mDNS and won't query the VPC DNS resolver.
 
 - API calls from manage-web reach backends via `SCHICK_GATEWAY_URL=http://proxy.schick.local` (internal nginx gateway).
 - The customer storefront (`schick-web`) remains public via `schick-prod-alb`.
