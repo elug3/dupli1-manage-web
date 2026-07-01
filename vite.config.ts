@@ -14,7 +14,8 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      "/auth": {
+      // Only proxy gateway API paths; /auth/session/* is handled by React Router.
+      "/auth/api": {
         target: "http://localhost:8080",
         changeOrigin: true,
         rewrite: stripGatewayPrefix("/auth"),

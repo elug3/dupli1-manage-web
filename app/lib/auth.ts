@@ -6,6 +6,7 @@ export interface User {
 
 interface AccessTokenResponse {
   access_token: string;
+  email?: string;
 }
 
 const SESSION_FETCH: RequestInit = { credentials: "include" };
@@ -79,12 +80,16 @@ async function errorMessage(res: Response, fallback: string): Promise<string> {
   }
 }
 
-export async function login(email: string, password: string): Promise<void> {
+export async function login(email: string, password: string): Promise<User> {
   const res = await post("/auth/session/login", { email, password });
   if (!res.ok) throw new Error(await errorMessage(res, "Login failed"));
   const body = (await res.json()) as AccessTokenResponse;
+  if (!body.access_token) {
+    throw new Error("Login failed: missing access token");
+  }
   clearTokens();
   storeAccessToken(body.access_token);
+  return { id: "", email: body.email ?? email };
 }
 
 export async function authedFetch(

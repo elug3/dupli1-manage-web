@@ -18,8 +18,8 @@ export default function Login() {
     setError(null);
     setLoading(true);
     try {
-      await login(email, password);
-      navigate("/", { replace: true });
+      const user = await login(email, password);
+      navigate("/", { replace: true, state: { user } });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {

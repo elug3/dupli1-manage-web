@@ -17,23 +17,39 @@ export function getSessionId(request: Request): string | null {
   return null;
 }
 
-function cookieAttributes(maxAge: number): string {
+function isSecureRequest(request?: Request): boolean {
+  if (!request) return false;
+  const forwarded = request.headers.get("x-forwarded-proto");
+  if (forwarded) {
+    return forwarded.split(",")[0]?.trim() === "https";
+  }
+  try {
+    return new URL(request.url).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function cookieAttributes(maxAge: number, request?: Request): string {
   const parts = [
     "HttpOnly",
     "Path=/",
     "SameSite=Lax",
     `Max-Age=${maxAge}`,
   ];
-  if (process.env.NODE_ENV === "production") {
+  if (isSecureRequest(request)) {
     parts.push("Secure");
   }
   return parts.join("; ");
 }
 
-export function setSessionCookieHeader(sessionId: string): string {
-  return `${SESSION_COOKIE}=${sessionId}; ${cookieAttributes(SESSION_MAX_AGE)}`;
+export function setSessionCookieHeader(
+  sessionId: string,
+  request?: Request
+): string {
+  return `${SESSION_COOKIE}=${sessionId}; ${cookieAttributes(SESSION_MAX_AGE, request)}`;
 }
 
-export function clearSessionCookieHeader(): string {
-  return `${SESSION_COOKIE}=; ${cookieAttributes(0)}`;
+export function clearSessionCookieHeader(request?: Request): string {
+  return `${SESSION_COOKIE}=; ${cookieAttributes(0, request)}`;
 }

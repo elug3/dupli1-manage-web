@@ -10,14 +10,39 @@ export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    getMe()
-      .then((u) => {
-        if (!u) navigate("/login", { replace: true });
-        else setUser(u);
-      })
-      .catch(() => navigate("/login", { replace: true }))
-      .finally(() => setChecking(false));
-  }, [navigate]);
+    let cancelled = false;
+
+    async function checkAuth() {
+      setChecking(true);
+      const pendingUser = (location.state as { user?: User } | null)?.user;
+
+      try {
+        const me = await getMe();
+        if (cancelled) return;
+        if (me) {
+          setUser(me);
+        } else if (pendingUser) {
+          setUser(pendingUser);
+        } else {
+          navigate("/login", { replace: true });
+        }
+      } catch {
+        if (cancelled) return;
+        if (pendingUser) {
+          setUser(pendingUser);
+        } else {
+          navigate("/login", { replace: true });
+        }
+      } finally {
+        if (!cancelled) setChecking(false);
+      }
+    }
+
+    void checkAuth();
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate, location.pathname, location.state]);
 
   useEffect(() => {
     setSidebarOpen(false);
