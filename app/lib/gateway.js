@@ -1,4 +1,4 @@
-/** Gateway prefixes (nginx strips these before proxying to upstream services). */
+/** Gateway prefixes (Vite dev proxy strips these before forwarding to the gateway). */
 export const AUTH_PREFIX = "/auth";
 export const PRODUCT_PREFIX = "/product";
 export const INVENTORY_PREFIX = "/inventory";
