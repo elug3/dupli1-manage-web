@@ -100,10 +100,34 @@ export async function login(email: string, password: string): Promise<User> {
   return { id: "", email: body.email ?? email };
 }
 
+const GATEWAY_API_PREFIX = /^\/(auth|product|inventory|order)\//;
+
+function sessionGatewayUrl(url: string): string | null {
+  if (!GATEWAY_API_PREFIX.test(url)) return null;
+  if (url.startsWith("/auth/session/")) return null;
+  return `/auth/session/gateway${url}`;
+}
+
 export async function authedFetch(
   url: string,
   init: RequestInit = {}
 ): Promise<Response> {
+  const gatewayUrl = sessionGatewayUrl(url);
+  if (gatewayUrl) {
+    const headers = new Headers(init.headers as HeadersInit);
+    headers.delete("Authorization");
+    const res = await fetch(gatewayUrl, {
+      ...init,
+      headers,
+      credentials: "include",
+    });
+    if (res.status === 401) {
+      clearTokens();
+      throw new Error("Session expired. Please sign in again.");
+    }
+    return res;
+  }
+
   let accessToken = readAccessToken();
   if (!accessToken) {
     if (!(await tryRefresh())) {

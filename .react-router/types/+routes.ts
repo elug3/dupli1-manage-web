@@ -29,6 +29,11 @@ type Pages = {
   "/auth/session/register": {
     params: {};
   };
+  "/auth/session/gateway/*": {
+    params: {
+      "*": string;
+    };
+  };
   "/auth/api/*": {
     params: {
       "*": string;
@@ -91,7 +96,7 @@ type Pages = {
 type RouteFiles = {
   "root.js": {
     id: "root";
-    page: "/" | "/auth/session/login" | "/auth/session/refresh" | "/auth/session/logout" | "/auth/session/me" | "/auth/session/register" | "/auth/api/*" | "/product/*" | "/inventory/*" | "/order/*" | "/login" | "/products" | "/products/new" | "/products/:id" | "/orders" | "/coupons" | "/analytics" | "/users" | "/users/new" | "/users/:id" | "/settings";
+    page: "/" | "/auth/session/login" | "/auth/session/refresh" | "/auth/session/logout" | "/auth/session/me" | "/auth/session/register" | "/auth/session/gateway/*" | "/auth/api/*" | "/product/*" | "/inventory/*" | "/order/*" | "/login" | "/products" | "/products/new" | "/products/:id" | "/orders" | "/coupons" | "/analytics" | "/users" | "/users/new" | "/users/:id" | "/settings";
   };
   "routes/auth.session.login.tsx": {
     id: "routes/auth.session.login";
@@ -112,6 +117,10 @@ type RouteFiles = {
   "routes/auth.session.register.tsx": {
     id: "routes/auth.session.register";
     page: "/auth/session/register";
+  };
+  "routes/auth.session.gateway.tsx": {
+    id: "routes/auth.session.gateway";
+    page: "/auth/session/gateway/*";
   };
   "routes/gateway.auth-api.tsx": {
     id: "routes/gateway.auth-api";
@@ -190,6 +199,7 @@ type RouteModules = {
   "routes/auth.session.logout": typeof import("./app/routes/auth.session.logout.tsx");
   "routes/auth.session.me": typeof import("./app/routes/auth.session.me.tsx");
   "routes/auth.session.register": typeof import("./app/routes/auth.session.register.tsx");
+  "routes/auth.session.gateway": typeof import("./app/routes/auth.session.gateway.tsx");
   "routes/gateway.auth-api": typeof import("./app/routes/gateway.auth-api.tsx");
   "routes/gateway.product": typeof import("./app/routes/gateway.product.tsx");
   "routes/gateway.inventory": typeof import("./app/routes/gateway.inventory.tsx");

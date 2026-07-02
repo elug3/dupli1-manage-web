@@ -46,7 +46,14 @@ export function mapSearchHit(hit, category, index = 0) {
 async function readError(res, fallback) {
     try {
         const body = (await res.json());
-        return body.error ?? fallback;
+        if (body.error) {
+            if (res.status === 403 &&
+                body.error.includes("insufficient role")) {
+                return `${body.error}. Requires product_manager, admin, or owner.`;
+            }
+            return body.error;
+        }
+        return fallback;
     }
     catch {
         return fallback;

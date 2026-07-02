@@ -10,7 +10,7 @@ function gatewayBase(): string {
   ).replace(/\/$/, "");
 }
 
-function upstreamPath(pathname: string): string | null {
+export function gatewayRelativePath(pathname: string): string | null {
   for (const prefix of GATEWAY_PREFIXES) {
     if (pathname === prefix || pathname.startsWith(`${prefix}/`)) {
       const stripped = pathname.slice(prefix.length);
@@ -20,10 +20,13 @@ function upstreamPath(pathname: string): string | null {
   return null;
 }
 
-/** Proxy browser gateway-prefix requests to the upstream API (mirrors Vite dev proxy). */
-export async function proxyGatewayRequest(request: Request): Promise<Response> {
-  const url = new URL(request.url);
-  const path = upstreamPath(url.pathname);
+/** Proxy a gateway-prefix request to the upstream API (mirrors Vite dev proxy). */
+export async function proxyGatewayRequestForPath(
+  request: Request,
+  gatewayPathname: string,
+  accessToken?: string
+): Promise<Response> {
+  const path = gatewayRelativePath(gatewayPathname);
   if (!path) {
     return new Response(JSON.stringify({ error: "Not found" }), {
       status: 404,
@@ -31,11 +34,15 @@ export async function proxyGatewayRequest(request: Request): Promise<Response> {
     });
   }
 
+  const requestUrl = new URL(request.url);
   const upstream = new URL(path, `${gatewayBase()}/`);
-  upstream.search = url.search;
+  upstream.search = requestUrl.search;
 
   const headers = new Headers();
-  const authorization = request.headers.get("Authorization");
+  const authorization =
+    accessToken != null
+      ? `Bearer ${accessToken}`
+      : request.headers.get("Authorization");
   if (authorization) headers.set("Authorization", authorization);
 
   const contentType = request.headers.get("Content-Type");
@@ -50,4 +57,9 @@ export async function proxyGatewayRequest(request: Request): Promise<Response> {
     headers,
     body: hasBody ? await request.arrayBuffer() : undefined,
   });
+}
+
+/** Proxy browser gateway-prefix requests to the upstream API (mirrors Vite dev proxy). */
+export async function proxyGatewayRequest(request: Request): Promise<Response> {
+  return proxyGatewayRequestForPath(request, new URL(request.url).pathname);
 }

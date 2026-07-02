@@ -1,4 +1,5 @@
 import { backendGet, backendPost, serviceUrl } from "./backend";
+import { gatewayRelativePath, proxyGatewayRequestForPath, } from "./gateway-proxy";
 import { clearSessionCookieHeader, getSessionId, setSessionCookieHeader, } from "./session-cookie";
 import { createSession, deleteSession, getRefreshToken, getSession, } from "./session-store";
 function jsonResponse(body, init = {}) {
@@ -165,4 +166,45 @@ export async function handleSessionRegister(request) {
     }
     const data = (await res.json());
     return jsonResponse({ user_id: data.user_id }, { status: 201 });
+}
+async function accessTokenFromSession(request) {
+    const sessionId = getSessionId(request);
+    if (!sessionId) {
+        return jsonResponse({ error: "Not authenticated" }, { status: 401 });
+    }
+    const refreshToken = getRefreshToken(sessionId);
+    if (!refreshToken) {
+        return jsonResponse({ error: "Session expired" }, {
+            status: 401,
+            headers: { "Set-Cookie": clearSessionCookieHeader(request) },
+        });
+    }
+    const exchanged = await exchangeRefreshToken(refreshToken);
+    if (!exchanged) {
+        deleteSession(sessionId);
+        return jsonResponse({ error: "Session expired" }, {
+            status: 401,
+            headers: { "Set-Cookie": clearSessionCookieHeader(request) },
+        });
+    }
+    return exchanged;
+}
+/**
+ * Proxy gateway API calls using a fresh access token from the signed-in session.
+ * Avoids stale or missing browser tokens when calling product/auth/order APIs.
+ */
+export async function handleSessionGatewayProxy(request) {
+    const url = new URL(request.url);
+    const gatewayPathname = url.pathname.replace(/^\/auth\/session\/gateway/, "");
+    if (!gatewayPathname || gatewayPathname === url.pathname) {
+        return jsonResponse({ error: "Not found" }, { status: 404 });
+    }
+    if (!gatewayRelativePath(gatewayPathname)) {
+        return jsonResponse({ error: "Not found" }, { status: 404 });
+    }
+    const tokenResult = await accessTokenFromSession(request);
+    if (tokenResult instanceof Response) {
+        return tokenResult;
+    }
+    return proxyGatewayRequestForPath(request, gatewayPathname, tokenResult.accessToken);
 }

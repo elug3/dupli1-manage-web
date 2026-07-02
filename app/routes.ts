@@ -11,6 +11,7 @@ export default [
   route("auth/session/logout", "routes/auth.session.logout.tsx"),
   route("auth/session/me", "routes/auth.session.me.tsx"),
   route("auth/session/register", "routes/auth.session.register.tsx"),
+  route("auth/session/gateway/*", "routes/auth.session.gateway.tsx"),
   route("auth/api/*", "routes/gateway.auth-api.tsx"),
   route("product/*", "routes/gateway.product.tsx"),
   route("inventory/*", "routes/gateway.inventory.tsx"),
