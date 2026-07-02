@@ -44,8 +44,9 @@ export default function NewUser() {
         <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">New user</h1>
         <p className="mt-0.5 text-sm text-[#6B6480]">
           Create an account via{" "}
-          <code className="text-xs">POST /auth/session/register</code>. Assign
-          roles on the user detail page after creation.
+          <code className="text-xs">POST /auth/api/v1/auth/register</code> using
+          your signed-in admin credentials. Assign roles on the user detail page
+          after creation.
         </p>
       </div>
 

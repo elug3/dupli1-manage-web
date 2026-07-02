@@ -75,6 +75,14 @@ type Pages = {
   "/users": {
     params: {};
   };
+  "/users/new": {
+    params: {};
+  };
+  "/users/:id": {
+    params: {
+      "id": string;
+    };
+  };
   "/settings": {
     params: {};
   };
@@ -83,7 +91,7 @@ type Pages = {
 type RouteFiles = {
   "root.js": {
     id: "root";
-    page: "/" | "/auth/session/login" | "/auth/session/refresh" | "/auth/session/logout" | "/auth/session/me" | "/auth/session/register" | "/auth/api/*" | "/product/*" | "/inventory/*" | "/order/*" | "/login" | "/products" | "/products/new" | "/products/:id" | "/orders" | "/coupons" | "/analytics" | "/users" | "/settings";
+    page: "/" | "/auth/session/login" | "/auth/session/refresh" | "/auth/session/logout" | "/auth/session/me" | "/auth/session/register" | "/auth/api/*" | "/product/*" | "/inventory/*" | "/order/*" | "/login" | "/products" | "/products/new" | "/products/:id" | "/orders" | "/coupons" | "/analytics" | "/users" | "/users/new" | "/users/:id" | "/settings";
   };
   "routes/auth.session.login.tsx": {
     id: "routes/auth.session.login";
@@ -127,7 +135,7 @@ type RouteFiles = {
   };
   "routes/admin.tsx": {
     id: "routes/admin";
-    page: "/" | "/products" | "/products/new" | "/products/:id" | "/orders" | "/coupons" | "/analytics" | "/users" | "/settings";
+    page: "/" | "/products" | "/products/new" | "/products/:id" | "/orders" | "/coupons" | "/analytics" | "/users" | "/users/new" | "/users/:id" | "/settings";
   };
   "routes/dashboard.tsx": {
     id: "routes/dashboard";
@@ -161,6 +169,14 @@ type RouteFiles = {
     id: "routes/users";
     page: "/users";
   };
+  "routes/users.new.tsx": {
+    id: "routes/users.new";
+    page: "/users/new";
+  };
+  "routes/users.$id.tsx": {
+    id: "routes/users.$id";
+    page: "/users/:id";
+  };
   "routes/settings.tsx": {
     id: "routes/settings";
     page: "/settings";
@@ -188,5 +204,7 @@ type RouteModules = {
   "routes/coupons": typeof import("./app/routes/coupons.tsx");
   "routes/analytics": typeof import("./app/routes/analytics.tsx");
   "routes/users": typeof import("./app/routes/users.tsx");
+  "routes/users.new": typeof import("./app/routes/users.new.tsx");
+  "routes/users.$id": typeof import("./app/routes/users.$id.tsx");
   "routes/settings": typeof import("./app/routes/settings.tsx");
 };

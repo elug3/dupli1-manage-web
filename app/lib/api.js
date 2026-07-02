@@ -260,10 +260,9 @@ export async function getUserById(userId) {
     return users.find((user) => user.user_id === userId) ?? null;
 }
 export async function registerUser(email, password) {
-    const res = await fetch("/auth/session/register", {
+    const res = await authedFetch(authPath("/api/v1/auth/register"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ email, password }),
     });
     if (!res.ok)

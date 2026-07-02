@@ -119,11 +119,26 @@ export async function handleSessionMe(request) {
         roles: session.roles,
     });
 }
-/** Server-side register proxy using optional service account token. */
+/** Server-side register proxy using the signed-in admin's session. */
 export async function handleSessionRegister(request) {
-    const serviceToken = process.env.DUPLI1_SERVICE_TOKEN;
-    if (!serviceToken) {
-        return jsonResponse({ error: "Registration is unavailable: DUPLI1_SERVICE_TOKEN is not configured" }, { status: 503 });
+    const sessionId = getSessionId(request);
+    if (!sessionId) {
+        return jsonResponse({ error: "Not authenticated" }, { status: 401 });
+    }
+    const refreshToken = getRefreshToken(sessionId);
+    if (!refreshToken) {
+        return jsonResponse({ error: "Session expired" }, {
+            status: 401,
+            headers: { "Set-Cookie": clearSessionCookieHeader(request) },
+        });
+    }
+    const exchanged = await exchangeRefreshToken(refreshToken);
+    if (!exchanged) {
+        deleteSession(sessionId);
+        return jsonResponse({ error: "Session expired" }, {
+            status: 401,
+            headers: { "Set-Cookie": clearSessionCookieHeader(request) },
+        });
     }
     let body;
     try {
@@ -141,7 +156,7 @@ export async function handleSessionRegister(request) {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${serviceToken}`,
+            Authorization: `Bearer ${exchanged.accessToken}`,
         },
         body: JSON.stringify({ email: body.email, password: body.password }),
     });
