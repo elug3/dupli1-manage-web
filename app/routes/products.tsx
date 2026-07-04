@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
-import { type Product, listAllProducts } from "~/lib/api";
+import {
+  type Product,
+  formatProductColors,
+  listAllProducts,
+  productListPrice,
+  productVariantCount,
+} from "~/lib/api";
 
 export function meta() {
   return [{ title: "Products | Dupli1 Admin" }];
@@ -40,7 +46,8 @@ export default function Products() {
       return (
         p.name.toLowerCase().includes(needle) ||
         p.id.toLowerCase().includes(needle) ||
-        (p.brand?.toLowerCase().includes(needle) ?? false)
+        (p.brand?.toLowerCase().includes(needle) ?? false) ||
+        formatProductColors(p).toLowerCase().includes(needle)
       );
     });
   }, [allProducts, activeCategory, search]);
@@ -51,7 +58,8 @@ export default function Products() {
         <div>
           <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">Products</h1>
           <p className="mt-0.5 text-sm text-[#6B6480]">
-            Full catalog via <code className="text-xs">GET /product/api/v1/products</code>
+            Parent styles via{" "}
+            <code className="text-xs">GET /product/api/v1/products</code>
           </p>
         </div>
         <Link
@@ -82,7 +90,7 @@ export default function Products() {
 
       <input
         type="search"
-        placeholder="Filter by name, ID, or brand…"
+        placeholder="Filter by name, ID, brand, or color…"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         className="w-full max-w-md rounded-xl border border-[#E5E3EE] bg-white px-4 py-2.5 text-sm outline-none focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/20"
@@ -94,7 +102,7 @@ export default function Products() {
         </div>
       )}
 
-      <div className="rounded-2xl border border-[#E5E3EE] bg-white shadow-[0_1px_4px_rgba(28,27,31,0.04)] overflow-hidden">
+      <div className="overflow-hidden rounded-2xl border border-[#E5E3EE] bg-white shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#6D4AFF] border-t-transparent" />
@@ -107,88 +115,112 @@ export default function Products() {
           <>
             <div className="divide-y divide-[#F0EEF8] md:hidden">
               {products.map((product) => (
-                <div key={product.id} className="space-y-3 p-4">
-                  <div>
-                    <p className="font-medium text-[#1C1B1F]">{product.name}</p>
-                    <p className="mt-1 font-mono text-xs text-[#6B6480]">
-                      {product.id}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-2 text-xs text-[#6B6480]">
-                    <span className="rounded-full bg-[#F4F3F8] px-2.5 py-1">
-                      {product.brand ?? "No brand"}
-                    </span>
-                    <span className="rounded-full bg-[#F4F3F8] px-2.5 py-1 capitalize">
-                      {product.category}
-                    </span>
-                    {product.status && (
-                      <span className="rounded-full bg-[#F4F3F8] px-2.5 py-1 capitalize">
-                        {product.status}
-                      </span>
-                    )}
-                  </div>
-                  <Link
-                    to={`/products/${encodeURIComponent(product.id)}?category=${encodeURIComponent(product.category)}`}
-                    className="inline-flex text-xs font-semibold text-[#6D4AFF] hover:underline"
-                  >
-                    Details →
-                  </Link>
-                </div>
+                <ProductCard key={product.id} product={product} />
               ))}
             </div>
 
             <div className="hidden overflow-x-auto md:block">
               <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[#F0EEF8] bg-[#FAFAFA] text-left">
-                  {["Name", "ID", "Brand", "Category", "Status", ""].map((h) => (
-                    <th
-                      key={h}
-                      className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-[#9D98B3]"
-                    >
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {products.map((product) => (
-                  <tr
-                    key={product.id}
-                    className="border-b border-[#F0EEF8] last:border-0 hover:bg-[#FAFAFA]"
-                  >
-                    <td className="px-5 py-3.5 font-medium text-[#1C1B1F]">
-                      {product.name}
-                    </td>
-                    <td className="px-5 py-3.5 font-mono text-xs text-[#6B6480]">
-                      {product.id}
-                    </td>
-                    <td className="px-5 py-3.5 text-[#6B6480]">
-                      {product.brand ?? "—"}
-                    </td>
-                    <td className="px-5 py-3.5 capitalize text-[#6B6480]">
-                      {product.category}
-                    </td>
-                    <td className="px-5 py-3.5 capitalize text-[#6B6480]">
-                      {product.status ?? "—"}
-                    </td>
-                    <td className="px-5 py-3.5 text-right">
-                      <Link
-                        to={`/products/${encodeURIComponent(product.id)}?category=${encodeURIComponent(product.category)}`}
-                        className="text-xs font-semibold text-[#6D4AFF] hover:underline"
+                <thead>
+                  <tr className="border-b border-[#F0EEF8] bg-[#FAFAFA] text-left">
+                    {[
+                      "Name",
+                      "ID",
+                      "Brand",
+                      "Colors",
+                      "Variants",
+                      "Price",
+                      "Status",
+                      "",
+                    ].map((h) => (
+                      <th
+                        key={h}
+                        className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-[#9D98B3]"
                       >
-                        Details →
-                      </Link>
-                    </td>
+                        {h}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {products.map((product) => (
+                    <tr
+                      key={product.id}
+                      className="border-b border-[#F0EEF8] last:border-0 hover:bg-[#FAFAFA]"
+                    >
+                      <td className="px-5 py-3.5 font-medium text-[#1C1B1F]">
+                        {product.name}
+                      </td>
+                      <td className="px-5 py-3.5 font-mono text-xs text-[#6B6480]">
+                        {product.id}
+                      </td>
+                      <td className="px-5 py-3.5 text-[#6B6480]">
+                        {product.brand ?? "—"}
+                      </td>
+                      <td className="px-5 py-3.5 text-[#6B6480]">
+                        {formatProductColors(product)}
+                      </td>
+                      <td className="px-5 py-3.5 text-[#6B6480]">
+                        {productVariantCount(product)}
+                      </td>
+                      <td className="px-5 py-3.5 text-[#6B6480]">
+                        {productListPrice(product) ?? "—"}
+                      </td>
+                      <td className="px-5 py-3.5 capitalize text-[#6B6480]">
+                        {product.status ?? "—"}
+                      </td>
+                      <td className="px-5 py-3.5 text-right">
+                        <Link
+                          to={`/products/${encodeURIComponent(product.id)}?category=${encodeURIComponent(product.category)}`}
+                          className="text-xs font-semibold text-[#6D4AFF] hover:underline"
+                        >
+                          Details →
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </>
         )}
       </div>
     </div>
+  );
+}
+
+function ProductCard({ product }: { product: Product }) {
+  const price = productListPrice(product);
+  return (
+    <Link
+      to={`/products/${encodeURIComponent(product.id)}?category=${encodeURIComponent(product.category)}`}
+      className="block space-y-3 p-4 transition hover:bg-[#FAFAFA] active:bg-[#F4F3F8]"
+    >
+      <div>
+        <p className="font-medium text-[#1C1B1F]">{product.name}</p>
+        <p className="mt-1 font-mono text-xs text-[#6B6480]">{product.id}</p>
+      </div>
+      <div className="flex flex-wrap gap-2 text-xs text-[#6B6480]">
+        <span className="rounded-full bg-[#F4F3F8] px-2.5 py-1">
+          {product.brand ?? "No brand"}
+        </span>
+        <span className="rounded-full bg-[#F4F3F8] px-2.5 py-1">
+          {formatProductColors(product)}
+        </span>
+        <span className="rounded-full bg-[#F4F3F8] px-2.5 py-1">
+          {productVariantCount(product)} variant
+          {productVariantCount(product) === 1 ? "" : "s"}
+        </span>
+        {price && (
+          <span className="rounded-full bg-[#F4F3F8] px-2.5 py-1">{price}</span>
+        )}
+        {product.status && (
+          <span className="rounded-full bg-[#F4F3F8] px-2.5 py-1 capitalize">
+            {product.status}
+          </span>
+        )}
+      </div>
+    </Link>
   );
 }
 

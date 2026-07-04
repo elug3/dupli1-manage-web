@@ -187,7 +187,7 @@ export default function Settings() {
               {
                 key: "lowStock" as NotifKey,
                 label: "Low stock warning",
-                desc: "Alert when a product has ≤ 5 units remaining",
+                desc: "Alert when a variant SKU has ≤ 5 units in inventory",
               },
               {
                 key: "refundRequest" as NotifKey,

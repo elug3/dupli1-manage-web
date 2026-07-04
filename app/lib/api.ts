@@ -141,6 +141,32 @@ export function formatVariantOption(variant: ProductVariant): string {
   return parts.length > 0 ? parts.join(" / ") : variant.sku;
 }
 
+export function formatProductColors(product: Product): string {
+  if (product.availableColors && product.availableColors.length > 0) {
+    return product.availableColors.join(", ");
+  }
+  if (product.color) return product.color;
+  return "—";
+}
+
+export function productVariantCount(product: Product): number {
+  if (product.variants && product.variants.length > 0) {
+    return product.variants.length;
+  }
+  return 1;
+}
+
+export function productListPrice(product: Product): string | null {
+  const value = product.priceFrom ?? product.price;
+  if (value == null) return null;
+  const formatted = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 0,
+  }).format(value);
+  return product.priceFrom != null ? `From ${formatted}` : formatted;
+}
+
 export function mapProduct(
   hit: ProductSearchHit,
   category?: string,
@@ -323,6 +349,109 @@ export interface CreateBagProductInput {
   material: string;
 }
 
+export interface CreateProductParentInput {
+  name: string;
+  id: string;
+  brand: string;
+  material: string;
+  category?: string;
+  description?: string;
+}
+
+export async function createProductParent(
+  input: CreateProductParentInput
+): Promise<Product> {
+  const res = await authedFetch(productPath("/api/v1/products"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: input.name,
+      id: input.id,
+      brand: input.brand,
+      material: input.material,
+      category: input.category ?? "bags",
+      description: input.description,
+    }),
+  });
+  if (!res.ok) throw new Error(await readError(res, "Failed to create product"));
+  const hit = (await res.json()) as ProductSearchHit;
+  return mapProduct(hit, input.category ?? "bags");
+}
+
+export interface CreateVariantInput {
+  color: string;
+  price: number;
+  size?: string;
+  sku?: string;
+  status?: string;
+}
+
+export async function createVariant(
+  productId: string,
+  input: CreateVariantInput
+): Promise<ProductVariant> {
+  const res = await authedFetch(
+    productPath(
+      `/api/v1/products/${encodeURIComponent(productId)}/variants`
+    ),
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        color: input.color,
+        price: input.price,
+        size: input.size ?? "",
+        sku: input.sku,
+        status: input.status ?? "active",
+      }),
+    }
+  );
+  if (!res.ok) throw new Error(await readError(res, "Failed to create variant"));
+  const hit = (await res.json()) as ProductSearchHit;
+  return mapVariant(hit);
+}
+
+export interface UpdateVariantInput {
+  color?: string;
+  size?: string;
+  price?: number;
+  status?: string;
+}
+
+export async function updateVariant(
+  productId: string,
+  sku: string,
+  input: UpdateVariantInput
+): Promise<ProductVariant> {
+  const res = await authedFetch(
+    productPath(
+      `/api/v1/products/${encodeURIComponent(productId)}/variants/${encodeURIComponent(sku)}`
+    ),
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    }
+  );
+  if (!res.ok) throw new Error(await readError(res, "Failed to update variant"));
+  const hit = (await res.json()) as ProductSearchHit;
+  return mapVariant(hit);
+}
+
+export async function deleteVariant(
+  productId: string,
+  sku: string
+): Promise<void> {
+  const res = await authedFetch(
+    productPath(
+      `/api/v1/products/${encodeURIComponent(productId)}/variants/${encodeURIComponent(sku)}`
+    ),
+    { method: "DELETE" }
+  );
+  if (!res.ok) throw new Error(await readError(res, "Failed to delete variant"));
+}
+
+/** Legacy flat create (single SKU); prefer createProductParent + createVariant. */
 export async function createBagProduct(
   input: CreateBagProductInput
 ): Promise<Product> {

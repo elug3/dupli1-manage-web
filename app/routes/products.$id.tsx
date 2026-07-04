@@ -1,14 +1,17 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import {
   type Product,
   type ProductVariant,
+  createVariant,
+  deleteVariant,
   formatVariantOption,
   getInventory,
   getManageProduct,
   getProduct,
   productVariants,
   setInventory,
+  updateVariant,
   uploadProductImage,
   uploadVariantImage,
 } from "~/lib/api";
@@ -16,6 +19,8 @@ import { useNotify } from "~/lib/notifications";
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const LOW_STOCK_THRESHOLD = 5;
+const inputCls =
+  "rounded-lg border border-[#E5E3EE] px-2 py-1.5 text-sm outline-none focus:border-[#6D4AFF]";
 
 export function meta() {
   return [{ title: "Product | Dupli1 Admin" }];
@@ -35,59 +40,51 @@ export default function ProductDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadProduct = useCallback(async () => {
     if (!id) return;
     const productId = id;
 
-    let cancelled = false;
     setLoading(true);
     setError(null);
 
-    async function load() {
+    try {
+      let p: Product;
       try {
-        let p: Product;
-        try {
-          p = await getManageProduct(productId);
-        } catch {
-          const fallback = await getProduct(category, productId);
-          if (!fallback) throw new Error("Product not found");
-          p = fallback;
-        }
-
-        const variants = productVariants(p);
-        const rows = await Promise.all(
-          variants.map(async (variant) => {
-            try {
-              const stock = await getInventory(variant.sku);
-              return {
-                ...variant,
-                quantity: stock.quantity,
-                reserved: stock.reserved,
-              };
-            } catch {
-              return { ...variant, quantity: null, reserved: null };
-            }
-          })
-        );
-
-        if (!cancelled) {
-          setProduct(p);
-          setVariantRows(rows);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Product not found");
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
+        p = await getManageProduct(productId);
+      } catch {
+        const fallback = await getProduct(category, productId);
+        if (!fallback) throw new Error("Product not found");
+        p = fallback;
       }
-    }
 
-    void load();
-    return () => {
-      cancelled = true;
-    };
+      const variants = productVariants(p);
+      const rows = await Promise.all(
+        variants.map(async (variant) => {
+          try {
+            const stock = await getInventory(variant.sku);
+            return {
+              ...variant,
+              quantity: stock.quantity,
+              reserved: stock.reserved,
+            };
+          } catch {
+            return { ...variant, quantity: null, reserved: null };
+          }
+        })
+      );
+
+      setProduct(p);
+      setVariantRows(rows);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Product not found");
+    } finally {
+      setLoading(false);
+    }
   }, [id, category]);
+
+  useEffect(() => {
+    void loadProduct();
+  }, [loadProduct]);
 
   async function refreshVariantStock(sku: string) {
     try {
@@ -177,6 +174,7 @@ export default function ProductDetail() {
           rows={variantRows}
           onStockUpdated={refreshVariantStock}
           onProductUpdated={setProduct}
+          onReload={loadProduct}
         />
 
         {!hasMultipleVariants && variantRows[0] && (
@@ -196,13 +194,17 @@ function VariantsSection({
   rows,
   onStockUpdated,
   onProductUpdated,
+  onReload,
 }: {
   product: Product;
   rows: VariantRow[];
   onStockUpdated: (sku: string) => Promise<void>;
   onProductUpdated: (product: Product) => void;
+  onReload: () => Promise<void>;
 }) {
   const { notify } = useNotify();
+  const [editingSku, setEditingSku] = useState<string | null>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
 
   async function handleSetStock(sku: string, quantity: number) {
     try {
@@ -230,8 +232,16 @@ function VariantsSection({
         <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr className="border-b border-[#F0EEF8] bg-[#FAFAFA] text-left">
-              {["SKU", "Option", "Price", "Status", "Stock", "Images", ""].map(
-                (heading) => (
+              {[
+                "SKU",
+                "Option",
+                "Price",
+                "Status",
+                "Stock",
+                "Images",
+                "",
+                "Actions",
+              ].map((heading) => (
                   <th
                     key={heading}
                     className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#9D98B3]"
@@ -244,64 +254,383 @@ function VariantsSection({
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr
-                key={row.sku}
-                className="border-b border-[#F0EEF8] last:border-0 align-top"
-              >
-                <td className="px-4 py-3 font-mono text-xs text-[#1C1B1F]">
-                  {row.sku}
-                </td>
-                <td className="px-4 py-3 text-[#6B6480]">
-                  {formatVariantOption(row)}
-                </td>
-                <td className="px-4 py-3 text-[#1C1B1F]">
-                  {formatCurrency(row.price)}
-                </td>
-                <td className="px-4 py-3 capitalize text-[#6B6480]">
-                  {row.status}
-                </td>
-                <td className="px-4 py-3">
-                  <StockEditor
-                    sku={row.sku}
-                    quantity={row.quantity}
-                    reserved={row.reserved}
-                    onSave={handleSetStock}
-                  />
-                </td>
-                <td className="px-4 py-3">
-                  <VariantImageUpload
-                    productId={product.id}
-                    variant={row}
-                    onUploaded={(updated) => {
-                      onProductUpdated({
-                        ...product,
-                        variants: productVariants(product).map((v) =>
-                          v.sku === updated.sku ? updated : v
-                        ),
-                      });
-                    }}
-                  />
-                </td>
-                <td className="px-4 py-3">
-                  {row.quantity === 0 && (
-                    <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-600">
-                      Out
-                    </span>
-                  )}
-                  {row.quantity != null &&
-                    row.quantity > 0 &&
-                    row.quantity <= LOW_STOCK_THRESHOLD && (
-                      <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
-                        Low
+              <Fragment key={row.sku}>
+                <tr className="border-b border-[#F0EEF8] last:border-0 align-top">
+                  <td className="px-4 py-3 font-mono text-xs text-[#1C1B1F]">
+                    {row.sku}
+                  </td>
+                  <td className="px-4 py-3 text-[#6B6480]">
+                    {formatVariantOption(row)}
+                  </td>
+                  <td className="px-4 py-3 text-[#1C1B1F]">
+                    {formatCurrency(row.price)}
+                  </td>
+                  <td className="px-4 py-3 capitalize text-[#6B6480]">
+                    {row.status}
+                  </td>
+                  <td className="px-4 py-3">
+                    <StockEditor
+                      sku={row.sku}
+                      quantity={row.quantity}
+                      reserved={row.reserved}
+                      onSave={handleSetStock}
+                    />
+                  </td>
+                  <td className="px-4 py-3">
+                    <VariantImageUpload
+                      productId={product.id}
+                      variant={row}
+                      onUploaded={(updated) => {
+                        onProductUpdated({
+                          ...product,
+                          variants: productVariants(product).map((v) =>
+                            v.sku === updated.sku ? updated : v
+                          ),
+                        });
+                      }}
+                    />
+                  </td>
+                  <td className="px-4 py-3">
+                    {row.quantity === 0 && (
+                      <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-600">
+                        Out
                       </span>
                     )}
-                </td>
-              </tr>
+                    {row.quantity != null &&
+                      row.quantity > 0 &&
+                      row.quantity <= LOW_STOCK_THRESHOLD && (
+                        <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                          Low
+                        </span>
+                      )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setEditingSku((current) =>
+                            current === row.sku ? null : row.sku
+                          )
+                        }
+                        className="text-xs font-semibold text-[#6D4AFF] hover:underline"
+                      >
+                        {editingSku === row.sku ? "Cancel" : "Edit"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={rows.length <= 1}
+                        title={
+                          rows.length <= 1
+                            ? "Cannot delete the only variant"
+                            : undefined
+                        }
+                        onClick={async () => {
+                          if (
+                            !window.confirm(
+                              `Delete variant ${row.sku}? This cannot be undone.`
+                            )
+                          ) {
+                            return;
+                          }
+                          try {
+                            await deleteVariant(product.id, row.sku);
+                            notify(`Deleted ${row.sku}`);
+                            setEditingSku(null);
+                            await onReload();
+                          } catch (err) {
+                            notify(
+                              err instanceof Error
+                                ? err.message
+                                : "Failed to delete variant",
+                              "error"
+                            );
+                          }
+                        }}
+                        className="text-xs font-semibold text-red-600 hover:underline disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                {editingSku === row.sku && (
+                  <tr className="bg-[#FAFAFA]">
+                    <td colSpan={8} className="px-4 py-4">
+                      <VariantEditForm
+                        productId={product.id}
+                        variant={row}
+                        onSaved={async () => {
+                          setEditingSku(null);
+                          await onReload();
+                          notify(`Updated ${row.sku}`);
+                        }}
+                        onCancel={() => setEditingSku(null)}
+                      />
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
             ))}
           </tbody>
         </table>
       </div>
+
+      <div className="mt-4">
+        {showAddForm ? (
+          <AddVariantForm
+            productId={product.id}
+            onAdded={async () => {
+              setShowAddForm(false);
+              await onReload();
+              notify("Variant added");
+            }}
+            onCancel={() => setShowAddForm(false)}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => setShowAddForm(true)}
+            className="rounded-xl border border-dashed border-[#E5E3EE] px-4 py-2.5 text-sm font-semibold text-[#6D4AFF] transition hover:border-[#6D4AFF]/40 hover:bg-[#FAFAFA]"
+          >
+            + Add variant
+          </button>
+        )}
+      </div>
     </div>
+  );
+}
+
+function VariantEditForm({
+  productId,
+  variant,
+  onSaved,
+  onCancel,
+}: {
+  productId: string;
+  variant: ProductVariant;
+  onSaved: () => Promise<void>;
+  onCancel: () => void;
+}) {
+  const { notify } = useNotify();
+  const [color, setColor] = useState(variant.color);
+  const [size, setSize] = useState(variant.size);
+  const [price, setPrice] = useState(String(variant.price));
+  const [status, setStatus] = useState(variant.status);
+  const [saving, setSaving] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const parsedPrice = Number.parseFloat(price);
+    if (Number.isNaN(parsedPrice) || parsedPrice < 0) {
+      notify("Enter a valid price", "error");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await updateVariant(productId, variant.sku, {
+        color: color.trim(),
+        size: size.trim(),
+        price: parsedPrice,
+        status: status.trim() || "active",
+      });
+      await onSaved();
+    } catch (err) {
+      notify(err instanceof Error ? err.message : "Failed to update variant", "error");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-3">
+      <p className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+        Edit {variant.sku}
+      </p>
+      <div className="flex flex-wrap gap-3">
+        <label className="space-y-1 text-xs text-[#6B6480]">
+          Color
+          <input
+            required
+            value={color}
+            onChange={(e) => setColor(e.target.value)}
+            className={`block ${inputCls}`}
+          />
+        </label>
+        <label className="space-y-1 text-xs text-[#6B6480]">
+          Size
+          <input
+            value={size}
+            onChange={(e) => setSize(e.target.value)}
+            className={`block ${inputCls}`}
+          />
+        </label>
+        <label className="space-y-1 text-xs text-[#6B6480]">
+          Price
+          <input
+            required
+            type="number"
+            min={0}
+            step="0.01"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            className={`block w-28 ${inputCls}`}
+          />
+        </label>
+        <label className="space-y-1 text-xs text-[#6B6480]">
+          Status
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+            className={`block ${inputCls}`}
+          >
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="draft">Draft</option>
+          </select>
+        </label>
+      </div>
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          disabled={saving}
+          className="rounded-lg bg-[#6D4AFF] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+        >
+          {saving ? "Saving…" : "Save changes"}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-lg bg-[#F4F3F8] px-3 py-1.5 text-xs font-semibold text-[#6B6480]"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function AddVariantForm({
+  productId,
+  onAdded,
+  onCancel,
+}: {
+  productId: string;
+  onAdded: () => Promise<void>;
+  onCancel: () => void;
+}) {
+  const { notify } = useNotify();
+  const [color, setColor] = useState("");
+  const [size, setSize] = useState("");
+  const [sku, setSku] = useState("");
+  const [price, setPrice] = useState("");
+  const [status, setStatus] = useState("active");
+  const [saving, setSaving] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const parsedPrice = Number.parseFloat(price);
+    if (Number.isNaN(parsedPrice) || parsedPrice < 0) {
+      notify("Enter a valid price", "error");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await createVariant(productId, {
+        color: color.trim(),
+        size: size.trim(),
+        price: parsedPrice,
+        sku: sku.trim() || undefined,
+        status,
+      });
+      await onAdded();
+    } catch (err) {
+      notify(err instanceof Error ? err.message : "Failed to add variant", "error");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="rounded-xl border border-[#E5E3EE] bg-[#FAFAFA] p-4 space-y-3"
+    >
+      <p className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+        New variant
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <label className="space-y-1 text-xs text-[#6B6480]">
+          Color *
+          <input
+            required
+            value={color}
+            onChange={(e) => setColor(e.target.value)}
+            className={`block w-full ${inputCls}`}
+            placeholder="Navy"
+          />
+        </label>
+        <label className="space-y-1 text-xs text-[#6B6480]">
+          Size
+          <input
+            value={size}
+            onChange={(e) => setSize(e.target.value)}
+            className={`block w-full ${inputCls}`}
+          />
+        </label>
+        <label className="space-y-1 text-xs text-[#6B6480]">
+          SKU
+          <input
+            value={sku}
+            onChange={(e) => setSku(e.target.value)}
+            className={`block w-full ${inputCls}`}
+            placeholder="Auto-generated if empty"
+          />
+        </label>
+        <label className="space-y-1 text-xs text-[#6B6480]">
+          Price (USD) *
+          <input
+            required
+            type="number"
+            min={0}
+            step="0.01"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            className={`block w-full ${inputCls}`}
+          />
+        </label>
+        <label className="space-y-1 text-xs text-[#6B6480]">
+          Status
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+            className={`block w-full ${inputCls}`}
+          >
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="draft">Draft</option>
+          </select>
+        </label>
+      </div>
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          disabled={saving}
+          className="rounded-lg bg-[#6D4AFF] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+        >
+          {saving ? "Adding…" : "Add variant"}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-[#6B6480] border border-[#E5E3EE]"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
   );
 }
 
