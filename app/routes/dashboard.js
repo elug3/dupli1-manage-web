@@ -1,4 +1,4 @@
-import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { getCatalogStockAlerts, getOrders, getProducts, } from "~/lib/api";
@@ -57,6 +57,7 @@ function StatsGrid({ products, loading, }) {
             sub: loading ? null : "Parent products (styles)",
             icon: _jsx(BoxIcon, {}),
             color: "bg-emerald-50 text-emerald-600",
+            to: "/products",
         },
         {
             label: "Pending orders",
@@ -66,7 +67,14 @@ function StatsGrid({ products, loading, }) {
             color: "bg-amber-50 text-amber-600",
         },
     ];
-    return (_jsx("div", { className: "grid gap-4 sm:grid-cols-2 xl:grid-cols-4", children: cards.map((card) => (_jsxs("div", { className: "rounded-2xl border border-[#E5E3EE] bg-white p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)]", children: [_jsx("div", { className: "flex items-start justify-between", children: _jsx("div", { className: `rounded-xl p-2.5 ${card.color}`, children: card.icon }) }), _jsxs("div", { className: "mt-4", children: [_jsx("div", { className: "text-2xl font-bold text-[#1C1B1F]", children: card.value }), _jsx("div", { className: "mt-0.5 text-sm font-medium text-[#6B6480]", children: card.label }), card.sub && (_jsx("div", { className: "mt-1 text-xs text-[#9D98B3]", children: card.sub }))] })] }, card.label))) }));
+    const cardClass = "rounded-2xl border border-[#E5E3EE] bg-white p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)]";
+    return (_jsx("div", { className: "grid gap-4 sm:grid-cols-2 xl:grid-cols-4", children: cards.map((card) => {
+            const inner = (_jsxs(_Fragment, { children: [_jsx("div", { className: "flex items-start justify-between", children: _jsx("div", { className: `rounded-xl p-2.5 ${card.color}`, children: card.icon }) }), _jsxs("div", { className: "mt-4", children: [_jsx("div", { className: "text-2xl font-bold text-[#1C1B1F]", children: card.value }), _jsx("div", { className: "mt-0.5 text-sm font-medium text-[#6B6480]", children: card.label }), card.sub && (_jsx("div", { className: "mt-1 text-xs text-[#9D98B3]", children: card.sub }))] })] }));
+            if (card.to) {
+                return (_jsx(Link, { to: card.to, className: `${cardClass} block transition hover:border-[#6D4AFF]/40 hover:bg-[#FAFAFA] active:scale-[0.99]`, children: inner }, card.label));
+            }
+            return (_jsx("div", { className: cardClass, children: inner }, card.label));
+        }) }));
 }
 function RecentOrdersTable({ orders }) {
     return (_jsxs("div", { className: "rounded-2xl border border-[#E5E3EE] bg-white shadow-[0_1px_4px_rgba(28,27,31,0.04)]", children: [_jsxs("div", { className: "flex items-center justify-between border-b border-[#E5E3EE] px-5 py-4", children: [_jsx("h2", { className: "font-semibold text-[#1C1B1F]", children: "Recent orders" }), _jsx(Link, { to: "/orders", className: "text-xs font-medium text-[#6D4AFF] hover:underline", children: "View all \u2192" })] }), _jsx("div", { className: "overflow-x-auto md:overflow-visible", children: _jsxs("table", { className: "hidden w-full text-sm md:table", children: [_jsx("thead", { children: _jsx("tr", { className: "border-b border-[#F0EEF8] text-left", children: ["Order", "Customer", "Total", "Status", "Date"].map((h) => (_jsx("th", { className: "px-5 py-3 text-xs font-semibold uppercase tracking-wide text-[#9D98B3]", children: h }, h))) }) }), _jsx("tbody", { children: orders.length === 0 ? (_jsx("tr", { children: _jsx("td", { colSpan: 5, className: "px-5 py-10 text-center text-[#9D98B3]", children: "No orders yet" }) })) : (orders.map((order) => (_jsxs("tr", { className: "border-b border-[#F0EEF8] last:border-0 hover:bg-[#FAFAFA]", children: [_jsx("td", { className: "px-5 py-3.5 font-mono text-xs font-medium text-[#1C1B1F]", children: order.id }), _jsx("td", { className: "px-5 py-3.5 text-[#1C1B1F]", children: order.customer_id }), _jsx("td", { className: "px-5 py-3.5 font-semibold text-[#1C1B1F]", children: formatCurrency(order.total_cents / 100) }), _jsx("td", { className: "px-5 py-3.5", children: _jsx(OrderStatusBadge, { status: order.status }) }), _jsx("td", { className: "px-5 py-3.5 text-[#9D98B3]", children: formatDate(order.created_at) })] }, order.id)))) })] }) }), _jsx("div", { className: "divide-y divide-[#F0EEF8] md:hidden", children: orders.length === 0 ? (_jsx("div", { className: "px-4 py-10 text-center text-[#9D98B3]", children: "No orders yet" })) : (orders.map((order) => (_jsxs("div", { className: "space-y-2 px-4 py-4", children: [_jsxs("div", { className: "flex items-start justify-between gap-3", children: [_jsxs("div", { className: "min-w-0", children: [_jsx("p", { className: "truncate font-mono text-xs font-medium text-[#1C1B1F]", children: order.id }), _jsx("p", { className: "mt-1 text-sm text-[#6B6480]", children: order.customer_id })] }), _jsx(OrderStatusBadge, { status: order.status })] }), _jsxs("div", { className: "flex items-center justify-between text-sm", children: [_jsx("span", { className: "font-semibold text-[#1C1B1F]", children: formatCurrency(order.total_cents / 100) }), _jsx("span", { className: "text-[#9D98B3]", children: formatDate(order.created_at) })] })] }, order.id)))) })] }));

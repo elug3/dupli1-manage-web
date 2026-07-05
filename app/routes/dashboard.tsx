@@ -80,7 +80,14 @@ function StatsGrid({
 }) {
   const active = products.length;
 
-  const cards = [
+  const cards: {
+    label: string;
+    value: string;
+    sub: string | null;
+    icon: React.ReactNode;
+    color: string;
+    to?: string;
+  }[] = [
     {
       label: "Revenue today",
       value: "—",
@@ -101,6 +108,7 @@ function StatsGrid({
       sub: loading ? null : "Parent products (styles)",
       icon: <BoxIcon />,
       color: "bg-emerald-50 text-emerald-600",
+      to: "/products",
     },
     {
       label: "Pending orders",
@@ -111,27 +119,47 @@ function StatsGrid({
     },
   ];
 
+  const cardClass =
+    "rounded-2xl border border-[#E5E3EE] bg-white p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)]";
+
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      {cards.map((card) => (
-        <div
-          key={card.label}
-          className="rounded-2xl border border-[#E5E3EE] bg-white p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)]"
-        >
-          <div className="flex items-start justify-between">
-            <div className={`rounded-xl p-2.5 ${card.color}`}>{card.icon}</div>
-          </div>
-          <div className="mt-4">
-            <div className="text-2xl font-bold text-[#1C1B1F]">{card.value}</div>
-            <div className="mt-0.5 text-sm font-medium text-[#6B6480]">
-              {card.label}
+      {cards.map((card) => {
+        const inner = (
+          <>
+            <div className="flex items-start justify-between">
+              <div className={`rounded-xl p-2.5 ${card.color}`}>{card.icon}</div>
             </div>
-            {card.sub && (
-              <div className="mt-1 text-xs text-[#9D98B3]">{card.sub}</div>
-            )}
+            <div className="mt-4">
+              <div className="text-2xl font-bold text-[#1C1B1F]">{card.value}</div>
+              <div className="mt-0.5 text-sm font-medium text-[#6B6480]">
+                {card.label}
+              </div>
+              {card.sub && (
+                <div className="mt-1 text-xs text-[#9D98B3]">{card.sub}</div>
+              )}
+            </div>
+          </>
+        );
+
+        if (card.to) {
+          return (
+            <Link
+              key={card.label}
+              to={card.to}
+              className={`${cardClass} block transition hover:border-[#6D4AFF]/40 hover:bg-[#FAFAFA] active:scale-[0.99]`}
+            >
+              {inner}
+            </Link>
+          );
+        }
+
+        return (
+          <div key={card.label} className={cardClass}>
+            {inner}
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
