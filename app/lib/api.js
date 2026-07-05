@@ -97,6 +97,19 @@ export function productListPrice(product) {
     }).format(value);
     return product.priceFrom != null ? `From ${formatted}` : formatted;
 }
+/** Best-effort thumbnail for list cards (parent default or first variant image). */
+export function productPreviewImage(product) {
+    if (product.defaultImageUrl)
+        return product.defaultImageUrl;
+    if (product.imageUrls && product.imageUrls.length > 0) {
+        return product.imageUrls[0];
+    }
+    for (const variant of productVariants(product)) {
+        if (variant.imageUrls.length > 0)
+            return variant.imageUrls[0];
+    }
+    return null;
+}
 /** Map variant SKU → parent product and option labels (for order line items). */
 export function buildVariantSkuIndex(products) {
     const index = new Map();

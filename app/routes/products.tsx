@@ -5,6 +5,7 @@ import {
   formatProductColors,
   listAllProducts,
   productListPrice,
+  productPreviewImage,
   productVariantCount,
 } from "~/lib/api";
 
@@ -198,36 +199,89 @@ export default function Products() {
 
 function ProductCard({ product }: { product: Product }) {
   const price = productListPrice(product);
+  const imageUrl = productPreviewImage(product);
+
   return (
     <Link
       to={`/products/${encodeURIComponent(product.id)}?category=${encodeURIComponent(product.category)}`}
-      className="block space-y-3 p-4 transition hover:bg-[#FAFAFA] active:bg-[#F4F3F8]"
+      className="flex gap-3 p-4 transition hover:bg-[#FAFAFA] active:bg-[#F4F3F8]"
     >
-      <div>
-        <p className="font-medium text-[#1C1B1F]">{product.name}</p>
-        <p className="mt-1 font-mono text-xs text-[#6B6480]">{product.id}</p>
-      </div>
-      <div className="flex flex-wrap gap-2 text-xs text-[#6B6480]">
-        <span className="rounded-full bg-[#F4F3F8] px-2.5 py-1">
-          {product.brand ?? "No brand"}
-        </span>
-        <span className="rounded-full bg-[#F4F3F8] px-2.5 py-1">
-          {formatProductColors(product)}
-        </span>
-        <span className="rounded-full bg-[#F4F3F8] px-2.5 py-1">
-          {productVariantCount(product)} variant
-          {productVariantCount(product) === 1 ? "" : "s"}
-        </span>
-        {price && (
-          <span className="rounded-full bg-[#F4F3F8] px-2.5 py-1">{price}</span>
-        )}
-        {product.status && (
-          <span className="rounded-full bg-[#F4F3F8] px-2.5 py-1 capitalize">
-            {product.status}
+      <ProductPreviewThumb imageUrl={imageUrl} name={product.name} />
+      <div className="min-w-0 flex-1 space-y-3">
+        <div>
+          <p className="font-medium text-[#1C1B1F]">{product.name}</p>
+          <p className="mt-1 font-mono text-xs text-[#6B6480]">{product.id}</p>
+        </div>
+        <div className="flex flex-wrap gap-2 text-xs text-[#6B6480]">
+          <span className="rounded-full bg-[#F4F3F8] px-2.5 py-1">
+            {product.brand ?? "No brand"}
           </span>
-        )}
+          <span className="rounded-full bg-[#F4F3F8] px-2.5 py-1">
+            {formatProductColors(product)}
+          </span>
+          <span className="rounded-full bg-[#F4F3F8] px-2.5 py-1">
+            {productVariantCount(product)} variant
+            {productVariantCount(product) === 1 ? "" : "s"}
+          </span>
+          {price && (
+            <span className="rounded-full bg-[#F4F3F8] px-2.5 py-1">{price}</span>
+          )}
+          {product.status && (
+            <span className="rounded-full bg-[#F4F3F8] px-2.5 py-1 capitalize">
+              {product.status}
+            </span>
+          )}
+        </div>
       </div>
     </Link>
+  );
+}
+
+function ProductPreviewThumb({
+  imageUrl,
+  name,
+}: {
+  imageUrl: string | null;
+  name: string;
+}) {
+  return (
+    <div className="size-16 shrink-0 overflow-hidden rounded-xl border border-[#E5E3EE] bg-[#FAFAFA]">
+      {imageUrl ? (
+        <img
+          src={imageUrl}
+          alt=""
+          className="size-full object-cover"
+          loading="lazy"
+        />
+      ) : (
+        <div
+          className="flex size-full items-center justify-center text-[#9D98B3]"
+          aria-hidden="true"
+        >
+          <ProductPlaceholderIcon />
+        </div>
+      )}
+      <span className="sr-only">{name}</span>
+    </div>
+  );
+}
+
+function ProductPlaceholderIcon() {
+  return (
+    <svg className="size-6" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 2l9 4.5V17L12 21.5 3 17V6.5L12 2z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12 2v19.5M3 6.5l9 4.5 9-4.5"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 

@@ -1,7 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { formatProductColors, listAllProducts, productListPrice, productVariantCount, } from "~/lib/api";
+import { formatProductColors, listAllProducts, productListPrice, productPreviewImage, productVariantCount, } from "~/lib/api";
 export function meta() {
     return [{ title: "Products | Dupli1 Admin" }];
 }
@@ -63,7 +63,14 @@ export default function Products() {
 }
 function ProductCard({ product }) {
     const price = productListPrice(product);
-    return (_jsxs(Link, { to: `/products/${encodeURIComponent(product.id)}?category=${encodeURIComponent(product.category)}`, className: "block space-y-3 p-4 transition hover:bg-[#FAFAFA] active:bg-[#F4F3F8]", children: [_jsxs("div", { children: [_jsx("p", { className: "font-medium text-[#1C1B1F]", children: product.name }), _jsx("p", { className: "mt-1 font-mono text-xs text-[#6B6480]", children: product.id })] }), _jsxs("div", { className: "flex flex-wrap gap-2 text-xs text-[#6B6480]", children: [_jsx("span", { className: "rounded-full bg-[#F4F3F8] px-2.5 py-1", children: product.brand ?? "No brand" }), _jsx("span", { className: "rounded-full bg-[#F4F3F8] px-2.5 py-1", children: formatProductColors(product) }), _jsxs("span", { className: "rounded-full bg-[#F4F3F8] px-2.5 py-1", children: [productVariantCount(product), " variant", productVariantCount(product) === 1 ? "" : "s"] }), price && (_jsx("span", { className: "rounded-full bg-[#F4F3F8] px-2.5 py-1", children: price })), product.status && (_jsx("span", { className: "rounded-full bg-[#F4F3F8] px-2.5 py-1 capitalize", children: product.status }))] })] }));
+    const imageUrl = productPreviewImage(product);
+    return (_jsxs(Link, { to: `/products/${encodeURIComponent(product.id)}?category=${encodeURIComponent(product.category)}`, className: "flex gap-3 p-4 transition hover:bg-[#FAFAFA] active:bg-[#F4F3F8]", children: [_jsx(ProductPreviewThumb, { imageUrl: imageUrl, name: product.name }), _jsxs("div", { className: "min-w-0 flex-1 space-y-3", children: [_jsxs("div", { children: [_jsx("p", { className: "font-medium text-[#1C1B1F]", children: product.name }), _jsx("p", { className: "mt-1 font-mono text-xs text-[#6B6480]", children: product.id })] }), _jsxs("div", { className: "flex flex-wrap gap-2 text-xs text-[#6B6480]", children: [_jsx("span", { className: "rounded-full bg-[#F4F3F8] px-2.5 py-1", children: product.brand ?? "No brand" }), _jsx("span", { className: "rounded-full bg-[#F4F3F8] px-2.5 py-1", children: formatProductColors(product) }), _jsxs("span", { className: "rounded-full bg-[#F4F3F8] px-2.5 py-1", children: [productVariantCount(product), " variant", productVariantCount(product) === 1 ? "" : "s"] }), price && (_jsx("span", { className: "rounded-full bg-[#F4F3F8] px-2.5 py-1", children: price })), product.status && (_jsx("span", { className: "rounded-full bg-[#F4F3F8] px-2.5 py-1 capitalize", children: product.status }))] })] })] }));
+}
+function ProductPreviewThumb({ imageUrl, name, }) {
+    return (_jsxs("div", { className: "size-16 shrink-0 overflow-hidden rounded-xl border border-[#E5E3EE] bg-[#FAFAFA]", children: [imageUrl ? (_jsx("img", { src: imageUrl, alt: "", className: "size-full object-cover", loading: "lazy" })) : (_jsx("div", { className: "flex size-full items-center justify-center text-[#9D98B3]", "aria-hidden": "true", children: _jsx(ProductPlaceholderIcon, {}) })), _jsx("span", { className: "sr-only", children: name })] }));
+}
+function ProductPlaceholderIcon() {
+    return (_jsxs("svg", { className: "size-6", viewBox: "0 0 24 24", fill: "none", "aria-hidden": "true", children: [_jsx("path", { d: "M12 2l9 4.5V17L12 21.5 3 17V6.5L12 2z", stroke: "currentColor", strokeWidth: "1.8", strokeLinejoin: "round" }), _jsx("path", { d: "M12 2v19.5M3 6.5l9 4.5 9-4.5", stroke: "currentColor", strokeWidth: "1.8", strokeLinejoin: "round" })] }));
 }
 function PlusIcon() {
     return (_jsx("svg", { className: "size-4", viewBox: "0 0 24 24", fill: "none", "aria-hidden": "true", children: _jsx("path", { d: "M12 5v14M5 12h14", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round" }) }));

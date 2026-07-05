@@ -167,6 +167,18 @@ export function productListPrice(product: Product): string | null {
   return product.priceFrom != null ? `From ${formatted}` : formatted;
 }
 
+/** Best-effort thumbnail for list cards (parent default or first variant image). */
+export function productPreviewImage(product: Product): string | null {
+  if (product.defaultImageUrl) return product.defaultImageUrl;
+  if (product.imageUrls && product.imageUrls.length > 0) {
+    return product.imageUrls[0];
+  }
+  for (const variant of productVariants(product)) {
+    if (variant.imageUrls.length > 0) return variant.imageUrls[0];
+  }
+  return null;
+}
+
 export interface SkuVariantContext {
   productId: string;
   productName: string;
