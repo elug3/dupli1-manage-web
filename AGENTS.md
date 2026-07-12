@@ -3,12 +3,8 @@
 This file provides concise instructions for AI coding agents working in this repository.
 
 Status
-- Repository state: empty (no source files or build config present).
-
-What agents should do first
-- Inventory the repo root for common manifests: `package.json`, `pyproject.toml`, `requirements.txt`, `Pipfile`, `go.mod`, `Cargo.toml`, `Dockerfile`, `Makefile`.
-- If a manifest is found, report the detected stack and the exact commands you plan to run before running them.
-- If no manifests are found, ask the user whether to scaffold a project or add specific files.
+- `dupli1-manage-web` is the **admin/management dashboard** for the Dupli1 marketplace (React Router 7 + React 19 + Vite + Tailwind v4, SSR). It is the counterpart to `dupli1-web` (customer storefront) and talks to the same backend nginx gateway.
+- See [CLAUDE.md](CLAUDE.md) for the architecture, route map, backend API contracts, and standard commands (`npm run dev`, `npm run build`, `npm run typecheck`).
 
 Agent interaction rules
 - Keep changes minimal and scoped. When creating or updating customization files, explain why each change is needed.
@@ -16,12 +12,12 @@ Agent interaction rules
 - Do not run or store secrets. If a task requires credentials or sensitive input, request them from the user and do not persist them.
 
 Where to find more info
-- Use the repository files and any `docs/`, `README.md`, `CONTRIBUTING.md`, or `ARCHITECTURE.md` that may appear later. Prefer linking to those files.
+- Use the repository files and any `docs/`, `README.md`, `CONTRIBUTING.md`, or `ARCHITECTURE.md`. Prefer linking to those files. Architecture and API contracts live in [CLAUDE.md](CLAUDE.md).
 
-Suggested next actions
-- Create targeted instruction files when the project has a clear stack: e.g., `/create-agent frontend` or `/create-agent backend` to add focused guidance and CI hooks.
-- Add a minimal `.github/copilot-instructions.md` only when there are stable build/test commands to document.
+## Cursor Cloud specific instructions
 
-Contact
-- If unsure, ask the repository owner for the preferred stack and dev commands.
+- Dependencies (`npm install`) are refreshed automatically by the cloud update script; no manual install needed on a fresh VM.
+- Dev server: `npm run dev` (defaults to `http://localhost:5173`). The sibling storefront (`dupli1-web`) also defaults to 5173, so when running both, start one on another port, e.g. `npm run dev -- --port 5174`.
+- This app needs the **`dupli1` backend running** (nginx gateway at `http://localhost:8080`). See `../dupli1/AGENTS.md` for starting Docker + `docker compose up`. The SSR server reads `DUPLI1_GATEWAY_URL` (default `http://localhost:8080`) for backend calls.
+- Log in at `/login` with the seeded owner account `admin@dupli1.com` / `password`. A transient "bad gateway" banner can appear if the backend gateway isn't fully up yet — retry once the stack is healthy.
             
