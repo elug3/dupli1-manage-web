@@ -3,7 +3,7 @@ import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import { createVariant, deleteVariant, formatVariantOption, getInventory, getManageProduct, productVariants, setInventory, updateProduct, updateVariant, uploadProductImage, uploadVariantImage, } from "~/lib/api";
 import { useNotify } from "~/lib/notifications";
-const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 50 * 1024 * 1024;
 const LOW_STOCK_THRESHOLD = 5;
 const inputCls = "rounded-lg border border-[#E5E3EE] px-2 py-1.5 text-sm outline-none focus:border-[#6D4AFF]";
 const fieldCls = "w-full rounded-xl border border-[#E5E3EE] bg-[#F8F7FC] px-4 py-2.5 text-sm text-[#1C1B1F] outline-none transition focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/20";
@@ -291,7 +291,7 @@ function VariantImageUpload({ productId, variant, onUploaded, }) {
             return;
         }
         if (file.size > MAX_IMAGE_BYTES) {
-            notify("Image must be 10 MB or smaller", "error");
+            notify("Image must be 50 MiB or smaller", "error");
             e.target.value = "";
             return;
         }
@@ -325,7 +325,7 @@ function LegacyProductImages({ productId, variant, onUploaded, }) {
             return;
         }
         if (file.size > MAX_IMAGE_BYTES) {
-            notify("Image must be 10 MB or smaller", "error");
+            notify("Image must be 50 MiB or smaller", "error");
             e.target.value = "";
             return;
         }

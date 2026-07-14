@@ -14,7 +14,7 @@ export function meta() {
   return [{ title: "New Product | Dupli1 Admin" }];
 }
 
-const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 50 * 1024 * 1024;
 
 const inputCls =
   "w-full rounded-xl border border-[#E5E3EE] bg-[#F8F7FC] px-4 py-2.5 text-sm text-[#1C1B1F] outline-none transition placeholder:text-[#B4B0C8] focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/20";
@@ -68,7 +68,7 @@ export default function NewProduct() {
     }
 
     if (file.size > MAX_IMAGE_BYTES) {
-      notify("Image must be 10 MB or smaller", "error");
+      notify("Image must be 50 MiB or smaller", "error");
       e.target.value = "";
       setImageFile(null);
       return;
@@ -329,7 +329,7 @@ export default function NewProduct() {
             </span>
             <p className="text-sm text-[#6B6480]">
               Optional. Uploaded to this variant after the product is created
-              (max 10 MB).
+              (max 50 MiB).
             </p>
             <input
               ref={imageInputRef}
