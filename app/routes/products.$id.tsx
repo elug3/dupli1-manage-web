@@ -17,7 +17,7 @@ import {
 } from "~/lib/api";
 import { useNotify } from "~/lib/notifications";
 
-const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 50 * 1024 * 1024;
 const LOW_STOCK_THRESHOLD = 5;
 const inputCls =
   "rounded-lg border border-[#E5E3EE] px-2 py-1.5 text-sm outline-none focus:border-[#6D4AFF]";
@@ -883,7 +883,7 @@ function VariantImageUpload({
     }
 
     if (file.size > MAX_IMAGE_BYTES) {
-      notify("Image must be 10 MB or smaller", "error");
+      notify("Image must be 50 MiB or smaller", "error");
       e.target.value = "";
       return;
     }
@@ -947,7 +947,7 @@ function LegacyProductImages({
     }
 
     if (file.size > MAX_IMAGE_BYTES) {
-      notify("Image must be 10 MB or smaller", "error");
+      notify("Image must be 50 MiB or smaller", "error");
       e.target.value = "";
       return;
     }
