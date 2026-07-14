@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import {
   createBagProduct,
   createProductParent,
   createVariant,
   setInventory,
+  uploadProductImage,
+  uploadVariantImage,
 } from "~/lib/api";
 import { useNotify } from "~/lib/notifications";
 
@@ -12,12 +14,15 @@ export function meta() {
   return [{ title: "New Product | Dupli1 Admin" }];
 }
 
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+
 const inputCls =
   "w-full rounded-xl border border-[#E5E3EE] bg-[#F8F7FC] px-4 py-2.5 text-sm text-[#1C1B1F] outline-none transition placeholder:text-[#B4B0C8] focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/20";
 
 export default function NewProduct() {
   const navigate = useNavigate();
   const { notify } = useNotify();
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState("");
   const [id, setId] = useState("");
   const [brand, setBrand] = useState("");
@@ -29,12 +34,77 @@ export default function NewProduct() {
   const [price, setPrice] = useState("");
   const [status, setStatus] = useState("active");
   const [initialStock, setInitialStock] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!imageFile) {
+      setImagePreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(imageFile);
+    setImagePreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [imageFile]);
+
+  function clearImage() {
+    setImageFile(null);
+    if (imageInputRef.current) imageInputRef.current.value = "";
+  }
+
+  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) {
+      setImageFile(null);
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      notify("Please choose an image file", "error");
+      e.target.value = "";
+      setImageFile(null);
+      return;
+    }
+
+    if (file.size > MAX_IMAGE_BYTES) {
+      notify("Image must be 10 MB or smaller", "error");
+      e.target.value = "";
+      setImageFile(null);
+      return;
+    }
+
+    setImageFile(file);
+  }
 
   async function applyInitialStock(variantSku: string) {
     const stockQty = Number.parseInt(initialStock, 10);
     if (!Number.isNaN(stockQty) && stockQty >= 0 && variantSku) {
       await setInventory(variantSku, stockQty).catch(() => {});
+    }
+  }
+
+  async function uploadSelectedImage(opts: {
+    productId: string;
+    variantSku?: string;
+  }): Promise<boolean> {
+    if (!imageFile) return true;
+
+    try {
+      if (opts.variantSku) {
+        await uploadVariantImage(opts.productId, opts.variantSku, imageFile);
+      } else {
+        await uploadProductImage(opts.productId, imageFile);
+      }
+      return true;
+    } catch (err) {
+      notify(
+        `Product created, but image upload failed: ${
+          err instanceof Error ? err.message : "unknown error"
+        }. You can retry from the product page.`,
+        "error"
+      );
+      return false;
     }
   }
 
@@ -66,12 +136,14 @@ export default function NewProduct() {
           material: material.trim(),
         });
         await applyInitialStock(legacy.sku ?? legacy.id);
-        notify(`Product created: ${name.trim()}`);
+        const uploaded = await uploadSelectedImage({ productId: legacy.id });
+        if (uploaded) notify(`Product created: ${name.trim()}`);
         navigate(`/products/${encodeURIComponent(legacy.id)}?category=bags`);
         return;
       }
 
       // Parent exists now — don't retry via the legacy endpoint below, it'd collide on this ID.
+      let createdVariantSku: string | undefined;
       try {
         const variant = await createVariant(parent.id, {
           color: color.trim(),
@@ -80,6 +152,7 @@ export default function NewProduct() {
           sku: sku.trim() || undefined,
           status,
         });
+        createdVariantSku = variant.sku;
         await applyInitialStock(variant.sku);
       } catch (err) {
         notify(
@@ -92,7 +165,11 @@ export default function NewProduct() {
         return;
       }
 
-      notify(`Product created: ${name.trim()}`);
+      const uploaded = await uploadSelectedImage({
+        productId: parent.id,
+        variantSku: createdVariantSku,
+      });
+      if (uploaded) notify(`Product created: ${name.trim()}`);
       navigate(`/products/${encodeURIComponent(parent.id)}?category=bags`);
     } catch (err) {
       notify(friendlyCreateError(err), "error");
@@ -246,6 +323,68 @@ export default function NewProduct() {
               placeholder="Inventory quantity for this SKU"
             />
           </Field>
+          <div className="space-y-1.5">
+            <span className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
+              Image
+            </span>
+            <p className="text-sm text-[#6B6480]">
+              Optional. Uploaded to this variant after the product is created
+              (max 10 MB).
+            </p>
+            <input
+              ref={imageInputRef}
+              id="image"
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleImageChange}
+              disabled={loading}
+            />
+            {imageFile && imagePreviewUrl ? (
+              <div className="flex items-start gap-3 rounded-xl border border-[#E5E3EE] bg-[#FAFAFA] p-3">
+                <img
+                  src={imagePreviewUrl}
+                  alt=""
+                  className="h-20 w-20 shrink-0 rounded-lg object-cover"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-[#1C1B1F]">
+                    {imageFile.name}
+                  </p>
+                  <p className="mt-0.5 text-xs text-[#9D98B3]">
+                    {(imageFile.size / 1024).toFixed(1)} KB
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      onClick={() => imageInputRef.current?.click()}
+                      disabled={loading}
+                      className="text-xs font-semibold text-[#6D4AFF] hover:underline disabled:opacity-60"
+                    >
+                      Replace
+                    </button>
+                    <button
+                      type="button"
+                      onClick={clearImage}
+                      disabled={loading}
+                      className="text-xs font-semibold text-[#9D98B3] hover:underline disabled:opacity-60"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => imageInputRef.current?.click()}
+                disabled={loading}
+                className="inline-flex w-full items-center justify-center rounded-xl border border-dashed border-[#E5E3EE] bg-[#FAFAFA] px-4 py-8 text-sm font-semibold text-[#6D4AFF] transition hover:border-[#6D4AFF]/40 hover:bg-[#F8F7FC] disabled:opacity-60"
+              >
+                Choose image
+              </button>
+            )}
+          </div>
         </section>
 
         <button
@@ -253,7 +392,7 @@ export default function NewProduct() {
           disabled={loading}
           className="w-full rounded-xl bg-[#6D4AFF] py-3 text-sm font-semibold text-white transition hover:bg-[#5A38E8] disabled:opacity-60"
         >
-          {loading ? "Creating…" : "Create product"}
+          {loading ? (imageFile ? "Creating & uploading…" : "Creating…") : "Create product"}
         </button>
       </form>
     </div>

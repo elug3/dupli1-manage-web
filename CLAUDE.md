@@ -58,7 +58,8 @@ Set `DUPLI1_GATEWAY_URL` (default `http://localhost:8080`) for SSR server-side b
 - `GET /product/api/v1/products/{id}/manage` — product detail for admin (auth)
 - `PUT /product/api/v1/products/{id}` — update product (auth)
 - `DELETE /product/api/v1/products/{id}` — delete product (auth)
-- `PUT /product/api/v1/products/{id}/image` — upload image (auth, multipart field `image`)
+- `POST /product/api/v1/products/{id}/images` — upload image to default variant (auth, multipart field `image`)
+- `POST /product/api/v1/products/{id}/variants/{sku}/images` — upload image for a variant (auth, multipart field `image`)
 - `GET|POST /product/api/v1/coupons`, `PUT|DELETE /product/api/v1/coupons/{code}` — coupon CRUD (auth)
 
 ### Order (`/order`)
