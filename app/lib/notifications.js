@@ -1,5 +1,6 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, } from "react";
+import { useI18n } from "~/lib/i18n";
 const NotificationContext = createContext(null);
 const AUTO_HIDE_MS = 3000;
 const EXIT_MS = 300;
@@ -11,12 +12,13 @@ export function useNotify() {
     return ctx;
 }
 function NotificationBar({ message, type, visible, onDismiss, }) {
+    const { t } = useI18n();
     const isSuccess = type === "success";
     return (_jsxs("div", { role: "alert", "aria-live": "polite", className: [
             "fixed inset-x-0 top-0 z-[100] flex items-center justify-center gap-2 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] text-sm font-medium text-white shadow-lg transition-transform duration-300 ease-out",
             isSuccess ? "bg-[#1B8348]" : "bg-[#CE3A3A]",
             visible ? "translate-y-0" : "-translate-y-full",
-        ].join(" "), children: [_jsx("span", { className: "shrink-0", "aria-hidden": "true", children: isSuccess ? _jsx(CheckIcon, {}) : _jsx(ErrorIcon, {}) }), _jsx("span", { className: "text-center", children: message }), _jsx("button", { type: "button", onClick: onDismiss, className: "absolute right-3 top-1/2 -translate-y-1/2 rounded p-1 text-white/80 transition hover:bg-white/10 hover:text-white", "aria-label": "Dismiss notification", children: _jsx(CloseIcon, {}) })] }));
+        ].join(" "), children: [_jsx("span", { className: "shrink-0", "aria-hidden": "true", children: isSuccess ? _jsx(CheckIcon, {}) : _jsx(ErrorIcon, {}) }), _jsx("span", { className: "text-center", children: message }), _jsx("button", { type: "button", onClick: onDismiss, className: "absolute right-3 top-1/2 -translate-y-1/2 rounded p-1 text-white/80 transition hover:bg-white/10 hover:text-white", "aria-label": t("common.dismissNotification"), children: _jsx(CloseIcon, {}) })] }));
 }
 export function NotificationProvider({ children, }) {
     const [notification, setNotification] = useState(null);

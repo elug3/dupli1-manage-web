@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { type User, getMe, logout } from "~/lib/auth";
+import { useI18n } from "~/lib/i18n";
+import { LanguageSwitcher } from "~/lib/i18n/LanguageSwitcher";
 
 export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useI18n();
   const [user, setUser] = useState<User | null>(null);
   const [checking, setChecking] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -66,7 +69,7 @@ export default function AdminLayout() {
       <div className="flex min-h-dvh items-center justify-center bg-[#F4F3F8]">
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#6D4AFF] border-t-transparent" />
-          <span className="text-sm text-[#6B6480]">Loading…</span>
+          <span className="text-sm text-[#6B6480]">{t("nav.loading")}</span>
         </div>
       </div>
     );
@@ -91,7 +94,7 @@ export default function AdminLayout() {
           "fixed inset-y-0 left-0 z-30 flex w-[min(16rem,85vw)] flex-col bg-[#1C1340] pt-[env(safe-area-inset-top)] transition-transform duration-200 lg:static lg:w-64 lg:translate-x-0 lg:pt-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full",
         ].join(" ")}
-        aria-label="Main navigation"
+        aria-label={t("nav.mainNavigation")}
       >
         {/* Logo */}
         <div className="flex h-16 items-center gap-3 border-b border-white/10 px-5">
@@ -107,17 +110,17 @@ export default function AdminLayout() {
           </div>
           <div className="min-w-0 flex-1">
             <div className="text-sm font-bold leading-tight text-white">
-              Dupli1
+              {t("nav.brandName")}
             </div>
             <div className="text-[10px] font-medium uppercase tracking-widest text-[#7B70A8]">
-              Admin
+              {t("nav.brandSubtitle")}
             </div>
           </div>
           <button
             type="button"
             onClick={() => setSidebarOpen(false)}
             className="rounded-lg p-2 text-[#9D98B3] transition hover:bg-white/10 hover:text-white lg:hidden"
-            aria-label="Close menu"
+            aria-label={t("nav.closeMenu")}
           >
             <CloseIcon />
           </button>
@@ -126,17 +129,17 @@ export default function AdminLayout() {
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto px-3 py-4">
           <div className="space-y-0.5">
-            <SidebarLink to="/" icon={<DashboardIcon />} label="Dashboard" exact onNavigate={() => setSidebarOpen(false)} />
-            <SidebarLink to="/products" icon={<ProductsIcon />} label="Products" onNavigate={() => setSidebarOpen(false)} />
-            <SidebarLink to="/catalog" icon={<CatalogIcon />} label="Catalog" onNavigate={() => setSidebarOpen(false)} />
-            <SidebarLink to="/orders" icon={<OrdersIcon />} label="Orders" onNavigate={() => setSidebarOpen(false)} />
-            <SidebarLink to="/coupons" icon={<CouponsIcon />} label="Coupons" onNavigate={() => setSidebarOpen(false)} />
-            <SidebarLink to="/analytics" icon={<AnalyticsIcon />} label="Analytics" onNavigate={() => setSidebarOpen(false)} />
-            <SidebarLink to="/users" icon={<UsersIcon />} label="Users" onNavigate={() => setSidebarOpen(false)} />
+            <SidebarLink to="/" icon={<DashboardIcon />} label={t("nav.dashboard")} exact onNavigate={() => setSidebarOpen(false)} />
+            <SidebarLink to="/products" icon={<ProductsIcon />} label={t("nav.products")} onNavigate={() => setSidebarOpen(false)} />
+            <SidebarLink to="/catalog" icon={<CatalogIcon />} label={t("nav.catalog")} onNavigate={() => setSidebarOpen(false)} />
+            <SidebarLink to="/orders" icon={<OrdersIcon />} label={t("nav.orders")} onNavigate={() => setSidebarOpen(false)} />
+            <SidebarLink to="/coupons" icon={<CouponsIcon />} label={t("nav.coupons")} onNavigate={() => setSidebarOpen(false)} />
+            <SidebarLink to="/analytics" icon={<AnalyticsIcon />} label={t("nav.analytics")} onNavigate={() => setSidebarOpen(false)} />
+            <SidebarLink to="/users" icon={<UsersIcon />} label={t("nav.users")} onNavigate={() => setSidebarOpen(false)} />
           </div>
 
           <div className="mt-4 border-t border-white/10 pt-4">
-            <SidebarLink to="/settings" icon={<SettingsIcon />} label="Settings" onNavigate={() => setSidebarOpen(false)} />
+            <SidebarLink to="/settings" icon={<SettingsIcon />} label={t("nav.settings")} onNavigate={() => setSidebarOpen(false)} />
           </div>
         </nav>
 
@@ -151,12 +154,12 @@ export default function AdminLayout() {
                 {user.email}
               </p>
               <p className="text-[10px] text-[#7B70A8]">
-                {user.accountType ?? "Administrator"}
+                {user.accountType ?? t("nav.administratorFallback")}
               </p>
             </div>
             <button
               onClick={handleLogout}
-              title="Sign out"
+              title={t("nav.signOut")}
               className="rounded-lg p-1.5 text-[#7B70A8] transition hover:bg-white/10 hover:text-white"
             >
               <LogoutIcon />
@@ -173,16 +176,17 @@ export default function AdminLayout() {
             type="button"
             onClick={() => setSidebarOpen(true)}
             className="-ml-1 rounded-lg p-2 text-[#6B6480] hover:bg-[#F4F3F8] lg:hidden"
-            aria-label="Open menu"
+            aria-label={t("nav.openMenu")}
             aria-expanded={sidebarOpen}
           >
             <HamburgerIcon />
           </button>
           <div className="flex-1" />
+          <LanguageSwitcher compact />
           <div className="flex items-center gap-2 rounded-full bg-[#F4F3F8] px-2.5 py-1.5 sm:px-3">
             <div className="h-2 w-2 rounded-full bg-emerald-500" />
             <span className="hidden text-xs font-medium text-[#6B6480] sm:inline">
-              Backend online
+              {t("nav.backendOnline")}
             </span>
           </div>
         </header>

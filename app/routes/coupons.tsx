@@ -6,6 +6,7 @@ import {
   getCoupons,
   updateCoupon,
 } from "~/lib/api";
+import { useI18n } from "~/lib/i18n";
 import { useNotify } from "~/lib/notifications";
 
 export function meta() {
@@ -17,6 +18,7 @@ const inputCls =
 
 export default function Coupons() {
   const { notify } = useNotify();
+  const { t } = useI18n();
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +36,7 @@ export default function Coupons() {
       .then(setCoupons)
       .catch((err) => {
         setCoupons([]);
-        setError(err instanceof Error ? err.message : "Failed to load coupons");
+        setError(err instanceof Error ? err.message : t("coupons.failedToLoad"));
       })
       .finally(() => setLoading(false));
   }
@@ -47,7 +49,7 @@ export default function Coupons() {
     e.preventDefault();
     const discount = Number(discountPct) / 100;
     if (!code.trim() || Number.isNaN(discount) || discount <= 0 || discount > 1) {
-      notify("Enter a valid code and discount between 1 and 100%", "error");
+      notify(t("coupons.invalidCodeOrDiscount"), "error");
       return;
     }
 
@@ -65,10 +67,10 @@ export default function Coupons() {
       setDiscountPct("");
       setDescription("");
       setExpires("");
-      notify(`Coupon created: ${created.code}`);
+      notify(t("coupons.couponCreated", { code: created.code }));
     } catch (err) {
       notify(
-        err instanceof Error ? err.message : "Failed to create coupon",
+        err instanceof Error ? err.message : t("coupons.failedToCreate"),
         "error"
       );
     } finally {
@@ -87,7 +89,7 @@ export default function Coupons() {
       );
     } catch (err) {
       notify(
-        err instanceof Error ? err.message : "Failed to update coupon",
+        err instanceof Error ? err.message : t("coupons.failedToUpdate"),
         "error"
       );
     } finally {
@@ -100,10 +102,10 @@ export default function Coupons() {
     try {
       await deleteCoupon(couponCode);
       setCoupons((prev) => prev.filter((c) => c.code !== couponCode));
-      notify(`Coupon deleted: ${couponCode}`);
+      notify(t("coupons.couponDeleted", { code: couponCode }));
     } catch (err) {
       notify(
-        err instanceof Error ? err.message : "Failed to delete coupon",
+        err instanceof Error ? err.message : t("coupons.failedToDelete"),
         "error"
       );
     } finally {
@@ -111,31 +113,39 @@ export default function Coupons() {
     }
   }
 
+  const headers = [
+    t("coupons.colCode"),
+    t("coupons.colDiscount"),
+    t("coupons.colDescription"),
+    t("coupons.colExpires"),
+    t("coupons.colActive"),
+    "",
+  ];
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">Coupons</h1>
-        <p className="mt-0.5 text-sm text-[#6B6480]">
-          Managed via the product service at{" "}
-          <code className="text-xs">/product/api/v1/coupons</code>
-        </p>
+        <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">
+          {t("coupons.title")}
+        </h1>
+        <p className="mt-0.5 text-sm text-[#6B6480]">{t("coupons.subtitle")}</p>
       </div>
 
       <form
         onSubmit={handleCreate}
         className="grid gap-4 rounded-2xl border border-[#E5E3EE] bg-white p-6 shadow-[0_1px_4px_rgba(28,27,31,0.04)] sm:grid-cols-2"
       >
-        <Field label="Code" id="code" required>
+        <Field label={t("coupons.code")} id="code" required>
           <input
             id="code"
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}
             className={inputCls}
-            placeholder="SUMMER30"
+            placeholder={t("coupons.codePlaceholder")}
             required
           />
         </Field>
-        <Field label="Discount (%)" id="discount" required>
+        <Field label={t("coupons.discountPercent")} id="discount" required>
           <input
             id="discount"
             type="number"
@@ -145,26 +155,26 @@ export default function Coupons() {
             value={discountPct}
             onChange={(e) => setDiscountPct(e.target.value)}
             className={inputCls}
-            placeholder="30"
+            placeholder={t("coupons.discountPlaceholder")}
             required
           />
         </Field>
-        <Field label="Description" id="description">
+        <Field label={t("coupons.description")} id="description">
           <input
             id="description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             className={inputCls}
-            placeholder="Summer sale"
+            placeholder={t("coupons.descriptionPlaceholder")}
           />
         </Field>
-        <Field label="Expires" id="expires">
+        <Field label={t("coupons.expires")} id="expires">
           <input
             id="expires"
             value={expires}
             onChange={(e) => setExpires(e.target.value)}
             className={inputCls}
-            placeholder="Aug 31, 2026"
+            placeholder={t("coupons.expiresPlaceholder")}
           />
         </Field>
         <div className="sm:col-span-2">
@@ -173,7 +183,7 @@ export default function Coupons() {
             disabled={creating}
             className="rounded-xl bg-[#6D4AFF] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#5A38E8] disabled:opacity-60"
           >
-            {creating ? "Creating…" : "Create coupon"}
+            {creating ? t("coupons.creating") : t("coupons.createCoupon")}
           </button>
         </div>
       </form>
@@ -191,23 +201,21 @@ export default function Coupons() {
           </div>
         ) : coupons.length === 0 ? (
           <div className="px-5 py-16 text-center text-[#9D98B3]">
-            No coupons yet
+            {t("coupons.noCouponsYet")}
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[#F0EEF8] bg-[#FAFAFA] text-left">
-                  {["Code", "Discount", "Description", "Expires", "Active", ""].map(
-                    (h) => (
-                      <th
-                        key={h}
-                        className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-[#9D98B3]"
-                      >
-                        {h}
-                      </th>
-                    )
-                  )}
+                  {headers.map((h, i) => (
+                    <th
+                      key={h || `actions-${i}`}
+                      className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-[#9D98B3]"
+                    >
+                      {h}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -223,10 +231,10 @@ export default function Coupons() {
                       {Math.round(coupon.discount * 100)}%
                     </td>
                     <td className="px-5 py-3.5 text-[#6B6480]">
-                      {coupon.description || "—"}
+                      {coupon.description || t("common.emptyValue")}
                     </td>
                     <td className="px-5 py-3.5 text-[#6B6480]">
-                      {coupon.expires || "—"}
+                      {coupon.expires || t("common.emptyValue")}
                     </td>
                     <td className="px-5 py-3.5">
                       <button
@@ -240,7 +248,9 @@ export default function Coupons() {
                             : "bg-[#F4F3F8] text-[#9D98B3]",
                         ].join(" ")}
                       >
-                        {coupon.active ? "active" : "inactive"}
+                        {coupon.active
+                          ? t("coupons.active")
+                          : t("coupons.inactive")}
                       </button>
                     </td>
                     <td className="px-5 py-3.5 text-right">
@@ -250,7 +260,7 @@ export default function Coupons() {
                         onClick={() => handleDelete(coupon.code)}
                         className="text-xs font-semibold text-red-600 hover:underline disabled:opacity-50"
                       >
-                        Delete
+                        {t("coupons.delete")}
                       </button>
                     </td>
                   </tr>

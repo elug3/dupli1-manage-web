@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { type AnalyticsSummary, getAnalytics } from "~/lib/api";
+import { useI18n } from "~/lib/i18n";
 
 export function meta() {
   return [{ title: "Analytics | Dupli1 Admin" }];
 }
 
 export default function Analytics() {
+  const { t, formatCurrency } = useI18n();
   const [data, setData] = useState<AnalyticsSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -17,7 +19,9 @@ export default function Analytics() {
       .then(setData)
       .catch((err) => {
         setData(null);
-        setError(err instanceof Error ? err.message : "Failed to load analytics");
+        setError(
+          err instanceof Error ? err.message : t("analytics.failedToLoad")
+        );
       })
       .finally(() => setLoading(false));
   }, []);
@@ -34,9 +38,11 @@ export default function Analytics() {
     return (
       <div className="space-y-4">
         <div>
-          <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">Analytics</h1>
+          <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">
+            {t("analytics.title")}
+          </h1>
           <p className="mt-0.5 text-sm text-[#6B6480]">
-            Derived from order service data
+            {t("analytics.subtitleFromOrders")}
           </p>
         </div>
         <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
@@ -50,15 +56,19 @@ export default function Analytics() {
     return (
       <div className="space-y-4">
         <div>
-          <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">Analytics</h1>
+          <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">
+            {t("analytics.title")}
+          </h1>
           <p className="mt-0.5 text-sm text-[#6B6480]">
-            Derived from order service data
+            {t("analytics.subtitleFromOrders")}
           </p>
         </div>
         <div className="rounded-2xl border border-[#E5E3EE] bg-white p-12 text-center shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
-          <p className="font-semibold text-[#1C1B1F]">No order data yet</p>
+          <p className="font-semibold text-[#1C1B1F]">
+            {t("analytics.noOrderDataYet")}
+          </p>
           <p className="mt-1 text-sm text-[#9D98B3]">
-            Analytics are computed from <code className="text-xs">GET /order/api/v1/orders</code>.
+            {t("analytics.noOrderDataHint")}
           </p>
         </div>
       </div>
@@ -74,9 +84,11 @@ export default function Analytics() {
     <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">Analytics</h1>
+          <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">
+            {t("analytics.title")}
+          </h1>
           <p className="mt-0.5 text-sm text-[#6B6480]">
-            Derived from order service totals
+            {t("analytics.subtitleFromTotals")}
           </p>
         </div>
 
@@ -92,16 +104,24 @@ export default function Analytics() {
                   : "text-[#6B6480] hover:bg-[#F4F3F8]",
               ].join(" ")}
             >
-              {p === "7d" ? "7 days" : "30 days"}
+              {p === "7d"
+                ? t("analytics.period7Days")
+                : t("analytics.period30Days")}
             </button>
           ))}
         </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <KpiCard label="Revenue" value={formatCurrency(revenue)} />
-        <KpiCard label="Orders" value={String(orders)} />
-        <KpiCard label="Avg. order value" value={formatCurrency(aov)} />
+        <KpiCard
+          label={t("analytics.kpiRevenue")}
+          value={formatCurrency(revenue)}
+        />
+        <KpiCard label={t("analytics.kpiOrders")} value={String(orders)} />
+        <KpiCard
+          label={t("analytics.kpiAvgOrderValue")}
+          value={formatCurrency(aov)}
+        />
       </div>
     </div>
   );
@@ -114,12 +134,4 @@ function KpiCard({ label, value }: { label: string; value: string }) {
       <div className="mt-0.5 text-sm text-[#6B6480]">{label}</div>
     </div>
   );
-}
-
-function formatCurrency(n: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-  }).format(n);
 }

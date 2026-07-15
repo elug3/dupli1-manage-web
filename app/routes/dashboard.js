@@ -2,10 +2,12 @@ import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-run
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { getCatalogStockAlerts, getOrders, getProducts, } from "~/lib/api";
+import { useI18n } from "~/lib/i18n";
 export function meta() {
     return [{ title: "Dashboard | Dupli1 Admin" }];
 }
 export default function Dashboard() {
+    const { t } = useI18n();
     const [products, setProducts] = useState([]);
     const [stockAlerts, setStockAlerts] = useState([]);
     const [recentOrders, setRecentOrders] = useState([]);
@@ -14,14 +16,17 @@ export default function Dashboard() {
     useEffect(() => {
         const failures = [];
         const capture = (label, fallback) => (err) => {
-            failures.push(`${label}: ${err instanceof Error ? err.message : "request failed"}`);
+            failures.push(t("dashboard.errorWithLabel", {
+                label,
+                message: err instanceof Error ? err.message : t("common.requestFailed"),
+            }));
             return fallback;
         };
         Promise.all([
-            getProducts().catch(capture("Products", [])),
-            getCatalogStockAlerts().catch(capture("Stock alerts", [])),
+            getProducts().catch(capture(t("dashboard.errorLabelProducts"), [])),
+            getCatalogStockAlerts().catch(capture(t("dashboard.errorLabelStockAlerts"), [])),
             getOrders()
-                .catch(capture("Orders", []))
+                .catch(capture(t("dashboard.errorLabelOrders"), []))
                 .then((o) => o.slice(0, 5)),
         ]).then(([prods, alerts, orders]) => {
             setProducts(prods);
@@ -30,48 +35,49 @@ export default function Dashboard() {
             setErrors(failures);
             setLoading(false);
         });
-    }, []);
+    }, [t]);
     return (_jsxs("div", { className: "space-y-8", children: [_jsx(PageHeader, {}), errors.length > 0 && (_jsx("div", { className: "space-y-1 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600", children: errors.map((message) => (_jsx("p", { children: message }, message))) })), _jsx(StatsGrid, { products: products, loading: loading }), _jsxs("div", { className: "grid gap-6 lg:grid-cols-3", children: [_jsx("div", { className: "lg:col-span-2", children: _jsx(RecentOrdersTable, { orders: recentOrders }) }), _jsx(QuickPanel, { stockAlerts: stockAlerts })] })] }));
 }
 function PageHeader() {
-    const now = new Date();
-    const formatted = now.toLocaleDateString("en-US", {
+    const { t, formatDate } = useI18n();
+    const formatted = formatDate(new Date(), {
         weekday: "long",
         year: "numeric",
         month: "long",
         day: "numeric",
     });
-    return (_jsxs("div", { className: "flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between", children: [_jsxs("div", { children: [_jsx("h1", { className: "text-xl font-bold text-[#1C1B1F] sm:text-2xl", children: "Dashboard" }), _jsx("p", { className: "mt-0.5 text-sm text-[#6B6480]", children: formatted })] }), _jsx(Link, { to: "/orders", className: "w-full rounded-xl bg-[#6D4AFF] px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-[#5A38E8] active:scale-[0.98] sm:w-auto", children: "View all orders" })] }));
+    return (_jsxs("div", { className: "flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between", children: [_jsxs("div", { children: [_jsx("h1", { className: "text-xl font-bold text-[#1C1B1F] sm:text-2xl", children: t("dashboard.title") }), _jsx("p", { className: "mt-0.5 text-sm text-[#6B6480]", children: formatted })] }), _jsx(Link, { to: "/orders", className: "w-full rounded-xl bg-[#6D4AFF] px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-[#5A38E8] active:scale-[0.98] sm:w-auto", children: t("dashboard.viewAllOrders") })] }));
 }
 function StatsGrid({ products, loading, }) {
+    const { t } = useI18n();
     const active = products.length;
     const cards = [
         {
-            label: "Revenue today",
-            value: "—",
-            sub: "Analytics not yet available",
+            label: t("dashboard.revenueToday"),
+            value: t("common.emptyValue"),
+            sub: t("dashboard.analyticsNotYetAvailable"),
             icon: _jsx(RevenueIcon, {}),
             color: "bg-violet-50 text-violet-600",
         },
         {
-            label: "Orders today",
-            value: "—",
-            sub: "Analytics not yet available",
+            label: t("dashboard.ordersToday"),
+            value: t("common.emptyValue"),
+            sub: t("dashboard.analyticsNotYetAvailable"),
             icon: _jsx(OrderIcon, {}),
             color: "bg-blue-50 text-blue-600",
         },
         {
-            label: "Catalog items",
-            value: loading ? "…" : String(active),
-            sub: loading ? null : "Parent products (styles)",
+            label: t("dashboard.catalogItems"),
+            value: loading ? t("common.loadingEllipsis") : String(active),
+            sub: loading ? null : t("dashboard.parentProductsStyles"),
             icon: _jsx(BoxIcon, {}),
             color: "bg-emerald-50 text-emerald-600",
             to: "/products",
         },
         {
-            label: "Pending orders",
-            value: "—",
-            sub: "Analytics not yet available",
+            label: t("dashboard.pendingOrders"),
+            value: t("common.emptyValue"),
+            sub: t("dashboard.analyticsNotYetAvailable"),
             icon: _jsx(ClockIcon, {}),
             color: "bg-amber-50 text-amber-600",
         },
@@ -86,40 +92,61 @@ function StatsGrid({ products, loading, }) {
         }) }));
 }
 function RecentOrdersTable({ orders }) {
-    return (_jsxs("div", { className: "rounded-2xl border border-[#E5E3EE] bg-white shadow-[0_1px_4px_rgba(28,27,31,0.04)]", children: [_jsxs("div", { className: "flex items-center justify-between border-b border-[#E5E3EE] px-5 py-4", children: [_jsx("h2", { className: "font-semibold text-[#1C1B1F]", children: "Recent orders" }), _jsx(Link, { to: "/orders", className: "text-xs font-medium text-[#6D4AFF] hover:underline", children: "View all \u2192" })] }), _jsx("div", { className: "overflow-x-auto md:overflow-visible", children: _jsxs("table", { className: "hidden w-full text-sm md:table", children: [_jsx("thead", { children: _jsx("tr", { className: "border-b border-[#F0EEF8] text-left", children: ["Order", "Customer", "Total", "Status", "Date"].map((h) => (_jsx("th", { className: "px-5 py-3 text-xs font-semibold uppercase tracking-wide text-[#9D98B3]", children: h }, h))) }) }), _jsx("tbody", { children: orders.length === 0 ? (_jsx("tr", { children: _jsx("td", { colSpan: 5, className: "px-5 py-10 text-center text-[#9D98B3]", children: "No orders yet" }) })) : (orders.map((order) => (_jsxs("tr", { className: "border-b border-[#F0EEF8] last:border-0 hover:bg-[#FAFAFA]", children: [_jsx("td", { className: "px-5 py-3.5 font-mono text-xs font-medium text-[#1C1B1F]", children: order.id }), _jsx("td", { className: "px-5 py-3.5 text-[#1C1B1F]", children: order.customer_id }), _jsx("td", { className: "px-5 py-3.5 font-semibold text-[#1C1B1F]", children: formatCurrency(order.total_cents / 100) }), _jsx("td", { className: "px-5 py-3.5", children: _jsx(OrderStatusBadge, { status: order.status }) }), _jsx("td", { className: "px-5 py-3.5 text-[#9D98B3]", children: formatDate(order.created_at) })] }, order.id)))) })] }) }), _jsx("div", { className: "divide-y divide-[#F0EEF8] md:hidden", children: orders.length === 0 ? (_jsx("div", { className: "px-4 py-10 text-center text-[#9D98B3]", children: "No orders yet" })) : (orders.map((order) => (_jsxs("div", { className: "space-y-2 px-4 py-4", children: [_jsxs("div", { className: "flex items-start justify-between gap-3", children: [_jsxs("div", { className: "min-w-0", children: [_jsx("p", { className: "truncate font-mono text-xs font-medium text-[#1C1B1F]", children: order.id }), _jsx("p", { className: "mt-1 text-sm text-[#6B6480]", children: order.customer_id })] }), _jsx(OrderStatusBadge, { status: order.status })] }), _jsxs("div", { className: "flex items-center justify-between text-sm", children: [_jsx("span", { className: "font-semibold text-[#1C1B1F]", children: formatCurrency(order.total_cents / 100) }), _jsx("span", { className: "text-[#9D98B3]", children: formatDate(order.created_at) })] })] }, order.id)))) })] }));
+    const { t, formatCurrency, formatDate } = useI18n();
+    const headers = [
+        t("dashboard.colOrder"),
+        t("dashboard.colCustomer"),
+        t("dashboard.colTotal"),
+        t("dashboard.colStatus"),
+        t("dashboard.colDate"),
+    ];
+    return (_jsxs("div", { className: "rounded-2xl border border-[#E5E3EE] bg-white shadow-[0_1px_4px_rgba(28,27,31,0.04)]", children: [_jsxs("div", { className: "flex items-center justify-between border-b border-[#E5E3EE] px-5 py-4", children: [_jsx("h2", { className: "font-semibold text-[#1C1B1F]", children: t("dashboard.recentOrders") }), _jsx(Link, { to: "/orders", className: "text-xs font-medium text-[#6D4AFF] hover:underline", children: t("dashboard.viewAllArrow") })] }), _jsx("div", { className: "overflow-x-auto md:overflow-visible", children: _jsxs("table", { className: "hidden w-full text-sm md:table", children: [_jsx("thead", { children: _jsx("tr", { className: "border-b border-[#F0EEF8] text-left", children: headers.map((h) => (_jsx("th", { className: "px-5 py-3 text-xs font-semibold uppercase tracking-wide text-[#9D98B3]", children: h }, h))) }) }), _jsx("tbody", { children: orders.length === 0 ? (_jsx("tr", { children: _jsx("td", { colSpan: 5, className: "px-5 py-10 text-center text-[#9D98B3]", children: t("dashboard.noOrdersYet") }) })) : (orders.map((order) => (_jsxs("tr", { className: "border-b border-[#F0EEF8] last:border-0 hover:bg-[#FAFAFA]", children: [_jsx("td", { className: "px-5 py-3.5 font-mono text-xs font-medium text-[#1C1B1F]", children: order.id }), _jsx("td", { className: "px-5 py-3.5 text-[#1C1B1F]", children: order.customer_id }), _jsx("td", { className: "px-5 py-3.5 font-semibold text-[#1C1B1F]", children: formatCurrency(order.total_cents / 100) }), _jsx("td", { className: "px-5 py-3.5", children: _jsx(OrderStatusBadge, { status: order.status }) }), _jsx("td", { className: "px-5 py-3.5 text-[#9D98B3]", children: formatDate(order.created_at, {
+                                            month: "short",
+                                            day: "numeric",
+                                        }) })] }, order.id)))) })] }) }), _jsx("div", { className: "divide-y divide-[#F0EEF8] md:hidden", children: orders.length === 0 ? (_jsx("div", { className: "px-4 py-10 text-center text-[#9D98B3]", children: t("dashboard.noOrdersYet") })) : (orders.map((order) => (_jsxs("div", { className: "space-y-2 px-4 py-4", children: [_jsxs("div", { className: "flex items-start justify-between gap-3", children: [_jsxs("div", { className: "min-w-0", children: [_jsx("p", { className: "truncate font-mono text-xs font-medium text-[#1C1B1F]", children: order.id }), _jsx("p", { className: "mt-1 text-sm text-[#6B6480]", children: order.customer_id })] }), _jsx(OrderStatusBadge, { status: order.status })] }), _jsxs("div", { className: "flex items-center justify-between text-sm", children: [_jsx("span", { className: "font-semibold text-[#1C1B1F]", children: formatCurrency(order.total_cents / 100) }), _jsx("span", { className: "text-[#9D98B3]", children: formatDate(order.created_at, {
+                                        month: "short",
+                                        day: "numeric",
+                                    }) })] })] }, order.id)))) })] }));
 }
 function QuickPanel({ stockAlerts }) {
+    const { t } = useI18n();
     const outOfStock = stockAlerts.filter((row) => row.quantity === 0);
     const lowStock = stockAlerts.filter((row) => row.quantity > 0 && row.quantity <= 5);
     function alertLabel(row) {
         const option = [row.color, row.size].filter(Boolean).join(" / ");
         return option ? `${row.parentName} (${option})` : row.parentName;
     }
-    return (_jsxs("div", { className: "space-y-4", children: [_jsxs("div", { className: "rounded-2xl border border-[#E5E3EE] bg-white p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)]", children: [_jsx("h2", { className: "mb-3 font-semibold text-[#1C1B1F]", children: "Quick actions" }), _jsxs("div", { className: "space-y-2", children: [_jsxs(Link, { to: "/products", className: "flex items-center gap-3 rounded-xl border border-[#E5E3EE] px-4 py-3 text-sm font-medium text-[#1C1B1F] transition hover:border-[#6D4AFF]/40 hover:bg-[#F8F7FC]", children: [_jsx("span", { className: "rounded-lg bg-violet-50 p-1.5 text-violet-600", children: _jsx(PlusIcon, {}) }), "Browse catalog"] }), _jsxs(Link, { to: "/orders", className: "flex items-center gap-3 rounded-xl border border-[#E5E3EE] px-4 py-3 text-sm font-medium text-[#1C1B1F] transition hover:border-[#6D4AFF]/40 hover:bg-[#F8F7FC]", children: [_jsx("span", { className: "rounded-lg bg-blue-50 p-1.5 text-blue-600", children: _jsx(FulfillIcon, {}) }), "Fulfil pending orders"] }), _jsxs(Link, { to: "/analytics", className: "flex items-center gap-3 rounded-xl border border-[#E5E3EE] px-4 py-3 text-sm font-medium text-[#1C1B1F] transition hover:border-[#6D4AFF]/40 hover:bg-[#F8F7FC]", children: [_jsx("span", { className: "rounded-lg bg-emerald-50 p-1.5 text-emerald-600", children: _jsx(ChartIcon, {}) }), "View analytics"] })] })] }), (outOfStock.length > 0 || lowStock.length > 0) && (_jsxs("div", { className: "rounded-2xl border border-amber-200 bg-amber-50 p-5", children: [_jsxs("h2", { className: "mb-3 flex items-center gap-2 font-semibold text-amber-900", children: [_jsx("span", { className: "text-amber-500", children: "\u26A0" }), " Stock alerts"] }), _jsx("p", { className: "mb-3 text-xs text-amber-800/80", children: "Per variant SKU via inventory service" }), _jsxs("div", { className: "space-y-2", children: [outOfStock.map((row) => (_jsxs(Link, { to: `/products/${encodeURIComponent(row.parentId)}`, className: "flex items-center justify-between gap-2 text-sm hover:underline", children: [_jsx("span", { className: "truncate text-amber-900", children: alertLabel(row) }), _jsx("span", { className: "shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700", children: "Out of stock" })] }, row.sku))), lowStock.map((row) => (_jsxs(Link, { to: `/products/${encodeURIComponent(row.parentId)}`, className: "flex items-center justify-between gap-2 text-sm hover:underline", children: [_jsx("span", { className: "truncate text-amber-900", children: alertLabel(row) }), _jsxs("span", { className: "shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800", children: [row.quantity, " left"] })] }, row.sku)))] })] }))] }));
+    return (_jsxs("div", { className: "space-y-4", children: [_jsxs("div", { className: "rounded-2xl border border-[#E5E3EE] bg-white p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)]", children: [_jsx("h2", { className: "mb-3 font-semibold text-[#1C1B1F]", children: t("dashboard.quickActions") }), _jsxs("div", { className: "space-y-2", children: [_jsxs(Link, { to: "/products", className: "flex items-center gap-3 rounded-xl border border-[#E5E3EE] px-4 py-3 text-sm font-medium text-[#1C1B1F] transition hover:border-[#6D4AFF]/40 hover:bg-[#F8F7FC]", children: [_jsx("span", { className: "rounded-lg bg-violet-50 p-1.5 text-violet-600", children: _jsx(PlusIcon, {}) }), t("dashboard.browseCatalog")] }), _jsxs(Link, { to: "/orders", className: "flex items-center gap-3 rounded-xl border border-[#E5E3EE] px-4 py-3 text-sm font-medium text-[#1C1B1F] transition hover:border-[#6D4AFF]/40 hover:bg-[#F8F7FC]", children: [_jsx("span", { className: "rounded-lg bg-blue-50 p-1.5 text-blue-600", children: _jsx(FulfillIcon, {}) }), t("dashboard.fulfilPendingOrders")] }), _jsxs(Link, { to: "/analytics", className: "flex items-center gap-3 rounded-xl border border-[#E5E3EE] px-4 py-3 text-sm font-medium text-[#1C1B1F] transition hover:border-[#6D4AFF]/40 hover:bg-[#F8F7FC]", children: [_jsx("span", { className: "rounded-lg bg-emerald-50 p-1.5 text-emerald-600", children: _jsx(ChartIcon, {}) }), t("dashboard.viewAnalytics")] })] })] }), (outOfStock.length > 0 || lowStock.length > 0) && (_jsxs("div", { className: "rounded-2xl border border-amber-200 bg-amber-50 p-5", children: [_jsxs("h2", { className: "mb-3 flex items-center gap-2 font-semibold text-amber-900", children: [_jsx("span", { className: "text-amber-500", children: "\u26A0" }), " ", t("dashboard.stockAlerts")] }), _jsx("p", { className: "mb-3 text-xs text-amber-800/80", children: t("dashboard.stockAlertsHint") }), _jsxs("div", { className: "space-y-2", children: [outOfStock.map((row) => (_jsxs(Link, { to: `/products/${encodeURIComponent(row.parentId)}`, className: "flex items-center justify-between gap-2 text-sm hover:underline", children: [_jsx("span", { className: "truncate text-amber-900", children: alertLabel(row) }), _jsx("span", { className: "shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700", children: t("dashboard.outOfStock") })] }, row.sku))), lowStock.map((row) => (_jsxs(Link, { to: `/products/${encodeURIComponent(row.parentId)}`, className: "flex items-center justify-between gap-2 text-sm hover:underline", children: [_jsx("span", { className: "truncate text-amber-900", children: alertLabel(row) }), _jsx("span", { className: "shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800", children: t("dashboard.quantityLeft", { count: row.quantity }) })] }, row.sku)))] })] }))] }));
 }
 export function OrderStatusBadge({ status }) {
+    const { t } = useI18n();
     const map = {
-        pending: { label: "Pending", class: "bg-amber-100 text-amber-800" },
-        paid: { label: "Paid", class: "bg-blue-100 text-blue-800" },
-        in_transit: { label: "In transit", class: "bg-violet-100 text-violet-800" },
-        fulfilled: { label: "Fulfilled", class: "bg-emerald-100 text-emerald-800" },
-        canceled: { label: "Canceled", class: "bg-slate-100 text-slate-600" },
+        pending: {
+            label: t("common.orderStatusPending"),
+            class: "bg-amber-100 text-amber-800",
+        },
+        paid: {
+            label: t("common.orderStatusPaid"),
+            class: "bg-blue-100 text-blue-800",
+        },
+        in_transit: {
+            label: t("common.orderStatusInTransit"),
+            class: "bg-violet-100 text-violet-800",
+        },
+        fulfilled: {
+            label: t("common.orderStatusFulfilled"),
+            class: "bg-emerald-100 text-emerald-800",
+        },
+        canceled: {
+            label: t("common.orderStatusCanceled"),
+            class: "bg-slate-100 text-slate-600",
+        },
     };
     const { label, class: cls } = map[status] ?? {
         label: status,
         class: "bg-slate-100 text-slate-600",
     };
     return (_jsx("span", { className: `inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${cls}`, children: label }));
-}
-function formatCurrency(n) {
-    return new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-        minimumFractionDigits: 0,
-    }).format(n);
-}
-function formatDate(iso) {
-    return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 function RevenueIcon() {
     return (_jsx("svg", { className: "size-5", viewBox: "0 0 24 24", fill: "none", children: _jsx("path", { d: "M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6", stroke: "currentColor", strokeWidth: "1.8", strokeLinecap: "round" }) }));

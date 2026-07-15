@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { login } from "~/lib/auth";
+import { useI18n } from "~/lib/i18n";
+import { LanguageSwitcher } from "~/lib/i18n/LanguageSwitcher";
 import { useNotify } from "~/lib/notifications";
 
 export function meta() {
@@ -10,6 +12,7 @@ export function meta() {
 export default function Login() {
   const navigate = useNavigate();
   const { notify } = useNotify();
+  const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -22,7 +25,7 @@ export default function Login() {
       navigate("/", { replace: true, state: { user } });
     } catch (err) {
       notify(
-        err instanceof Error ? err.message : "Something went wrong",
+        err instanceof Error ? err.message : t("common.somethingWentWrong"),
         "error"
       );
     } finally {
@@ -32,6 +35,9 @@ export default function Login() {
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center bg-[#F4F3F8] px-4 py-8">
+      <div className="absolute right-4 top-4 sm:right-6 sm:top-6">
+        <LanguageSwitcher compact />
+      </div>
       <div className="w-full max-w-sm">
         {/* Logo mark */}
         <div className="mb-8 flex flex-col items-center">
@@ -46,11 +52,9 @@ export default function Login() {
             </svg>
           </div>
           <h1 className="text-xl font-bold tracking-tight text-[#1C1B1F]">
-            Dupli1 Admin
+            {t("login.heading")}
           </h1>
-          <p className="mt-1 text-sm text-[#6B6480]">
-            Sign in to your admin account
-          </p>
+          <p className="mt-1 text-sm text-[#6B6480]">{t("login.subtitle")}</p>
         </div>
 
         <form
@@ -63,7 +67,7 @@ export default function Login() {
                 htmlFor="email"
                 className="block text-xs font-semibold uppercase tracking-wide text-[#6B6480]"
               >
-                Email
+                {t("login.email")}
               </label>
               <input
                 id="email"
@@ -74,7 +78,7 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full rounded-xl border border-[#E5E3EE] bg-[#F8F7FC] px-4 py-3 text-sm text-[#1C1B1F] outline-none transition placeholder:text-[#B4B0C8] focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/20"
-                placeholder="admin@example.com"
+                placeholder={t("login.emailPlaceholder")}
               />
             </div>
 
@@ -83,7 +87,7 @@ export default function Login() {
                 htmlFor="password"
                 className="block text-xs font-semibold uppercase tracking-wide text-[#6B6480]"
               >
-                Password
+                {t("login.password")}
               </label>
               <input
                 id="password"
@@ -93,7 +97,7 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full rounded-xl border border-[#E5E3EE] bg-[#F8F7FC] px-4 py-3 text-sm text-[#1C1B1F] outline-none transition placeholder:text-[#B4B0C8] focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/20"
-                placeholder="••••••••"
+                placeholder={t("login.passwordPlaceholder")}
               />
             </div>
 
@@ -102,13 +106,13 @@ export default function Login() {
               disabled={loading}
               className="w-full rounded-xl bg-[#6D4AFF] py-3 text-sm font-semibold text-white transition hover:bg-[#5A38E8] disabled:opacity-60 active:scale-[0.98]"
             >
-              {loading ? "Signing in…" : "Sign in"}
+              {loading ? t("login.signingIn") : t("login.signIn")}
             </button>
           </div>
         </form>
 
         <p className="mt-6 text-center text-xs text-[#9D98B3]">
-          Dupli1 Management Console · Admin access only
+          {t("login.footer")}
         </p>
       </div>
     </div>

@@ -19,6 +19,7 @@ import {
   uploadProductImage,
   uploadVariantImage,
 } from "~/lib/api";
+import { useI18n } from "~/lib/i18n";
 import { useNotify } from "~/lib/notifications";
 
 const MAX_IMAGE_BYTES = 50 * 1024 * 1024;
@@ -39,6 +40,7 @@ interface VariantRow extends ProductVariant {
 
 export default function ProductDetail() {
   const { id } = useParams();
+  const { t } = useI18n();
   const [product, setProduct] = useState<Product | null>(null);
   const [variantRows, setVariantRows] = useState<VariantRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,11 +75,13 @@ export default function ProductDetail() {
       setProduct(p);
       setVariantRows(rows);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Product not found");
+      setError(
+        err instanceof Error ? err.message : t("productDetail.productNotFound")
+      );
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, t]);
 
   useEffect(() => {
     void loadProduct();
@@ -114,10 +118,10 @@ export default function ProductDetail() {
     return (
       <div className="space-y-4">
         <Link to="/products" className="text-sm text-[#6D4AFF] hover:underline">
-          ← Back to products
+          {t("productDetail.backToProducts")}
         </Link>
         <div className="rounded-2xl border border-[#E5E3EE] bg-white p-10 text-center text-[#6B6480]">
-          {error ?? "Product not found"}
+          {error ?? t("productDetail.productNotFound")}
         </div>
       </div>
     );
@@ -131,7 +135,7 @@ export default function ProductDetail() {
   return (
     <div className="space-y-6">
       <Link to="/products" className="text-sm text-[#6D4AFF] hover:underline">
-        ← Back to products
+        {t("productDetail.backToProducts")}
       </Link>
 
       <div className="rounded-2xl border border-[#E5E3EE] bg-white p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)] sm:p-8">
@@ -165,6 +169,7 @@ function ParentSummarySection({
   onUpdated: (product: Product) => void;
 }) {
   const { notify } = useNotify();
+  const { t, formatCurrency } = useI18n();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(product.name);
   const [brand, setBrand] = useState(product.brand ?? "");
@@ -194,22 +199,29 @@ function ParentSummarySection({
       });
       onUpdated(updated);
       setEditing(false);
-      notify("Product updated");
+      notify(t("productDetail.productUpdated"));
     } catch (err) {
-      notify(err instanceof Error ? err.message : "Failed to update product", "error");
+      notify(
+        err instanceof Error
+          ? err.message
+          : t("productDetail.failedToUpdateProduct"),
+        "error"
+      );
     } finally {
       setSaving(false);
     }
   }
 
   const colors =
-    product.availableColors?.join(", ") ?? product.color ?? "—";
+    product.availableColors?.join(", ") ??
+    product.color ??
+    t("common.emptyValue");
   const priceFrom =
     product.priceFrom != null
       ? formatCurrency(product.priceFrom)
       : product.price != null
         ? formatCurrency(product.price)
-        : "—";
+        : t("common.emptyValue");
 
   return (
     <div>
@@ -226,7 +238,7 @@ function ParentSummarySection({
             onClick={() => setEditing(true)}
             className="rounded-xl border border-[#E5E3EE] px-4 py-2 text-sm font-semibold text-[#6D4AFF] transition hover:border-[#6D4AFF]/40 hover:bg-[#FAFAFA]"
           >
-            Edit style
+            {t("productDetail.editStyle")}
           </button>
         )}
       </div>
@@ -234,12 +246,12 @@ function ParentSummarySection({
       {editing ? (
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
-            Edit parent product
+            {t("productDetail.editParentProduct")}
           </p>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="space-y-1.5 sm:col-span-2">
               <span className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
-                Name
+                {t("productDetail.name")}
               </span>
               <input
                 required
@@ -250,7 +262,7 @@ function ParentSummarySection({
             </label>
             <label className="space-y-1.5">
               <span className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
-                Brand
+                {t("productDetail.brand")}
               </span>
               <input
                 required
@@ -261,7 +273,7 @@ function ParentSummarySection({
             </label>
             <label className="space-y-1.5">
               <span className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
-                Material
+                {t("productDetail.material")}
               </span>
               <input
                 required
@@ -272,21 +284,21 @@ function ParentSummarySection({
             </label>
             <label className="space-y-1.5">
               <span className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
-                Status
+                {t("productDetail.status")}
               </span>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
                 className={fieldCls}
               >
-                <option value="active">Active</option>
-                <option value="draft">Draft</option>
-                <option value="archived">Archived</option>
+                <option value="active">{t("common.statusActive")}</option>
+                <option value="draft">{t("common.statusDraft")}</option>
+                <option value="archived">{t("common.statusArchived")}</option>
               </select>
             </label>
             <label className="space-y-1.5 sm:col-span-2">
               <span className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
-                Description
+                {t("productDetail.description")}
               </span>
               <textarea
                 value={description}
@@ -302,42 +314,46 @@ function ParentSummarySection({
               disabled={saving}
               className="rounded-xl bg-[#6D4AFF] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
             >
-              {saving ? "Saving…" : "Save changes"}
+              {saving ? t("common.saving") : t("common.saveChanges")}
             </button>
             <button
               type="button"
               onClick={() => setEditing(false)}
               className="rounded-xl border border-[#E5E3EE] px-4 py-2 text-sm font-semibold text-[#6B6480]"
             >
-              Cancel
+              {t("common.cancel")}
             </button>
           </div>
         </form>
       ) : (
         <dl className="mt-6 grid gap-4 sm:grid-cols-2">
           {[
-            ["ID", product.id],
-            ["Brand", product.brand],
-            ["Brand code", product.brandCode],
-            ["Style code", product.styleCode],
-            ["Material", product.material],
-            ["Status", product.status],
-            ["Colors", colors],
-            ["Price from", priceFrom],
+            [t("productDetail.id"), product.id],
+            [t("productDetail.brand"), product.brand],
+            [t("productDetail.brandCode"), product.brandCode],
+            [t("productDetail.styleCode"), product.styleCode],
+            [t("productDetail.material"), product.material],
+            [t("productDetail.status"), product.status],
+            [t("productDetail.colors"), colors],
+            [t("productDetail.priceFrom"), priceFrom],
           ].map(([label, value]) => (
             <div key={label}>
               <dt className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
                 {label}
               </dt>
-              <dd className="mt-1 text-sm text-[#1C1B1F]">{value ?? "—"}</dd>
+              <dd className="mt-1 text-sm text-[#1C1B1F]">
+                {value ?? t("common.emptyValue")}
+              </dd>
             </div>
           ))}
           {product.description && (
             <div className="sm:col-span-2">
               <dt className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
-                Description
+                {t("productDetail.description")}
               </dt>
-              <dd className="mt-1 text-sm text-[#1C1B1F]">{product.description}</dd>
+              <dd className="mt-1 text-sm text-[#1C1B1F]">
+                {product.description}
+              </dd>
             </div>
           )}
         </dl>
@@ -360,6 +376,7 @@ function VariantsSection({
   onReload: () => Promise<void>;
 }) {
   const { notify } = useNotify();
+  const { t, formatCurrency } = useI18n();
   const [editingSku, setEditingSku] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
 
@@ -367,21 +384,37 @@ function VariantsSection({
     try {
       await setInventory(sku, quantity);
       await onStockUpdated(sku);
-      notify(`Stock updated for ${sku}`);
+      notify(t("productDetail.stockUpdatedFor", { sku }));
     } catch (err) {
-      notify(err instanceof Error ? err.message : "Failed to update stock", "error");
+      notify(
+        err instanceof Error
+          ? err.message
+          : t("productDetail.failedToUpdateStock"),
+        "error"
+      );
     }
   }
+
+  const headings = [
+    t("productDetail.colSku"),
+    t("productDetail.colSkuId"),
+    t("productDetail.colOption"),
+    t("productDetail.colPrice"),
+    t("productDetail.colStatus"),
+    t("productDetail.colStock"),
+    t("productDetail.colImages"),
+    "",
+    t("productDetail.colActions"),
+  ];
 
   return (
     <div className="mt-8 border-t border-[#F0EEF8] pt-6">
       <div className="mb-4">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
-          Variants
+          {t("productDetail.variants")}
         </h2>
         <p className="mt-1 text-sm text-[#6B6480]">
-          Human <code className="text-xs">sku</code> plus canonical{" "}
-          <code className="text-xs">skuId</code> (inventory accepts either).
+          {t("productDetail.variantsHint")}
         </p>
       </div>
 
@@ -389,25 +422,14 @@ function VariantsSection({
         <table className="w-full min-w-[720px] text-sm">
           <thead>
             <tr className="border-b border-[#F0EEF8] bg-[#FAFAFA] text-left">
-              {[
-                "SKU",
-                "skuId",
-                "Option",
-                "Price",
-                "Status",
-                "Stock",
-                "Images",
-                "",
-                "Actions",
-              ].map((heading) => (
-                  <th
-                    key={heading}
-                    className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#9D98B3]"
-                  >
-                    {heading}
-                  </th>
-                )
-              )}
+              {headings.map((heading, index) => (
+                <th
+                  key={heading || `spacer-${index}`}
+                  className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#9D98B3]"
+                >
+                  {heading}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -418,7 +440,7 @@ function VariantsSection({
                     {row.sku}
                   </td>
                   <td className="px-4 py-3 font-mono text-[10px] text-[#9D98B3]">
-                    {row.skuId ?? "—"}
+                    {row.skuId ?? t("common.emptyValue")}
                   </td>
                   <td className="px-4 py-3 text-[#6B6480]">
                     {formatVariantOption(row)}
@@ -461,14 +483,14 @@ function VariantsSection({
                   <td className="px-4 py-3">
                     {row.quantity === 0 && (
                       <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-600">
-                        Out
+                        {t("productDetail.stockOut")}
                       </span>
                     )}
                     {row.quantity != null &&
                       row.quantity > 0 &&
                       row.quantity <= LOW_STOCK_THRESHOLD && (
                         <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
-                          Low
+                          {t("productDetail.stockLow")}
                         </span>
                       )}
                   </td>
@@ -483,41 +505,45 @@ function VariantsSection({
                         }
                         className="text-xs font-semibold text-[#6D4AFF] hover:underline"
                       >
-                        {editingSku === row.sku ? "Cancel" : "Edit"}
+                        {editingSku === row.sku
+                          ? t("common.cancel")
+                          : t("common.edit")}
                       </button>
                       <button
                         type="button"
                         disabled={rows.length <= 1}
                         title={
                           rows.length <= 1
-                            ? "Cannot delete the only variant"
+                            ? t("productDetail.cannotDeleteOnlyVariant")
                             : undefined
                         }
                         onClick={async () => {
                           if (
                             !window.confirm(
-                              `Delete variant ${row.sku}? This cannot be undone.`
+                              t("productDetail.deleteVariantConfirm", {
+                                sku: row.sku,
+                              })
                             )
                           ) {
                             return;
                           }
                           try {
                             await deleteVariant(product.id, row.sku);
-                            notify(`Deleted ${row.sku}`);
+                            notify(t("productDetail.deletedSku", { sku: row.sku }));
                             setEditingSku(null);
                             await onReload();
                           } catch (err) {
                             notify(
                               err instanceof Error
                                 ? err.message
-                                : "Failed to delete variant",
+                                : t("productDetail.failedToDeleteVariant"),
                               "error"
                             );
                           }
                         }}
                         className="text-xs font-semibold text-red-600 hover:underline disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        Delete
+                        {t("common.delete")}
                       </button>
                     </div>
                   </td>
@@ -531,7 +557,7 @@ function VariantsSection({
                         onSaved={async () => {
                           setEditingSku(null);
                           await onReload();
-                          notify(`Updated ${row.sku}`);
+                          notify(t("productDetail.updatedSku", { sku: row.sku }));
                         }}
                         onCancel={() => setEditingSku(null)}
                       />
@@ -551,7 +577,7 @@ function VariantsSection({
             onAdded={async () => {
               setShowAddForm(false);
               await onReload();
-              notify("Variant added");
+              notify(t("productDetail.variantAdded"));
             }}
             onCancel={() => setShowAddForm(false)}
           />
@@ -561,7 +587,7 @@ function VariantsSection({
             onClick={() => setShowAddForm(true)}
             className="rounded-xl border border-dashed border-[#E5E3EE] px-4 py-2.5 text-sm font-semibold text-[#6D4AFF] transition hover:border-[#6D4AFF]/40 hover:bg-[#FAFAFA]"
           >
-            + Add variant
+            {t("productDetail.addVariant")}
           </button>
         )}
       </div>
@@ -581,6 +607,7 @@ function VariantEditForm({
   onCancel: () => void;
 }) {
   const { notify } = useNotify();
+  const { t } = useI18n();
   const [color, setColor] = useState(variant.color);
   const [size, setSize] = useState(variant.size);
   const [price, setPrice] = useState(String(variant.price));
@@ -591,7 +618,7 @@ function VariantEditForm({
     e.preventDefault();
     const parsedPrice = Number.parseFloat(price);
     if (Number.isNaN(parsedPrice) || parsedPrice < 0) {
-      notify("Enter a valid price", "error");
+      notify(t("common.enterValidPrice"), "error");
       return;
     }
 
@@ -605,7 +632,12 @@ function VariantEditForm({
       });
       await onSaved();
     } catch (err) {
-      notify(err instanceof Error ? err.message : "Failed to update variant", "error");
+      notify(
+        err instanceof Error
+          ? err.message
+          : t("productDetail.failedToUpdateVariant"),
+        "error"
+      );
     } finally {
       setSaving(false);
     }
@@ -614,11 +646,11 @@ function VariantEditForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       <p className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
-        Edit {variant.sku}
+        {t("productDetail.editVariantHeading", { sku: variant.sku })}
       </p>
       <div className="flex flex-wrap gap-3">
         <label className="space-y-1 text-xs text-[#6B6480]">
-          Color
+          {t("productDetail.color")}
           <input
             required
             value={color}
@@ -627,7 +659,7 @@ function VariantEditForm({
           />
         </label>
         <label className="space-y-1 text-xs text-[#6B6480]">
-          Size
+          {t("productDetail.size")}
           <input
             value={size}
             onChange={(e) => setSize(e.target.value)}
@@ -635,7 +667,7 @@ function VariantEditForm({
           />
         </label>
         <label className="space-y-1 text-xs text-[#6B6480]">
-          Price
+          {t("productDetail.price")}
           <input
             required
             type="number"
@@ -647,15 +679,15 @@ function VariantEditForm({
           />
         </label>
         <label className="space-y-1 text-xs text-[#6B6480]">
-          Status
+          {t("productDetail.status")}
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value)}
             className={`block ${inputCls}`}
           >
-            <option value="active">Active</option>
-            <option value="draft">Draft</option>
-            <option value="archived">Archived</option>
+            <option value="active">{t("common.statusActive")}</option>
+            <option value="draft">{t("common.statusDraft")}</option>
+            <option value="archived">{t("common.statusArchived")}</option>
           </select>
         </label>
       </div>
@@ -665,14 +697,14 @@ function VariantEditForm({
           disabled={saving}
           className="rounded-lg bg-[#6D4AFF] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
         >
-          {saving ? "Saving…" : "Save changes"}
+          {saving ? t("common.saving") : t("common.saveChanges")}
         </button>
         <button
           type="button"
           onClick={onCancel}
           className="rounded-lg bg-[#F4F3F8] px-3 py-1.5 text-xs font-semibold text-[#6B6480]"
         >
-          Cancel
+          {t("common.cancel")}
         </button>
       </div>
     </form>
@@ -689,6 +721,7 @@ function AddVariantForm({
   onCancel: () => void;
 }) {
   const { notify } = useNotify();
+  const { t } = useI18n();
   const [colors, setColors] = useState<CatalogCodeName[]>([]);
   const [sizes, setSizes] = useState<CatalogCodeName[]>([]);
   const [editions, setEditions] = useState<CatalogCodeName[]>([]);
@@ -716,7 +749,9 @@ function AddVariantForm({
       .catch((err) => {
         if (!cancelled) {
           notify(
-            err instanceof Error ? err.message : "Failed to load catalog masters",
+            err instanceof Error
+              ? err.message
+              : t("common.failedToLoadCatalogMasters"),
             "error"
           );
         }
@@ -727,17 +762,17 @@ function AddVariantForm({
     return () => {
       cancelled = true;
     };
-  }, [notify]);
+  }, [notify, t]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const parsedPrice = Number.parseFloat(price);
     if (Number.isNaN(parsedPrice) || parsedPrice < 0) {
-      notify("Enter a valid price", "error");
+      notify(t("common.enterValidPrice"), "error");
       return;
     }
     if (!colorCode || !sizeCode) {
-      notify("Select color and size codes", "error");
+      notify(t("productDetail.selectColorAndSizeCodes"), "error");
       return;
     }
 
@@ -762,7 +797,12 @@ function AddVariantForm({
 
       await onAdded();
     } catch (err) {
-      notify(err instanceof Error ? err.message : "Failed to add variant", "error");
+      notify(
+        err instanceof Error
+          ? err.message
+          : t("productDetail.failedToAddVariant"),
+        "error"
+      );
     } finally {
       setSaving(false);
     }
@@ -771,7 +811,7 @@ function AddVariantForm({
   if (loadingMasters) {
     return (
       <div className="rounded-xl border border-[#E5E3EE] bg-[#FAFAFA] p-4 text-sm text-[#6B6480]">
-        Loading catalog masters…
+        {t("productDetail.loadingCatalogMasters")}
       </div>
     );
   }
@@ -782,15 +822,12 @@ function AddVariantForm({
       className="rounded-xl border border-[#E5E3EE] bg-[#FAFAFA] p-4 space-y-3"
     >
       <p className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
-        New variant
+        {t("productDetail.newVariant")}
       </p>
-      <p className="text-xs text-[#6B6480]">
-        Human SKU is composed from parent brand/style + these codes. Manage
-        dictionaries under Catalog.
-      </p>
+      <p className="text-xs text-[#6B6480]">{t("productDetail.newVariantHint")}</p>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <label className="space-y-1 text-xs text-[#6B6480]">
-          Color code *
+          {t("productDetail.colorCodeRequired")}
           <select
             required
             value={colorCode}
@@ -805,7 +842,7 @@ function AddVariantForm({
           </select>
         </label>
         <label className="space-y-1 text-xs text-[#6B6480]">
-          Size code *
+          {t("productDetail.sizeCodeRequired")}
           <select
             required
             value={sizeCode}
@@ -820,13 +857,13 @@ function AddVariantForm({
           </select>
         </label>
         <label className="space-y-1 text-xs text-[#6B6480]">
-          Edition code
+          {t("productDetail.editionCode")}
           <select
             value={editionCode}
             onChange={(e) => setEditionCode(e.target.value)}
             className={`block w-full ${inputCls}`}
           >
-            <option value="">None</option>
+            <option value="">{t("common.none")}</option>
             {editions.map((ed) => (
               <option key={ed.code} value={ed.code}>
                 {ed.code} — {ed.name}
@@ -835,7 +872,7 @@ function AddVariantForm({
           </select>
         </label>
         <label className="space-y-1 text-xs text-[#6B6480]">
-          Price (USD) *
+          {t("productDetail.priceUsdRequired")}
           <input
             required
             type="number"
@@ -847,26 +884,26 @@ function AddVariantForm({
           />
         </label>
         <label className="space-y-1 text-xs text-[#6B6480]">
-          Status
+          {t("productDetail.status")}
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value)}
             className={`block w-full ${inputCls}`}
           >
-            <option value="active">Active</option>
-            <option value="draft">Draft</option>
-            <option value="archived">Archived</option>
+            <option value="active">{t("common.statusActive")}</option>
+            <option value="draft">{t("common.statusDraft")}</option>
+            <option value="archived">{t("common.statusArchived")}</option>
           </select>
         </label>
         <label className="space-y-1 text-xs text-[#6B6480]">
-          Initial stock
+          {t("productDetail.initialStock")}
           <input
             type="number"
             min={0}
             value={initialStock}
             onChange={(e) => setInitialStock(e.target.value)}
             className={`block w-full ${inputCls}`}
-            placeholder="Inventory for this SKU"
+            placeholder={t("productDetail.initialStockPlaceholder")}
           />
         </label>
       </div>
@@ -876,14 +913,14 @@ function AddVariantForm({
           disabled={saving}
           className="rounded-lg bg-[#6D4AFF] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
         >
-          {saving ? "Adding…" : "Add variant"}
+          {saving ? t("common.adding") : t("productDetail.addVariant")}
         </button>
         <button
           type="button"
           onClick={onCancel}
           className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-[#6B6480] border border-[#E5E3EE]"
         >
-          Cancel
+          {t("common.cancel")}
         </button>
       </div>
     </form>
@@ -901,6 +938,7 @@ function StockEditor({
   reserved: number | null;
   onSave: (sku: string, quantity: number) => Promise<void>;
 }) {
+  const { t } = useI18n();
   const [value, setValue] = useState(
     quantity != null ? String(quantity) : ""
   );
@@ -929,7 +967,7 @@ function StockEditor({
         min={0}
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder="—"
+        placeholder={t("common.emptyValue")}
         className="w-20 rounded-lg border border-[#E5E3EE] px-2 py-1 text-sm outline-none focus:border-[#6D4AFF]"
       />
       <button
@@ -937,10 +975,12 @@ function StockEditor({
         disabled={saving}
         className="rounded-lg bg-[#F4F3F8] px-2 py-1 text-xs font-semibold text-[#6D4AFF] hover:bg-[#E5E3EE] disabled:opacity-60"
       >
-        {saving ? "…" : "Set"}
+        {saving ? t("common.loadingEllipsis") : t("productDetail.setStock")}
       </button>
       {reserved != null && reserved > 0 && (
-        <span className="text-xs text-[#9D98B3]">{reserved} reserved</span>
+        <span className="text-xs text-[#9D98B3]">
+          {t("common.reservedCount", { count: reserved })}
+        </span>
       )}
     </form>
   );
@@ -956,6 +996,7 @@ function VariantImageUpload({
   onUploaded: (variant: ProductVariant) => void;
 }) {
   const { notify } = useNotify();
+  const { t } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -964,13 +1005,13 @@ function VariantImageUpload({
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      notify("Please choose an image file", "error");
+      notify(t("common.pleaseChooseImageFile"), "error");
       e.target.value = "";
       return;
     }
 
     if (file.size > MAX_IMAGE_BYTES) {
-      notify("Image must be 50 MiB or smaller", "error");
+      notify(t("common.imageMustBe50MiBOrSmaller"), "error");
       e.target.value = "";
       return;
     }
@@ -979,9 +1020,12 @@ function VariantImageUpload({
     try {
       const updated = await uploadVariantImage(productId, variant.sku, file);
       onUploaded(updated);
-      notify("Variant image uploaded");
+      notify(t("productDetail.variantImageUploaded"));
     } catch (err) {
-      notify(err instanceof Error ? err.message : "Upload failed", "error");
+      notify(
+        err instanceof Error ? err.message : t("productDetail.uploadFailed"),
+        "error"
+      );
     } finally {
       setUploading(false);
       e.target.value = "";
@@ -1004,7 +1048,11 @@ function VariantImageUpload({
         disabled={uploading}
         className="text-xs font-semibold text-[#6D4AFF] hover:underline disabled:opacity-60"
       >
-        {uploading ? "Uploading…" : `Upload (${variant.imageUrls.length})`}
+        {uploading
+          ? t("common.uploading")
+          : t("productDetail.uploadWithCount", {
+              count: variant.imageUrls.length,
+            })}
       </button>
     </div>
   );
@@ -1020,6 +1068,7 @@ function LegacyProductImages({
   onUploaded: (product: Product) => void;
 }) {
   const { notify } = useNotify();
+  const { t } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -1028,13 +1077,13 @@ function LegacyProductImages({
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      notify("Please choose an image file", "error");
+      notify(t("common.pleaseChooseImageFile"), "error");
       e.target.value = "";
       return;
     }
 
     if (file.size > MAX_IMAGE_BYTES) {
-      notify("Image must be 50 MiB or smaller", "error");
+      notify(t("common.imageMustBe50MiBOrSmaller"), "error");
       e.target.value = "";
       return;
     }
@@ -1043,9 +1092,12 @@ function LegacyProductImages({
     try {
       const updated = await uploadProductImage(productId, file);
       onUploaded(updated);
-      notify("Image uploaded");
+      notify(t("productDetail.imageUploaded"));
     } catch (err) {
-      notify(err instanceof Error ? err.message : "Upload failed", "error");
+      notify(
+        err instanceof Error ? err.message : t("productDetail.uploadFailed"),
+        "error"
+      );
     } finally {
       setUploading(false);
       e.target.value = "";
@@ -1059,10 +1111,10 @@ function LegacyProductImages({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
-            Images
+            {t("productDetail.images")}
           </h2>
           <p className="mt-1 text-sm text-[#6B6480]">
-            Legacy parent upload or variant upload when multi-SKU is enabled
+            {t("productDetail.imagesHint")}
           </p>
         </div>
         <div>
@@ -1080,7 +1132,9 @@ function LegacyProductImages({
             disabled={uploading}
             className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#6D4AFF] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#5A38E8] disabled:opacity-60 sm:w-auto"
           >
-            {uploading ? "Uploading…" : "Upload image"}
+            {uploading
+              ? t("common.uploading")
+              : t("productDetail.uploadImage")}
           </button>
         </div>
       </div>
@@ -1105,17 +1159,9 @@ function LegacyProductImages({
         </div>
       ) : (
         <div className="mt-4 rounded-xl border border-dashed border-[#E5E3EE] bg-[#FAFAFA] px-4 py-10 text-center text-sm text-[#9D98B3]">
-          No images yet.
+          {t("productDetail.noImagesYet")}
         </div>
       )}
     </div>
   );
-}
-
-function formatCurrency(n: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-  }).format(n);
 }

@@ -11,40 +11,94 @@ import {
   shipOrder,
   updateOrderStatus,
 } from "~/lib/api";
+import { useI18n } from "~/lib/i18n";
 import { useNotify } from "~/lib/notifications";
-import { OrderStatusBadge } from "./dashboard";
 
 export function meta() {
   return [{ title: "Orders | Dupli1 Admin" }];
 }
 
-const STATUS_TABS: { label: string; value: OrderStatus | "all" }[] = [
-  { label: "All", value: "all" },
-  { label: "Pending", value: "pending" },
-  { label: "Paid", value: "paid" },
-  { label: "In transit", value: "in_transit" },
-  { label: "Fulfilled", value: "fulfilled" },
-  { label: "Canceled", value: "canceled" },
+const STATUS_TAB_VALUES: (OrderStatus | "all")[] = [
+  "all",
+  "pending",
+  "paid",
+  "in_transit",
+  "fulfilled",
+  "canceled",
 ];
 
 /** UI actions for the order lifecycle (ship uses POST /ship). */
 type OrderAction =
-  | { kind: "ship"; label: string }
-  | { kind: "status"; status: "canceled" | "fulfilled"; label: string };
+  | { kind: "ship" }
+  | { kind: "status"; status: "canceled" | "fulfilled" };
 
 const ORDER_ACTIONS: Record<OrderStatus, OrderAction[]> = {
-  pending: [{ kind: "status", status: "canceled", label: "Cancel" }],
+  pending: [{ kind: "status", status: "canceled" }],
   paid: [
-    { kind: "ship", label: "Ship" },
-    { kind: "status", status: "canceled", label: "Cancel" },
+    { kind: "ship" },
+    { kind: "status", status: "canceled" },
   ],
-  in_transit: [{ kind: "status", status: "fulfilled", label: "Fulfill" }],
+  in_transit: [{ kind: "status", status: "fulfilled" }],
   fulfilled: [],
   canceled: [],
 };
 
+function orderStatusLabel(
+  status: OrderStatus,
+  t: (key: string) => string
+): string {
+  switch (status) {
+    case "pending":
+      return t("common.orderStatusPending");
+    case "paid":
+      return t("common.orderStatusPaid");
+    case "in_transit":
+      return t("common.orderStatusInTransit");
+    case "fulfilled":
+      return t("common.orderStatusFulfilled");
+    case "canceled":
+      return t("common.orderStatusCanceled");
+    default:
+      return status;
+  }
+}
+
+function orderActionLabel(
+  action: OrderAction,
+  t: (key: string) => string
+): string {
+  if (action.kind === "ship") return t("orders.actionShip");
+  if (action.status === "canceled") return t("orders.actionCancel");
+  return t("orders.actionFulfill");
+}
+
+function orderActionKey(action: OrderAction): string {
+  return action.kind === "ship" ? "ship" : `status:${action.status}`;
+}
+
+const STATUS_BADGE_CLASS: Record<OrderStatus, string> = {
+  pending: "bg-amber-100 text-amber-800",
+  paid: "bg-blue-100 text-blue-800",
+  in_transit: "bg-violet-100 text-violet-800",
+  fulfilled: "bg-emerald-100 text-emerald-800",
+  canceled: "bg-slate-100 text-slate-600",
+};
+
+function OrderStatusBadge({ status }: { status: OrderStatus }) {
+  const { t } = useI18n();
+  const cls = STATUS_BADGE_CLASS[status] ?? "bg-slate-100 text-slate-600";
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${cls}`}
+    >
+      {orderStatusLabel(status, t)}
+    </span>
+  );
+}
+
 export default function Orders() {
   const { notify } = useNotify();
+  const { t } = useI18n();
   const [orders, setOrders] = useState<Order[]>([]);
   const [skuLookup, setSkuLookup] = useState<Map<string, SkuVariantContext>>(
     () => new Map()
@@ -59,7 +113,9 @@ export default function Orders() {
     setError(null);
     Promise.all([
       getOrders().catch((err) => {
-        setError(err instanceof Error ? err.message : "Failed to load orders");
+        setError(
+          err instanceof Error ? err.message : t("orders.failedToLoad")
+        );
         return [] as Order[];
       }),
       listAllProducts().catch(() => []),
@@ -69,7 +125,7 @@ export default function Orders() {
         setSkuLookup(buildVariantSkuIndex(products));
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [t]);
 
   const filtered =
     activeTab === "all"
@@ -84,6 +140,25 @@ export default function Orders() {
     {} as Record<OrderStatus, number>
   );
 
+  const statusTabLabel = (value: OrderStatus | "all"): string => {
+    switch (value) {
+      case "all":
+        return t("orders.tabAll");
+      case "pending":
+        return t("orders.tabPending");
+      case "paid":
+        return t("orders.tabPaid");
+      case "in_transit":
+        return t("orders.tabInTransit");
+      case "fulfilled":
+        return t("orders.tabFulfilled");
+      case "canceled":
+        return t("orders.tabCanceled");
+      default:
+        return value;
+    }
+  };
+
   async function handleOrderAction(order: Order, action: OrderAction) {
     setUpdatingId(order.id);
     try {
@@ -96,7 +171,7 @@ export default function Orders() {
       );
     } catch (err) {
       notify(
-        err instanceof Error ? err.message : "Failed to update order status",
+        err instanceof Error ? err.message : t("orders.failedToUpdateStatus"),
         "error"
       );
     } finally {
@@ -109,16 +184,18 @@ export default function Orders() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">Orders</h1>
+          <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">
+            {t("orders.title")}
+          </h1>
           <p className="mt-0.5 text-sm text-[#6B6480]">
-            {orders.length} orders total
+            {t("orders.ordersTotal", { count: orders.length })}
           </p>
         </div>
         <div className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#E5E3EE] bg-white px-4 py-2.5 text-sm text-[#6B6480] shadow-[0_1px_3px_rgba(28,27,31,0.04)] sm:w-auto sm:justify-start">
           <svg className="size-4" viewBox="0 0 24 24" fill="none">
             <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
           </svg>
-          Export CSV
+          {t("orders.exportCsv")}
         </div>
       </div>
 
@@ -131,28 +208,28 @@ export default function Orders() {
       {/* Status tabs */}
       <div className="-mx-1 overflow-x-auto px-1 pb-1">
         <div className="flex w-max max-w-full flex-wrap gap-1 rounded-xl border border-[#E5E3EE] bg-white p-1 shadow-[0_1px_3px_rgba(28,27,31,0.04)] sm:w-fit">
-        {STATUS_TABS.map((tab) => {
+        {STATUS_TAB_VALUES.map((value) => {
           const count =
-            tab.value === "all"
+            value === "all"
               ? orders.length
-              : (counts[tab.value] ?? 0);
+              : (counts[value] ?? 0);
           return (
             <button
-              key={tab.value}
-              onClick={() => setActiveTab(tab.value)}
+              key={value}
+              onClick={() => setActiveTab(value)}
               className={[
                 "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition",
-                activeTab === tab.value
+                activeTab === value
                   ? "bg-[#6D4AFF] text-white shadow-sm"
                   : "text-[#6B6480] hover:bg-[#F4F3F8] hover:text-[#1C1B1F]",
               ].join(" ")}
             >
-              {tab.label}
+              {statusTabLabel(value)}
               {count > 0 && (
                 <span
                   className={[
                     "rounded-full px-1.5 py-0.5 text-[10px] font-bold",
-                    activeTab === tab.value
+                    activeTab === value
                       ? "bg-white/20 text-white"
                       : "bg-[#F4F3F8] text-[#6B6480]",
                   ].join(" ")}
@@ -174,7 +251,7 @@ export default function Orders() {
           </div>
         ) : filtered.length === 0 ? (
           <div className="px-5 py-16 text-center text-[#9D98B3]">
-            No orders in this status
+            {t("orders.noOrdersInStatus")}
           </div>
         ) : (
           <>
@@ -198,20 +275,22 @@ export default function Orders() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-[#F0EEF8] bg-[#FAFAFA]">
-                    {[
-                      "Order ID",
-                      "Customer",
-                      "Items",
-                      "Total",
-                      "Status",
-                      "Date",
-                      "",
-                    ].map((h) => (
+                    {(
+                      [
+                        ["id", t("orders.colOrderId")],
+                        ["customer", t("orders.colCustomer")],
+                        ["items", t("orders.colItems")],
+                        ["total", t("orders.colTotal")],
+                        ["status", t("orders.colStatus")],
+                        ["date", t("orders.colDate")],
+                        ["actions", ""],
+                      ] as const
+                    ).map(([key, label]) => (
                       <th
-                        key={h}
+                        key={key}
                         className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#9D98B3]"
                       >
-                        {h}
+                        {label}
                       </th>
                     ))}
                   </tr>
@@ -257,7 +336,12 @@ function OrderCard({
   onToggle: () => void;
   onAction: (action: OrderAction) => void;
 }) {
+  const { t, formatDate, formatCurrency } = useI18n();
   const actions = ORDER_ACTIONS[order.status] ?? [];
+
+  function formatCents(cents: number) {
+    return formatCurrency(cents / 100);
+  }
 
   return (
     <div className="p-4">
@@ -280,10 +364,10 @@ function OrderCard({
             {formatCents(order.total_cents)}
           </span>
           <span className="text-[#6B6480]">
-            {order.items.length} {order.items.length === 1 ? "item" : "items"}
+            {t("common.itemCount", { count: order.items.length })}
           </span>
           <span className="text-xs text-[#9D98B3]">
-            {new Date(order.created_at).toLocaleDateString("en-US", {
+            {formatDate(order.created_at, {
               month: "short",
               day: "numeric",
               year: "numeric",
@@ -296,7 +380,7 @@ function OrderCard({
         <div className="mt-3 flex flex-wrap gap-2">
           {actions.map((action) => (
             <button
-              key={action.label}
+              key={orderActionKey(action)}
               type="button"
               disabled={updating}
               onClick={() => onAction(action)}
@@ -307,7 +391,9 @@ function OrderCard({
                   : "border border-[#E5E3EE] text-[#6B6480] hover:border-[#6D4AFF]/40 hover:bg-[#F8F7FC] hover:text-[#6D4AFF]",
               ].join(" ")}
             >
-              {updating ? "…" : action.label}
+              {updating
+                ? t("common.loadingEllipsis")
+                : orderActionLabel(action, t)}
             </button>
           ))}
         </div>
@@ -316,7 +402,7 @@ function OrderCard({
       {expanded && (
         <div className="mt-4 rounded-xl border border-[#E5E3EE] bg-[#F4F3F8]/60 p-4">
           <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
-            Order items
+            {t("orders.orderItems")}
           </p>
           <div className="space-y-2">
             {order.items.map((item, i) => (
@@ -328,7 +414,7 @@ function OrderCard({
             ))}
           </div>
           <div className="mt-3 flex items-center justify-between border-t border-[#E5E3EE] pt-3 text-sm font-bold text-[#1C1B1F]">
-            <span>Order total</span>
+            <span>{t("orders.orderTotal")}</span>
             <span>{formatCents(order.total_cents)}</span>
           </div>
         </div>
@@ -352,7 +438,12 @@ function OrderRows({
   onToggle: () => void;
   onAction: (action: OrderAction) => void;
 }) {
+  const { t, formatDate, formatCurrency } = useI18n();
   const actions = ORDER_ACTIONS[order.status] ?? [];
+
+  function formatCents(cents: number) {
+    return formatCurrency(cents / 100);
+  }
 
   return (
     <>
@@ -372,7 +463,7 @@ function OrderRows({
           {order.customer_id}
         </td>
         <td className="px-5 py-3.5 text-[#6B6480]">
-          {order.items.length} {order.items.length === 1 ? "item" : "items"}
+          {t("common.itemCount", { count: order.items.length })}
         </td>
         <td className="px-5 py-3.5 font-semibold text-[#1C1B1F]">
           {formatCents(order.total_cents)}
@@ -381,7 +472,7 @@ function OrderRows({
           <OrderStatusBadge status={order.status} />
         </td>
         <td className="px-5 py-3.5 text-[#9D98B3] text-xs">
-          {new Date(order.created_at).toLocaleDateString("en-US", {
+          {formatDate(order.created_at, {
             month: "short",
             day: "numeric",
             year: "numeric",
@@ -392,7 +483,7 @@ function OrderRows({
             <div className="flex items-center justify-end gap-1">
               {actions.map((action) => (
                 <button
-                  key={action.label}
+                  key={orderActionKey(action)}
                   disabled={updating}
                   onClick={() => onAction(action)}
                   className={[
@@ -402,7 +493,9 @@ function OrderRows({
                       : "border border-[#E5E3EE] text-[#6B6480] hover:border-[#6D4AFF]/40 hover:bg-[#F8F7FC] hover:text-[#6D4AFF]",
                   ].join(" ")}
                 >
-                  {updating ? "…" : action.label}
+                  {updating
+                    ? t("common.loadingEllipsis")
+                    : orderActionLabel(action, t)}
                 </button>
               ))}
             </div>
@@ -416,7 +509,7 @@ function OrderRows({
           <td colSpan={7} className="px-8 py-4">
             <div className="rounded-xl border border-[#E5E3EE] bg-white p-4">
               <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
-                Order items
+                {t("orders.orderItems")}
               </p>
               <div className="space-y-2">
                 {order.items.map((item, i) => (
@@ -428,7 +521,7 @@ function OrderRows({
                 ))}
               </div>
               <div className="mt-3 flex items-center justify-between border-t border-[#E5E3EE] pt-3 text-sm font-bold text-[#1C1B1F]">
-                <span>Order total</span>
+                <span>{t("orders.orderTotal")}</span>
                 <span>{formatCents(order.total_cents)}</span>
               </div>
             </div>
@@ -446,6 +539,7 @@ function OrderItemRow({
   item: OrderItem;
   skuLookup: Map<string, SkuVariantContext>;
 }) {
+  const { t, formatCurrency } = useI18n();
   const ctx = skuLookup.get(item.sku);
   const variantLabel = formatOrderItemVariant(item.sku, skuLookup);
 
@@ -465,20 +559,14 @@ function OrderItemRow({
               {variantLabel ? ` · ${variantLabel}` : ""}
             </span>
           )}
-          <span className="text-[#9D98B3]">× {item.quantity}</span>
+          <span className="text-[#9D98B3]">
+            {t("orders.quantityTimes", { quantity: item.quantity })}
+          </span>
         </div>
       </div>
       <span className="shrink-0 font-semibold text-[#1C1B1F]">
-        {formatCents(item.unit_price_cents * item.quantity)}
+        {formatCurrency((item.unit_price_cents * item.quantity) / 100)}
       </span>
     </div>
   );
-}
-
-function formatCents(cents: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-  }).format(cents / 100);
 }

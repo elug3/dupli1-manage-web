@@ -7,6 +7,7 @@ import {
   isManagerUser,
   listUsers,
 } from "~/lib/api";
+import { useI18n } from "~/lib/i18n";
 
 export function meta() {
   return [{ title: "Users | Dupli1 Admin" }];
@@ -14,12 +15,8 @@ export function meta() {
 
 type UserTab = "customers" | "managers";
 
-const TABS: { label: string; value: UserTab }[] = [
-  { label: "Customers", value: "customers" },
-  { label: "Managers", value: "managers" },
-];
-
 export default function Users() {
+  const { t } = useI18n();
   const [users, setUsers] = useState<AuthUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +30,7 @@ export default function Users() {
       .then(setUsers)
       .catch((err) => {
         setUsers([]);
-        setError(err instanceof Error ? err.message : "Failed to load users");
+        setError(err instanceof Error ? err.message : t("users.failedToLoad"));
       })
       .finally(() => setLoading(false));
   }, []);
@@ -64,27 +61,38 @@ export default function Users() {
     });
   }, [users, activeTab, search]);
 
+  const tabs: { labelKey: "users.tabCustomers" | "users.tabManagers"; value: UserTab }[] = [
+    { labelKey: "users.tabCustomers", value: "customers" },
+    { labelKey: "users.tabManagers", value: "managers" },
+  ];
+
+  const headers = [
+    t("users.colEmail"),
+    t("users.colPermissions"),
+    t("users.colStatus"),
+    "",
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">Users</h1>
-          <p className="mt-0.5 text-sm text-[#6B6480]">
-            Manage accounts via{" "}
-            <code className="text-xs">GET /auth/api/v1/auth/users</code>
-          </p>
+          <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">
+            {t("users.title")}
+          </h1>
+          <p className="mt-0.5 text-sm text-[#6B6480]">{t("users.subtitle")}</p>
         </div>
         <Link
           to="/users/new"
           className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#6D4AFF] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#5A38E8] active:scale-[0.98] sm:w-auto"
         >
           <PlusIcon />
-          New user
+          {t("users.newUser")}
         </Link>
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {TABS.map((tab) => (
+        {tabs.map((tab) => (
           <button
             key={tab.value}
             onClick={() => setActiveTab(tab.value)}
@@ -95,17 +103,17 @@ export default function Users() {
                 : "border border-[#E5E3EE] bg-white text-[#6B6480] hover:border-[#6D4AFF]/40",
             ].join(" ")}
           >
-            {tab.label}
-            <span className="ml-1.5 opacity-70">
-              ({counts[tab.value]})
-            </span>
+            {t("users.tabWithCount", {
+              label: t(tab.labelKey),
+              count: counts[tab.value],
+            })}
           </button>
         ))}
       </div>
 
       <input
         type="search"
-        placeholder="Filter by email, ID, or permission…"
+        placeholder={t("users.filterPlaceholder")}
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         className="w-full max-w-md rounded-xl border border-[#E5E3EE] bg-white px-4 py-2.5 text-sm outline-none focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/20"
@@ -124,7 +132,7 @@ export default function Users() {
           </div>
         ) : filtered.length === 0 ? (
           <div className="px-5 py-16 text-center text-[#9D98B3]">
-            No users found
+            {t("users.noUsersFound")}
           </div>
         ) : (
           <>
@@ -138,9 +146,9 @@ export default function Users() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-[#F0EEF8] bg-[#FAFAFA] text-left">
-                    {["Email", "Permissions", "Status", ""].map((heading) => (
+                    {headers.map((heading, i) => (
                       <th
-                        key={heading}
+                        key={heading || `actions-${i}`}
                         className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-[#9D98B3]"
                       >
                         {heading}
@@ -171,7 +179,7 @@ export default function Users() {
                           to={`/users/${encodeURIComponent(user.user_id)}`}
                           className="text-xs font-semibold text-[#6D4AFF] hover:underline"
                         >
-                          Details →
+                          {t("users.detailsArrow")}
                         </Link>
                       </td>
                     </tr>
@@ -187,6 +195,7 @@ export default function Users() {
 }
 
 function UserCard({ user }: { user: AuthUser }) {
+  const { t } = useI18n();
   return (
     <div className="space-y-3 p-4">
       <div>
@@ -203,17 +212,18 @@ function UserCard({ user }: { user: AuthUser }) {
         to={`/users/${encodeURIComponent(user.user_id)}`}
         className="inline-flex text-xs font-semibold text-[#6D4AFF] hover:underline"
       >
-        Details →
+        {t("users.detailsArrow")}
       </Link>
     </div>
   );
 }
 
 function UserStatusBadge({ user }: { user: AuthUser }) {
+  const { t } = useI18n();
   if (user.locked_at) {
     return (
       <span className="inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
-        Locked
+        {t("users.statusLocked")}
       </span>
     );
   }
@@ -227,7 +237,7 @@ function UserStatusBadge({ user }: { user: AuthUser }) {
           : "bg-red-50 text-red-600",
       ].join(" ")}
     >
-      {user.is_active ? "Active" : "Inactive"}
+      {user.is_active ? t("users.statusActive") : t("users.statusInactive")}
     </span>
   );
 }

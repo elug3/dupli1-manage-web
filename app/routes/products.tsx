@@ -4,17 +4,35 @@ import {
   type Product,
   formatProductColors,
   listAllProducts,
-  productListPrice,
   productPreviewImage,
   productVariantCount,
 } from "~/lib/api";
+import { useI18n } from "~/lib/i18n";
 
 export function meta() {
   return [{ title: "Products | Dupli1 Admin" }];
 }
 
+function productStatusLabel(
+  status: string | undefined,
+  t: (key: string) => string
+): string {
+  if (!status) return t("common.emptyValue");
+  switch (status.toLowerCase()) {
+    case "active":
+      return t("common.statusActive");
+    case "draft":
+      return t("common.statusDraft");
+    case "archived":
+      return t("common.statusArchived");
+    default:
+      return status;
+  }
+}
+
 export default function Products() {
   const navigate = useNavigate();
+  const { t, formatCurrency } = useI18n();
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [activeCategory, setActiveCategory] = useState("all");
   const [loading, setLoading] = useState(true);
@@ -28,10 +46,12 @@ export default function Products() {
       .then(setAllProducts)
       .catch((err) => {
         setAllProducts([]);
-        setError(err instanceof Error ? err.message : "Failed to load products");
+        setError(
+          err instanceof Error ? err.message : t("products.failedToLoad")
+        );
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [t]);
 
   const categories = useMemo(() => {
     const cats = new Set(allProducts.map((p) => p.category.toLowerCase()));
@@ -54,14 +74,24 @@ export default function Products() {
     });
   }, [allProducts, activeCategory, search]);
 
+  function formatListPrice(product: Product): string | null {
+    const value = product.priceFrom ?? product.price;
+    if (value == null) return null;
+    const formatted = formatCurrency(value);
+    return product.priceFrom != null
+      ? t("common.fromPrice", { price: formatted })
+      : formatted;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">Products</h1>
+          <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">
+            {t("products.title")}
+          </h1>
           <p className="mt-0.5 text-sm text-[#6B6480]">
-            Parent styles via{" "}
-            <code className="text-xs">GET /product/api/v1/products</code>
+            {t("products.subtitle")}
           </p>
         </div>
         <Link
@@ -69,7 +99,7 @@ export default function Products() {
           className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#6D4AFF] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#5A38E8] active:scale-[0.98] sm:w-auto"
         >
           <PlusIcon />
-          New product
+          {t("products.newProduct")}
         </Link>
       </div>
 
@@ -85,14 +115,14 @@ export default function Products() {
                 : "bg-white text-[#6B6480] border border-[#E5E3EE] hover:border-[#6D4AFF]/40",
             ].join(" ")}
           >
-            {cat}
+            {cat === "all" ? t("products.categoryAll") : cat}
           </button>
         ))}
       </div>
 
       <input
         type="search"
-        placeholder="Filter by name, ID, brand, or color…"
+        placeholder={t("products.filterPlaceholder")}
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         className="w-full max-w-md rounded-xl border border-[#E5E3EE] bg-white px-4 py-2.5 text-sm outline-none focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/20"
@@ -111,7 +141,7 @@ export default function Products() {
           </div>
         ) : products.length === 0 ? (
           <div className="px-5 py-16 text-center text-[#9D98B3]">
-            No products found
+            {t("products.noProductsFound")}
           </div>
         ) : (
           <>
@@ -125,20 +155,22 @@ export default function Products() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-[#F0EEF8] bg-[#FAFAFA] text-left">
-                    {[
-                      "Name",
-                      "ID",
-                      "Brand",
-                      "Colors",
-                      "Variants",
-                      "Price",
-                      "Status",
-                    ].map((h) => (
+                    {(
+                      [
+                        ["name", t("products.colName")],
+                        ["id", t("products.colId")],
+                        ["brand", t("products.colBrand")],
+                        ["colors", t("products.colColors")],
+                        ["variants", t("products.colVariants")],
+                        ["price", t("products.colPrice")],
+                        ["status", t("products.colStatus")],
+                      ] as const
+                    ).map(([key, label]) => (
                       <th
-                        key={h}
+                        key={key}
                         className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-[#9D98B3]"
                       >
-                        {h}
+                        {label}
                       </th>
                     ))}
                   </tr>
@@ -171,7 +203,7 @@ export default function Products() {
                         {product.id}
                       </td>
                       <td className="px-5 py-3.5 text-[#6B6480]">
-                        {product.brand ?? "—"}
+                        {product.brand ?? t("common.emptyValue")}
                       </td>
                       <td className="px-5 py-3.5 text-[#6B6480]">
                         {formatProductColors(product)}
@@ -180,10 +212,10 @@ export default function Products() {
                         {productVariantCount(product)}
                       </td>
                       <td className="px-5 py-3.5 text-[#6B6480]">
-                        {productListPrice(product) ?? "—"}
+                        {formatListPrice(product) ?? t("common.emptyValue")}
                       </td>
                       <td className="px-5 py-3.5 capitalize text-[#6B6480]">
-                        {product.status ?? "—"}
+                        {productStatusLabel(product.status, t)}
                       </td>
                     </tr>
                   ))}
@@ -198,8 +230,16 @@ export default function Products() {
 }
 
 function ProductCard({ product }: { product: Product }) {
-  const price = productListPrice(product);
+  const { t, formatCurrency } = useI18n();
+  const value = product.priceFrom ?? product.price;
+  const price =
+    value == null
+      ? null
+      : product.priceFrom != null
+        ? t("common.fromPrice", { price: formatCurrency(value) })
+        : formatCurrency(value);
   const imageUrl = productPreviewImage(product);
+  const variantCount = productVariantCount(product);
 
   return (
     <Link
@@ -214,21 +254,20 @@ function ProductCard({ product }: { product: Product }) {
         </div>
         <div className="flex flex-wrap gap-2 text-xs text-[#6B6480]">
           <span className="rounded-full bg-[#F4F3F8] px-2.5 py-1">
-            {product.brand ?? "No brand"}
+            {product.brand ?? t("products.noBrand")}
           </span>
           <span className="rounded-full bg-[#F4F3F8] px-2.5 py-1">
             {formatProductColors(product)}
           </span>
           <span className="rounded-full bg-[#F4F3F8] px-2.5 py-1">
-            {productVariantCount(product)} variant
-            {productVariantCount(product) === 1 ? "" : "s"}
+            {t("products.variantCount", { count: variantCount })}
           </span>
           {price && (
             <span className="rounded-full bg-[#F4F3F8] px-2.5 py-1">{price}</span>
           )}
           {product.status && (
             <span className="rounded-full bg-[#F4F3F8] px-2.5 py-1 capitalize">
-              {product.status}
+              {productStatusLabel(product.status, t)}
             </span>
           )}
         </div>

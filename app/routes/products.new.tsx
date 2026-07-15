@@ -15,6 +15,7 @@ import {
   uploadProductImage,
   uploadVariantImage,
 } from "~/lib/api";
+import { useI18n } from "~/lib/i18n";
 import { useNotify } from "~/lib/notifications";
 
 export function meta() {
@@ -29,6 +30,7 @@ const inputCls =
 export default function NewProduct() {
   const navigate = useNavigate();
   const { notify } = useNotify();
+  const { t } = useI18n();
   const imageInputRef = useRef<HTMLInputElement>(null);
 
   const [brands, setBrands] = useState<CatalogCodeName[]>([]);
@@ -73,7 +75,9 @@ export default function NewProduct() {
       .catch((err) => {
         if (!cancelled) {
           notify(
-            err instanceof Error ? err.message : "Failed to load catalog masters",
+            err instanceof Error
+              ? err.message
+              : t("common.failedToLoadCatalogMasters"),
             "error"
           );
         }
@@ -84,7 +88,7 @@ export default function NewProduct() {
     return () => {
       cancelled = true;
     };
-  }, [notify]);
+  }, [notify, t]);
 
   useEffect(() => {
     if (!brandCode) {
@@ -104,7 +108,7 @@ export default function NewProduct() {
       .catch((err) => {
         if (!cancelled) {
           notify(
-            err instanceof Error ? err.message : "Failed to load styles",
+            err instanceof Error ? err.message : t("productNew.failedToLoadStyles"),
             "error"
           );
           setStyles([]);
@@ -114,7 +118,7 @@ export default function NewProduct() {
     return () => {
       cancelled = true;
     };
-  }, [brandCode, notify]);
+  }, [brandCode, notify, t]);
 
   useEffect(() => {
     if (!imageFile) {
@@ -139,14 +143,14 @@ export default function NewProduct() {
     }
 
     if (!file.type.startsWith("image/")) {
-      notify("Please choose an image file", "error");
+      notify(t("common.pleaseChooseImageFile"), "error");
       e.target.value = "";
       setImageFile(null);
       return;
     }
 
     if (file.size > MAX_IMAGE_BYTES) {
-      notify("Image must be 50 MiB or smaller", "error");
+      notify(t("common.imageMustBe50MiBOrSmaller"), "error");
       e.target.value = "";
       setImageFile(null);
       return;
@@ -177,9 +181,10 @@ export default function NewProduct() {
       return true;
     } catch (err) {
       notify(
-        `Product created, but image upload failed: ${
-          err instanceof Error ? err.message : "unknown error"
-        }. You can retry from the product page.`,
+        t("productNew.productCreatedButImageFailed", {
+          error:
+            err instanceof Error ? err.message : t("productNew.unknownError"),
+        }),
         "error"
       );
       return false;
@@ -192,7 +197,7 @@ export default function NewProduct() {
     const code = newStyleCode.trim().toUpperCase();
     const styleName = newStyleName.trim() || name.trim();
     if (!code || !styleName) {
-      notify("Style code and name are required", "error");
+      notify(t("productNew.styleCodeAndNameRequired"), "error");
       return;
     }
     setCreatingStyle(true);
@@ -203,9 +208,12 @@ export default function NewProduct() {
       setStyleCode(created.code);
       setNewStyleCode("");
       setNewStyleName("");
-      notify(`Style ${created.code} created`);
+      notify(t("productNew.styleCreated", { code: created.code }));
     } catch (err) {
-      notify(err instanceof Error ? err.message : "Failed to create style", "error");
+      notify(
+        err instanceof Error ? err.message : t("productNew.failedToCreateStyle"),
+        "error"
+      );
     } finally {
       setCreatingStyle(false);
     }
@@ -216,15 +224,15 @@ export default function NewProduct() {
     setLoading(true);
     try {
       if (!brandCode || !styleCode) {
-        throw new Error("Select an existing brand and style (create them under Catalog if needed)");
+        throw new Error(t("productNew.selectBrandAndStyle"));
       }
       if (!colorCode || !sizeCode) {
-        throw new Error("Select color and size codes from catalog masters");
+        throw new Error(t("productNew.selectColorAndSize"));
       }
 
       const parsedPrice = Number.parseFloat(price);
       if (Number.isNaN(parsedPrice) || parsedPrice < 0) {
-        throw new Error("Enter a valid price for the first variant");
+        throw new Error(t("productNew.enterValidPriceForFirstVariant"));
       }
 
       const brandName = brands.find((b) => b.code === brandCode)?.name;
@@ -256,9 +264,11 @@ export default function NewProduct() {
         await applyInitialStock(variant.sku);
       } catch (err) {
         notify(
-          `Style "${name.trim()}" was created, but the first variant failed: ${
-            err instanceof Error ? err.message : "unknown error"
-          }. Add a variant from the product page to finish setup.`,
+          t("productNew.styleCreatedButVariantFailed", {
+            name: name.trim(),
+            error:
+              err instanceof Error ? err.message : t("productNew.unknownError"),
+          }),
           "error"
         );
         navigate(`/products/${encodeURIComponent(parent.id)}`);
@@ -269,10 +279,10 @@ export default function NewProduct() {
         productId: parent.id,
         variantSku: createdVariantSku,
       });
-      if (uploaded) notify(`Product created: ${name.trim()}`);
+      if (uploaded) notify(t("productNew.productCreated", { name: name.trim() }));
       navigate(`/products/${encodeURIComponent(parent.id)}`);
     } catch (err) {
-      notify(friendlyCreateError(err), "error");
+      notify(friendlyCreateError(err, t), "error");
     } finally {
       setLoading(false);
     }
@@ -289,16 +299,17 @@ export default function NewProduct() {
   return (
     <div className="mx-auto max-w-lg space-y-6">
       <Link to="/products" className="text-sm text-[#6D4AFF] hover:underline">
-        ← Back to products
+        {t("productNew.backToProducts")}
       </Link>
 
       <div>
-        <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">New product</h1>
+        <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">
+          {t("productNew.title")}
+        </h1>
         <p className="mt-0.5 text-sm text-[#6B6480]">
-          Parent gets a ULID id; human identity is brand + style. Masters must
-          exist first — manage them in{" "}
+          {t("productNew.subtitlePrefix")}{" "}
           <Link to="/catalog" className="text-[#6D4AFF] hover:underline">
-            Catalog
+            {t("productNew.subtitleCatalogLink")}
           </Link>
           .
         </p>
@@ -306,8 +317,7 @@ export default function NewProduct() {
 
       {brands.length === 0 && (
         <div className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          No brands yet. Create brand and style codes under Catalog before adding
-          products.
+          {t("productNew.noBrandsWarning")}
         </div>
       )}
 
@@ -317,9 +327,9 @@ export default function NewProduct() {
       >
         <section className="space-y-4">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
-            Style (parent)
+            {t("productNew.sectionStyleParent")}
           </h2>
-          <Field label="Name" id="name" required>
+          <Field label={t("productNew.name")} id="name" required>
             <input
               id="name"
               type="text"
@@ -327,10 +337,10 @@ export default function NewProduct() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               className={inputCls}
-              placeholder="Cassette Bag"
+              placeholder={t("productNew.namePlaceholder")}
             />
           </Field>
-          <Field label="Brand code" id="brandCode" required>
+          <Field label={t("productNew.brandCode")} id="brandCode" required>
             <select
               id="brandCode"
               required
@@ -340,7 +350,7 @@ export default function NewProduct() {
               disabled={brands.length === 0}
             >
               {brands.length === 0 ? (
-                <option value="">No brands</option>
+                <option value="">{t("productNew.noBrandsOption")}</option>
               ) : (
                 brands.map((b) => (
                   <option key={b.code} value={b.code}>
@@ -350,7 +360,7 @@ export default function NewProduct() {
               )}
             </select>
           </Field>
-          <Field label="Style code" id="styleCode" required>
+          <Field label={t("productNew.styleCode")} id="styleCode" required>
             <select
               id="styleCode"
               required
@@ -360,7 +370,7 @@ export default function NewProduct() {
               disabled={styles.length === 0}
             >
               {styles.length === 0 ? (
-                <option value="">Create a style below</option>
+                <option value="">{t("productNew.createStyleBelowOption")}</option>
               ) : (
                 styles.map((s) => (
                   <option key={s.code} value={s.code}>
@@ -373,21 +383,25 @@ export default function NewProduct() {
 
           <div className="rounded-xl border border-dashed border-[#E5E3EE] bg-[#FAFAFA] p-4 space-y-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
-              Or create style under {brandCode || "brand"}
+              {t("productNew.orCreateStyleUnder", {
+                brand: brandCode || "brand",
+              })}
             </p>
             <div className="grid gap-3 sm:grid-cols-2">
               <input
                 value={newStyleCode}
                 onChange={(e) => setNewStyleCode(e.target.value.toUpperCase())}
                 className={inputCls}
-                placeholder="CAS001"
+                placeholder={t("productNew.newStyleCodePlaceholder")}
                 disabled={!brandCode || creatingStyle}
               />
               <input
                 value={newStyleName}
                 onChange={(e) => setNewStyleName(e.target.value)}
                 className={inputCls}
-                placeholder={name.trim() || "Cassette"}
+                placeholder={
+                  name.trim() || t("productNew.newStyleNamePlaceholder")
+                }
                 disabled={!brandCode || creatingStyle}
               />
             </div>
@@ -397,11 +411,11 @@ export default function NewProduct() {
               disabled={!brandCode || creatingStyle}
               className="rounded-xl border border-[#E5E3EE] px-3 py-2 text-xs font-semibold text-[#6D4AFF] hover:border-[#6D4AFF]/40 disabled:opacity-60"
             >
-              {creatingStyle ? "Creating…" : "Create style"}
+              {creatingStyle ? t("common.creating") : t("productNew.createStyle")}
             </button>
           </div>
 
-          <Field label="Material" id="material" required>
+          <Field label={t("productNew.material")} id="material" required>
             <input
               id="material"
               type="text"
@@ -411,23 +425,23 @@ export default function NewProduct() {
               className={inputCls}
             />
           </Field>
-          <Field label="Description" id="description">
+          <Field label={t("productNew.description")} id="description">
             <textarea
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
               className={inputCls}
-              placeholder="Optional"
+              placeholder={t("common.optional")}
             />
           </Field>
         </section>
 
         <section className="space-y-4 border-t border-[#F0EEF8] pt-6">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
-            First variant (SKU)
+            {t("productNew.sectionFirstVariant")}
           </h2>
-          <Field label="Color code" id="colorCode" required>
+          <Field label={t("productNew.colorCode")} id="colorCode" required>
             <select
               id="colorCode"
               required
@@ -442,7 +456,7 @@ export default function NewProduct() {
               ))}
             </select>
           </Field>
-          <Field label="Size code" id="sizeCode" required>
+          <Field label={t("productNew.sizeCode")} id="sizeCode" required>
             <select
               id="sizeCode"
               required
@@ -457,14 +471,14 @@ export default function NewProduct() {
               ))}
             </select>
           </Field>
-          <Field label="Edition code" id="editionCode">
+          <Field label={t("productNew.editionCode")} id="editionCode">
             <select
               id="editionCode"
               value={editionCode}
               onChange={(e) => setEditionCode(e.target.value)}
               className={inputCls}
             >
-              <option value="">None</option>
+              <option value="">{t("common.none")}</option>
               {editions.map((ed) => (
                 <option key={ed.code} value={ed.code}>
                   {ed.code} — {ed.name}
@@ -472,7 +486,7 @@ export default function NewProduct() {
               ))}
             </select>
           </Field>
-          <Field label="Price (USD)" id="price" required>
+          <Field label={t("productNew.priceUsd")} id="price" required>
             <input
               id="price"
               type="number"
@@ -482,22 +496,22 @@ export default function NewProduct() {
               value={price}
               onChange={(e) => setPrice(e.target.value)}
               className={inputCls}
-              placeholder="2500"
+              placeholder={t("productNew.pricePlaceholder")}
             />
           </Field>
-          <Field label="Status" id="status">
+          <Field label={t("productNew.status")} id="status">
             <select
               id="status"
               value={status}
               onChange={(e) => setStatus(e.target.value)}
               className={inputCls}
             >
-              <option value="active">Active</option>
-              <option value="draft">Draft</option>
-              <option value="archived">Archived</option>
+              <option value="active">{t("common.statusActive")}</option>
+              <option value="draft">{t("common.statusDraft")}</option>
+              <option value="archived">{t("common.statusArchived")}</option>
             </select>
           </Field>
-          <Field label="Initial stock" id="stock">
+          <Field label={t("productNew.initialStock")} id="stock">
             <input
               id="stock"
               type="number"
@@ -505,17 +519,14 @@ export default function NewProduct() {
               value={initialStock}
               onChange={(e) => setInitialStock(e.target.value)}
               className={inputCls}
-              placeholder="Inventory quantity for this SKU"
+              placeholder={t("productNew.initialStockPlaceholder")}
             />
           </Field>
           <div className="space-y-1.5">
             <span className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
-              Image
+              {t("productNew.image")}
             </span>
-            <p className="text-sm text-[#6B6480]">
-              Optional. Uploaded to this variant after the product is created
-              (max 50 MiB).
-            </p>
+            <p className="text-sm text-[#6B6480]">{t("productNew.imageHint")}</p>
             <input
               ref={imageInputRef}
               id="image"
@@ -546,7 +557,7 @@ export default function NewProduct() {
                       disabled={loading}
                       className="text-xs font-semibold text-[#6D4AFF] hover:underline disabled:opacity-60"
                     >
-                      Replace
+                      {t("common.replace")}
                     </button>
                     <button
                       type="button"
@@ -554,7 +565,7 @@ export default function NewProduct() {
                       disabled={loading}
                       className="text-xs font-semibold text-[#9D98B3] hover:underline disabled:opacity-60"
                     >
-                      Remove
+                      {t("common.remove")}
                     </button>
                   </div>
                 </div>
@@ -566,7 +577,7 @@ export default function NewProduct() {
                 disabled={loading}
                 className="inline-flex w-full items-center justify-center rounded-xl border border-dashed border-[#E5E3EE] bg-[#FAFAFA] px-4 py-8 text-sm font-semibold text-[#6D4AFF] transition hover:border-[#6D4AFF]/40 hover:bg-[#F8F7FC] disabled:opacity-60"
               >
-                Choose image
+                {t("productNew.chooseImage")}
               </button>
             )}
           </div>
@@ -577,25 +588,32 @@ export default function NewProduct() {
           disabled={loading || brands.length === 0 || !styleCode}
           className="w-full rounded-xl bg-[#6D4AFF] py-3 text-sm font-semibold text-white transition hover:bg-[#5A38E8] disabled:opacity-60"
         >
-          {loading ? (imageFile ? "Creating & uploading…" : "Creating…") : "Create product"}
+          {loading
+            ? imageFile
+              ? t("productNew.creatingAndUploading")
+              : t("common.creating")
+            : t("productNew.createProduct")}
         </button>
       </form>
     </div>
   );
 }
 
-function friendlyCreateError(err: unknown): string {
+function friendlyCreateError(
+  err: unknown,
+  t: (key: string, vars?: Record<string, string | number>) => string
+): string {
   const message = err instanceof Error ? err.message : "";
   if (/master not found|not found/i.test(message)) {
-    return "A brand, style, color, or size code is missing from catalog masters. Create it under Catalog first.";
+    return t("productNew.masterMissing");
   }
   if (/brandCode and styleCode|colorCode|sizeCode|missing/i.test(message)) {
     return message;
   }
   if (/duplicate key|23505|already exists/i.test(message)) {
-    return "A product with this brand/style already exists, or the composed SKU collides.";
+    return t("productNew.duplicateExists");
   }
-  return message || "Failed to create product";
+  return message || t("productNew.failedToCreateProduct");
 }
 
 function Field({

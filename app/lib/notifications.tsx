@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useI18n } from "~/lib/i18n";
 
 export type NotificationType = "success" | "error";
 
@@ -43,6 +44,7 @@ function NotificationBar({
   visible: boolean;
   onDismiss: () => void;
 }) {
+  const { t } = useI18n();
   const isSuccess = type === "success";
 
   return (
@@ -63,7 +65,7 @@ function NotificationBar({
         type="button"
         onClick={onDismiss}
         className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-1 text-white/80 transition hover:bg-white/10 hover:text-white"
-        aria-label="Dismiss notification"
+        aria-label={t("common.dismissNotification")}
       >
         <CloseIcon />
       </button>

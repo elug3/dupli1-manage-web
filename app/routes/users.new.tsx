@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { registerUser } from "~/lib/api";
+import { useI18n } from "~/lib/i18n";
 import { useNotify } from "~/lib/notifications";
 
 export function meta() {
@@ -13,6 +14,7 @@ const inputCls =
 export default function NewUser() {
   const navigate = useNavigate();
   const { notify } = useNotify();
+  const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -22,11 +24,11 @@ export default function NewUser() {
     setLoading(true);
     try {
       const result = await registerUser(email.trim(), password);
-      notify(`User created: ${result.user_id}`);
+      notify(t("userNew.userCreated", { userId: result.user_id }));
       navigate(`/users/${encodeURIComponent(result.user_id)}`);
     } catch (err) {
       notify(
-        err instanceof Error ? err.message : "Failed to create user",
+        err instanceof Error ? err.message : t("userNew.failedToCreate"),
         "error"
       );
     } finally {
@@ -37,17 +39,14 @@ export default function NewUser() {
   return (
     <div className="mx-auto max-w-lg space-y-6">
       <Link to="/users" className="text-sm text-[#6D4AFF] hover:underline">
-        ← Back to users
+        {t("userNew.backToUsers")}
       </Link>
 
       <div>
-        <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">New user</h1>
-        <p className="mt-0.5 text-sm text-[#6B6480]">
-          Create an account via{" "}
-          <code className="text-xs">POST /auth/api/v1/auth/register</code> using
-          your signed-in admin credentials. Assign permissions on the user
-          detail page after creation.
-        </p>
+        <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">
+          {t("userNew.title")}
+        </h1>
+        <p className="mt-0.5 text-sm text-[#6B6480]">{t("userNew.subtitle")}</p>
       </div>
 
       <form
@@ -59,7 +58,7 @@ export default function NewUser() {
             htmlFor="email"
             className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]"
           >
-            Email
+            {t("userNew.email")}
           </label>
           <input
             id="email"
@@ -76,7 +75,7 @@ export default function NewUser() {
             htmlFor="password"
             className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]"
           >
-            Password
+            {t("userNew.password")}
           </label>
           <input
             id="password"
@@ -94,7 +93,7 @@ export default function NewUser() {
           disabled={loading}
           className="w-full rounded-xl bg-[#6D4AFF] py-3 text-sm font-semibold text-white transition hover:bg-[#5A38E8] disabled:opacity-60"
         >
-          {loading ? "Creating…" : "Create user"}
+          {loading ? t("userNew.creating") : t("userNew.createUser")}
         </button>
       </form>
     </div>

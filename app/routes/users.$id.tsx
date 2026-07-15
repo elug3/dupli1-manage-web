@@ -10,9 +10,10 @@ import {
   setUserPermissions,
   setUserStatus,
 } from "~/lib/api";
+import { useI18n } from "~/lib/i18n";
+import { useNotify } from "~/lib/notifications";
 
 const ACCOUNT_TYPES: AccountType[] = ["customer", "admin", "service"];
-import { useNotify } from "~/lib/notifications";
 
 export function meta() {
   return [{ title: "User | Dupli1 Admin" }];
@@ -20,17 +21,12 @@ export function meta() {
 
 type DetailTab = "state" | "credentials" | "permissions";
 
-const DETAIL_TABS: { label: string; value: DetailTab }[] = [
-  { label: "State", value: "state" },
-  { label: "Credentials", value: "credentials" },
-  { label: "Permissions", value: "permissions" },
-];
-
 const inputCls =
   "w-full rounded-xl border border-[#E5E3EE] bg-[#F8F7FC] px-4 py-2.5 text-sm text-[#1C1B1F] outline-none transition placeholder:text-[#B4B0C8] focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/20";
 
 export default function UserDetail() {
   const { id } = useParams();
+  const { t } = useI18n();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +43,7 @@ export default function UserDetail() {
       .then((found) => {
         if (cancelled) return;
         if (!found) {
-          setError("User not found");
+          setError(t("userDetail.userNotFound"));
           setUser(null);
           return;
         }
@@ -55,7 +51,9 @@ export default function UserDetail() {
       })
       .catch((err) => {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to load user");
+          setError(
+            err instanceof Error ? err.message : t("userDetail.failedToLoad")
+          );
           setUser(null);
         }
       })
@@ -80,31 +78,45 @@ export default function UserDetail() {
     return (
       <div className="space-y-4">
         <Link to="/users" className="text-sm text-[#6D4AFF] hover:underline">
-          ← Back to users
+          {t("userDetail.backToUsers")}
         </Link>
         <div className="rounded-2xl border border-[#E5E3EE] bg-white p-10 text-center text-[#6B6480]">
-          {error ?? "User not found"}
+          {error ?? t("userDetail.userNotFound")}
         </div>
       </div>
     );
   }
 
+  const detailTabs: {
+    labelKey:
+      | "userDetail.tabState"
+      | "userDetail.tabCredentials"
+      | "userDetail.tabPermissions";
+    value: DetailTab;
+  }[] = [
+    { labelKey: "userDetail.tabState", value: "state" },
+    { labelKey: "userDetail.tabCredentials", value: "credentials" },
+    { labelKey: "userDetail.tabPermissions", value: "permissions" },
+  ];
+
   return (
     <div className="space-y-6">
       <Link to="/users" className="text-sm text-[#6D4AFF] hover:underline">
-        ← Back to users
+        {t("userDetail.backToUsers")}
       </Link>
 
       <div className="rounded-2xl border border-[#E5E3EE] bg-white p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)] sm:p-8">
         <h1 className="text-2xl font-bold text-[#1C1B1F]">{user.email}</h1>
         <p className="mt-1 font-mono text-sm text-[#6B6480]">{user.user_id}</p>
         <p className="mt-2 text-sm text-[#6B6480]">
-          Account type: {user.account_type} · Permissions:{" "}
-          {formatPermissions(user.permissions)}
+          {t("userDetail.accountTypeAndPermissions", {
+            accountType: user.account_type,
+            permissions: formatPermissions(user.permissions),
+          })}
         </p>
 
         <div className="mt-6 flex flex-wrap gap-2 border-b border-[#F0EEF8] pb-4">
-          {DETAIL_TABS.map((tab) => (
+          {detailTabs.map((tab) => (
             <button
               key={tab.value}
               onClick={() => setActiveTab(tab.value)}
@@ -115,7 +127,7 @@ export default function UserDetail() {
                   : "border border-[#E5E3EE] bg-white text-[#6B6480] hover:border-[#6D4AFF]/40",
               ].join(" ")}
             >
-              {tab.label}
+              {t(tab.labelKey)}
             </button>
           ))}
         </div>
@@ -142,6 +154,7 @@ function StateTab({
   onUpdated: (user: AuthUser) => void;
 }) {
   const { notify } = useNotify();
+  const { t, formatDateTime } = useI18n();
   const [saving, setSaving] = useState(false);
 
   async function handleToggle() {
@@ -149,10 +162,14 @@ function StateTab({
     try {
       const updated = await setUserStatus(user.user_id, !user.is_active);
       onUpdated(updated);
-      notify(updated.is_active ? "User activated" : "User deactivated");
+      notify(
+        updated.is_active
+          ? t("userDetail.userActivated")
+          : t("userDetail.userDeactivated")
+      );
     } catch (err) {
       notify(
-        err instanceof Error ? err.message : "Failed to update status",
+        err instanceof Error ? err.message : t("userDetail.failedToUpdateStatus"),
         "error"
       );
     } finally {
@@ -160,14 +177,27 @@ function StateTab({
     }
   }
 
+  const fields: [string, string][] = [
+    [
+      t("userDetail.fieldActive"),
+      user.is_active ? t("userDetail.yes") : t("userDetail.no"),
+    ],
+    [
+      t("userDetail.fieldLockedAt"),
+      user.locked_at
+        ? formatDateTime(user.locked_at)
+        : t("common.emptyValue"),
+    ],
+    [
+      t("userDetail.fieldFailedLoginAttempts"),
+      String(user.failed_login_attempts),
+    ],
+  ];
+
   return (
     <div className="space-y-6">
       <dl className="grid gap-4 sm:grid-cols-2">
-        {[
-          ["Active", user.is_active ? "Yes" : "No"],
-          ["Locked at", user.locked_at ? formatDate(user.locked_at) : "—"],
-          ["Failed login attempts", String(user.failed_login_attempts)],
-        ].map(([label, value]) => (
+        {fields.map(([label, value]) => (
           <div key={label}>
             <dt className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
               {label}
@@ -178,13 +208,7 @@ function StateTab({
       </dl>
 
       <div className="rounded-xl border border-[#E5E3EE] bg-[#FAFAFA] p-4">
-        <p className="text-sm text-[#6B6480]">
-          Activate or deactivate this account via{" "}
-          <code className="text-xs">
-            PATCH /auth/api/v1/auth/users/{"{id}"}/status
-          </code>
-          .
-        </p>
+        <p className="text-sm text-[#6B6480]">{t("userDetail.stateHint")}</p>
         <button
           type="button"
           onClick={handleToggle}
@@ -197,10 +221,10 @@ function StateTab({
           ].join(" ")}
         >
           {saving
-            ? "Saving…"
+            ? t("common.saving")
             : user.is_active
-              ? "Deactivate user"
-              : "Activate user"}
+              ? t("userDetail.deactivateUser")
+              : t("userDetail.activateUser")}
         </button>
       </div>
     </div>
@@ -209,6 +233,7 @@ function StateTab({
 
 function CredentialsTab({ userId }: { userId: string }) {
   const { notify } = useNotify();
+  const { t } = useI18n();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [saving, setSaving] = useState(false);
@@ -216,7 +241,7 @@ function CredentialsTab({ userId }: { userId: string }) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (password !== confirmPassword) {
-      notify("Passwords do not match", "error");
+      notify(t("userDetail.passwordsDoNotMatch"), "error");
       return;
     }
 
@@ -225,10 +250,12 @@ function CredentialsTab({ userId }: { userId: string }) {
       await setUserPassword(userId, password);
       setPassword("");
       setConfirmPassword("");
-      notify("Password updated");
+      notify(t("userDetail.passwordUpdated"));
     } catch (err) {
       notify(
-        err instanceof Error ? err.message : "Failed to update password",
+        err instanceof Error
+          ? err.message
+          : t("userDetail.failedToUpdatePassword"),
         "error"
       );
     } finally {
@@ -238,20 +265,14 @@ function CredentialsTab({ userId }: { userId: string }) {
 
   return (
     <form onSubmit={handleSubmit} className="mx-auto max-w-md space-y-4">
-      <p className="text-sm text-[#6B6480]">
-        Set a new password via{" "}
-        <code className="text-xs">
-          PATCH /auth/api/v1/auth/users/{"{id}"}/password
-        </code>
-        .
-      </p>
+      <p className="text-sm text-[#6B6480]">{t("userDetail.credentialsHint")}</p>
 
       <div className="space-y-1.5">
         <label
           htmlFor="password"
           className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]"
         >
-          New password
+          {t("userDetail.newPassword")}
         </label>
         <input
           id="password"
@@ -269,7 +290,7 @@ function CredentialsTab({ userId }: { userId: string }) {
           htmlFor="confirm-password"
           className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]"
         >
-          Confirm password
+          {t("userDetail.confirmPassword")}
         </label>
         <input
           id="confirm-password"
@@ -287,7 +308,7 @@ function CredentialsTab({ userId }: { userId: string }) {
         disabled={saving}
         className="rounded-xl bg-[#6D4AFF] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#5A38E8] disabled:opacity-60"
       >
-        {saving ? "Saving…" : "Update password"}
+        {saving ? t("common.saving") : t("userDetail.updatePassword")}
       </button>
     </form>
   );
@@ -301,6 +322,7 @@ function PermissionsTab({
   onUpdated: (user: AuthUser) => void;
 }) {
   const { notify } = useNotify();
+  const { t } = useI18n();
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>(
     user.permissions
   );
@@ -333,10 +355,12 @@ function PermissionsTab({
         accountType
       );
       onUpdated(updated);
-      notify("Permissions updated");
+      notify(t("userDetail.permissionsUpdated"));
     } catch (err) {
       notify(
-        err instanceof Error ? err.message : "Failed to update permissions",
+        err instanceof Error
+          ? err.message
+          : t("userDetail.failedToUpdatePermissions"),
         "error"
       );
     } finally {
@@ -344,22 +368,22 @@ function PermissionsTab({
     }
   }
 
+  const accountTypeLabels: Record<AccountType, string> = {
+    customer: t("userDetail.accountTypeCustomer"),
+    admin: t("userDetail.accountTypeAdmin"),
+    service: t("userDetail.accountTypeService"),
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <p className="text-sm text-[#6B6480]">
-        Replace permission assignments via{" "}
-        <code className="text-xs">
-          PATCH /auth/api/v1/auth/users/{"{id}"}/permissions
-        </code>
-        . An empty list leaves the account with no elevated access.
-      </p>
+      <p className="text-sm text-[#6B6480]">{t("userDetail.permissionsHint")}</p>
 
       <div className="space-y-1.5">
         <label
           htmlFor="account-type"
           className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]"
         >
-          Account type
+          {t("userDetail.accountType")}
         </label>
         <select
           id="account-type"
@@ -369,7 +393,7 @@ function PermissionsTab({
         >
           {ACCOUNT_TYPES.map((type) => (
             <option key={type} value={type}>
-              {type}
+              {accountTypeLabels[type]}
             </option>
           ))}
         </select>
@@ -399,13 +423,8 @@ function PermissionsTab({
         disabled={saving}
         className="rounded-xl bg-[#6D4AFF] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#5A38E8] disabled:opacity-60"
       >
-        {saving ? "Saving…" : "Save permissions"}
+        {saving ? t("common.saving") : t("userDetail.savePermissions")}
       </button>
     </form>
   );
-}
-
-function formatDate(value: string): string {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 }

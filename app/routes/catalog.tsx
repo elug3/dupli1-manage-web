@@ -23,6 +23,7 @@ import {
   renameSize,
   renameStyle,
 } from "~/lib/api";
+import { useI18n } from "~/lib/i18n";
 import { useNotify } from "~/lib/notifications";
 
 export function meta() {
@@ -36,6 +37,7 @@ const inputCls =
 
 export default function CatalogMasters() {
   const { notify } = useNotify();
+  const { t } = useI18n();
   const [tab, setTab] = useState<Tab>("brands");
   const [brands, setBrands] = useState<CatalogCodeName[]>([]);
   const [colors, setColors] = useState<CatalogCodeName[]>([]);
@@ -65,11 +67,13 @@ export default function CatalogMasters() {
         return b[0]?.code ?? "";
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load catalog");
+      setError(
+        err instanceof Error ? err.message : t("catalog.failedToLoad")
+      );
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void loadMasters();
@@ -88,7 +92,9 @@ export default function CatalogMasters() {
       .catch((err) => {
         if (!cancelled) {
           notify(
-            err instanceof Error ? err.message : "Failed to load styles",
+            err instanceof Error
+              ? err.message
+              : t("catalog.failedToLoadStyles"),
             "error"
           );
           setStyles([]);
@@ -97,7 +103,7 @@ export default function CatalogMasters() {
     return () => {
       cancelled = true;
     };
-  }, [selectedBrand, notify]);
+  }, [selectedBrand, notify, t]);
 
   if (loading) {
     return (
@@ -111,11 +117,10 @@ export default function CatalogMasters() {
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">
-          Catalog masters
+          {t("catalog.title")}
         </h1>
         <p className="mt-0.5 text-sm text-[#6B6480]">
-          Code → name dictionaries used to compose human SKUs. Codes are
-          immutable; rename updates display labels only.
+          {t("catalog.subtitle")}
         </p>
       </div>
 
@@ -128,10 +133,10 @@ export default function CatalogMasters() {
       <div className="flex w-max max-w-full flex-wrap gap-1 rounded-xl border border-[#E5E3EE] bg-white p-1 shadow-[0_1px_3px_rgba(28,27,31,0.04)]">
         {(
           [
-            ["brands", "Brands & styles"],
-            ["colors", "Colors"],
-            ["sizes", "Sizes"],
-            ["editions", "Editions"],
+            ["brands", t("catalog.tabBrandsStyles")],
+            ["colors", t("catalog.tabColors")],
+            ["sizes", t("catalog.tabSizes")],
+            ["editions", t("catalog.tabEditions")],
           ] as const
         ).map(([value, label]) => (
           <button
@@ -153,39 +158,41 @@ export default function CatalogMasters() {
       {tab === "brands" && (
         <div className="grid gap-6 lg:grid-cols-2">
           <MasterPanel
-            title="Brands"
-            description="2–3 letter codes (e.g. BOT)."
+            title={t("catalog.brandsTitle")}
+            description={t("catalog.brandsDescription")}
             rows={brands}
             onCreate={async (code, name) => {
               await createBrand(code, name);
-              notify(`Brand ${code} created`);
+              notify(t("catalog.brandCreated", { code }));
               await loadMasters();
             }}
             onRename={async (code, name) => {
               await renameBrand(code, name);
-              notify(`Brand ${code} renamed`);
+              notify(t("catalog.brandRenamed", { code }));
               await loadMasters();
             }}
             onDelete={async (code) => {
               await deleteBrand(code);
-              notify(`Brand ${code} deleted`);
+              notify(t("catalog.brandDeleted", { code }));
               await loadMasters();
             }}
-            codePlaceholder="BOT"
+            codePlaceholder={t("catalog.placeholderBrandCode")}
             codePattern="^[A-Za-z]{2,3}$"
-            codeHint="2–3 letters"
+            codeHint={t("catalog.codeHintLetters")}
           />
 
           <div className="space-y-4 rounded-2xl border border-[#E5E3EE] bg-white p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
             <div>
-              <h2 className="text-sm font-semibold text-[#1C1B1F]">Styles</h2>
+              <h2 className="text-sm font-semibold text-[#1C1B1F]">
+                {t("catalog.stylesTitle")}
+              </h2>
               <p className="mt-0.5 text-xs text-[#6B6480]">
-                Design family under a brand (e.g. CAS001 → Cassette).
+                {t("catalog.stylesDescription")}
               </p>
             </div>
             <label className="block space-y-1.5">
               <span className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
-                Brand
+                {t("catalog.brand")}
               </span>
               <select
                 value={selectedBrand}
@@ -194,7 +201,7 @@ export default function CatalogMasters() {
                 disabled={brands.length === 0}
               >
                 {brands.length === 0 ? (
-                  <option value="">Create a brand first</option>
+                  <option value="">{t("catalog.createBrandFirst")}</option>
                 ) : (
                   brands.map((b) => (
                     <option key={b.code} value={b.code}>
@@ -209,25 +216,27 @@ export default function CatalogMasters() {
                 rows={styles}
                 onCreate={async (code, name) => {
                   await createStyle(selectedBrand, code, name);
-                  notify(`Style ${code} created`);
+                  notify(t("catalog.styleCreated", { code }));
                   setStyles(await listStyles(selectedBrand));
                 }}
                 onRename={async (code, name) => {
                   await renameStyle(selectedBrand, code, name);
-                  notify(`Style ${code} renamed`);
+                  notify(t("catalog.styleRenamed", { code }));
                   setStyles(await listStyles(selectedBrand));
                 }}
                 onDelete={async (code) => {
                   await deleteStyle(selectedBrand, code);
-                  notify(`Style ${code} deleted`);
+                  notify(t("catalog.styleDeleted", { code }));
                   setStyles(await listStyles(selectedBrand));
                 }}
-                codePlaceholder="CAS001"
+                codePlaceholder={t("catalog.placeholderStyleCode")}
                 codePattern="^[A-Za-z0-9]{1,12}$"
-                codeHint="Alphanumeric, max 12"
+                codeHint={t("catalog.codeHintAlphanumeric")}
               />
             ) : (
-              <p className="text-sm text-[#6B6480]">Select a brand to manage styles.</p>
+              <p className="text-sm text-[#6B6480]">
+                {t("catalog.selectBrandToManageStyles")}
+              </p>
             )}
           </div>
         </div>
@@ -235,79 +244,79 @@ export default function CatalogMasters() {
 
       {tab === "colors" && (
         <MasterPanel
-          title="Colors"
-          description="Global palette codes reused across products (e.g. BLK)."
+          title={t("catalog.colorsTitle")}
+          description={t("catalog.colorsDescription")}
           rows={colors}
           onCreate={async (code, name) => {
             await createColor(code, name);
-            notify(`Color ${code} created`);
+            notify(t("catalog.colorCreated", { code }));
             await loadMasters();
           }}
           onRename={async (code, name) => {
             await renameColor(code, name);
-            notify(`Color ${code} renamed`);
+            notify(t("catalog.colorRenamed", { code }));
             await loadMasters();
           }}
           onDelete={async (code) => {
             await deleteColor(code);
-            notify(`Color ${code} deleted`);
+            notify(t("catalog.colorDeleted", { code }));
             await loadMasters();
           }}
-          codePlaceholder="BLK"
+          codePlaceholder={t("catalog.placeholderColorCode")}
           codePattern="^[A-Za-z0-9]{1,12}$"
-          codeHint="Alphanumeric, max 12"
+          codeHint={t("catalog.codeHintAlphanumeric")}
         />
       )}
 
       {tab === "sizes" && (
         <MasterPanel
-          title="Sizes"
-          description="Apparel and bag capacity codes (e.g. MED, OS)."
+          title={t("catalog.sizesTitle")}
+          description={t("catalog.sizesDescription")}
           rows={sizes}
           onCreate={async (code, name) => {
             await createSize(code, name);
-            notify(`Size ${code} created`);
+            notify(t("catalog.sizeCreated", { code }));
             await loadMasters();
           }}
           onRename={async (code, name) => {
             await renameSize(code, name);
-            notify(`Size ${code} renamed`);
+            notify(t("catalog.sizeRenamed", { code }));
             await loadMasters();
           }}
           onDelete={async (code) => {
             await deleteSize(code);
-            notify(`Size ${code} deleted`);
+            notify(t("catalog.sizeDeleted", { code }));
             await loadMasters();
           }}
-          codePlaceholder="MED"
+          codePlaceholder={t("catalog.placeholderSizeCode")}
           codePattern="^[A-Za-z0-9]{1,12}$"
-          codeHint="Alphanumeric, max 12"
+          codeHint={t("catalog.codeHintAlphanumeric")}
         />
       )}
 
       {tab === "editions" && (
         <MasterPanel
-          title="Editions"
-          description="Optional VariantCode segment (e.g. V = Standard)."
+          title={t("catalog.editionsTitle")}
+          description={t("catalog.editionsDescription")}
           rows={editions}
           onCreate={async (code, name) => {
             await createEdition(code, name);
-            notify(`Edition ${code} created`);
+            notify(t("catalog.editionCreated", { code }));
             await loadMasters();
           }}
           onRename={async (code, name) => {
             await renameEdition(code, name);
-            notify(`Edition ${code} renamed`);
+            notify(t("catalog.editionRenamed", { code }));
             await loadMasters();
           }}
           onDelete={async (code) => {
             await deleteEdition(code);
-            notify(`Edition ${code} deleted`);
+            notify(t("catalog.editionDeleted", { code }));
             await loadMasters();
           }}
-          codePlaceholder="V"
+          codePlaceholder={t("catalog.placeholderEditionCode")}
           codePattern="^[A-Za-z0-9]{1,12}$"
-          codeHint="Alphanumeric, max 12"
+          codeHint={t("catalog.codeHintAlphanumeric")}
         />
       )}
     </div>
@@ -372,6 +381,7 @@ function MasterTable({
   codeHint: string;
 }) {
   const { notify } = useNotify();
+  const { t } = useI18n();
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
@@ -389,7 +399,10 @@ function MasterTable({
       setCode("");
       setName("");
     } catch (err) {
-      notify(err instanceof Error ? err.message : "Create failed", "error");
+      notify(
+        err instanceof Error ? err.message : t("catalog.createFailed"),
+        "error"
+      );
     } finally {
       setSaving(false);
     }
@@ -411,7 +424,7 @@ function MasterTable({
           value={name}
           onChange={(e) => setName(e.target.value)}
           className={inputCls}
-          placeholder="Display name"
+          placeholder={t("catalog.displayNamePlaceholder")}
           required
         />
         <button
@@ -419,7 +432,7 @@ function MasterTable({
           disabled={saving}
           className="rounded-xl bg-[#6D4AFF] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
         >
-          {saving ? "…" : "Add"}
+          {saving ? t("common.loadingEllipsis") : t("catalog.add")}
         </button>
       </form>
 
@@ -427,12 +440,18 @@ function MasterTable({
         <table className="w-full min-w-[320px] text-sm">
           <thead>
             <tr className="border-b border-[#F0EEF8] bg-[#FAFAFA] text-left">
-              {["Code", "Name", ""].map((h) => (
+              {(
+                [
+                  ["code", t("catalog.colCode")],
+                  ["name", t("catalog.colName")],
+                  ["actions", ""],
+                ] as const
+              ).map(([key, label]) => (
                 <th
-                  key={h}
+                  key={key}
                   className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-[#9D98B3]"
                 >
-                  {h}
+                  {label}
                 </th>
               ))}
             </tr>
@@ -441,7 +460,7 @@ function MasterTable({
             {rows.length === 0 ? (
               <tr>
                 <td colSpan={3} className="px-3 py-6 text-center text-[#6B6480]">
-                  No entries yet
+                  {t("catalog.noEntriesYet")}
                 </td>
               </tr>
             ) : (
@@ -477,20 +496,20 @@ function MasterTable({
                                 notify(
                                   err instanceof Error
                                     ? err.message
-                                    : "Rename failed",
+                                    : t("catalog.renameFailed"),
                                   "error"
                                 );
                               }
                             }}
                           >
-                            Save
+                            {t("common.save")}
                           </button>
                           <button
                             type="button"
                             className="text-xs font-semibold text-[#9D98B3] hover:underline"
                             onClick={() => setEditingCode(null)}
                           >
-                            Cancel
+                            {t("common.cancel")}
                           </button>
                         </>
                       ) : (
@@ -503,7 +522,7 @@ function MasterTable({
                               setEditName(row.name);
                             }}
                           >
-                            Rename
+                            {t("catalog.rename")}
                           </button>
                           <button
                             type="button"
@@ -511,7 +530,9 @@ function MasterTable({
                             onClick={async () => {
                               if (
                                 !window.confirm(
-                                  `Delete ${row.code}? Only allowed when unused.`
+                                  t("catalog.deleteConfirm", {
+                                    code: row.code,
+                                  })
                                 )
                               ) {
                                 return;
@@ -522,13 +543,13 @@ function MasterTable({
                                 notify(
                                   err instanceof Error
                                     ? err.message
-                                    : "Delete failed",
+                                    : t("catalog.deleteFailed"),
                                   "error"
                                 );
                               }
                             }}
                           >
-                            Delete
+                            {t("common.delete")}
                           </button>
                         </>
                       )}

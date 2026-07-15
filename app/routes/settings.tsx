@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useI18n } from "~/lib/i18n";
+import { LanguageSwitcher } from "~/lib/i18n/LanguageSwitcher";
 import { useNotify } from "~/lib/notifications";
 
 export function meta() {
@@ -45,6 +47,7 @@ const defaultNotif: NotifConfig = {
 };
 
 export default function Settings() {
+  const { t } = useI18n();
   const { notify } = useNotify();
   const [site, setSite] = useState<SiteConfig>(defaultSite);
   const [notif, setNotif] = useState<NotifConfig>(defaultNotif);
@@ -56,7 +59,7 @@ export default function Settings() {
     setSavingSite(true);
     await new Promise((r) => setTimeout(r, 600));
     setSavingSite(false);
-    notify("Settings saved successfully");
+    notify(t("settings.settingsSaved"));
   }
 
   async function saveNotif(e: React.FormEvent) {
@@ -64,28 +67,61 @@ export default function Settings() {
     setSavingNotif(true);
     await new Promise((r) => setTimeout(r, 500));
     setSavingNotif(false);
-    notify("Notification preferences saved");
+    notify(t("settings.notificationPrefsSaved"));
   }
 
   function toggleNotif(key: NotifKey) {
     setNotif((n) => ({ ...n, [key]: !n[key] }));
   }
 
+  const notifItems = [
+    {
+      key: "newOrder" as NotifKey,
+      label: t("settings.notifNewOrder"),
+      desc: t("settings.notifNewOrderDesc"),
+    },
+    {
+      key: "lowStock" as NotifKey,
+      label: t("settings.notifLowStock"),
+      desc: t("settings.notifLowStockDesc"),
+    },
+    {
+      key: "refundRequest" as NotifKey,
+      label: t("settings.notifRefundRequest"),
+      desc: t("settings.notifRefundRequestDesc"),
+    },
+    {
+      key: "newUser" as NotifKey,
+      label: t("settings.notifNewUser"),
+      desc: t("settings.notifNewUserDesc"),
+    },
+    {
+      key: "weeklyReport" as NotifKey,
+      label: t("settings.notifWeeklyReport"),
+      desc: t("settings.notifWeeklyReportDesc"),
+    },
+  ];
+
   return (
     <div className="space-y-8 max-w-2xl">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">Settings</h1>
+        <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">
+          {t("settings.title")}
+        </h1>
         <p className="mt-0.5 text-sm text-[#6B6480]">
-          Manage your store configuration
+          {t("settings.subtitle")}
         </p>
       </div>
 
       {/* Site settings */}
-      <Section title="General" description="Core store settings and identity.">
+      <Section
+        title={t("settings.sectionGeneral")}
+        description={t("settings.sectionGeneralDesc")}
+      >
         <form onSubmit={saveSite} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Store name">
+            <Field label={t("settings.storeName")}>
               <input
                 value={site.storeName}
                 onChange={(e) =>
@@ -94,7 +130,7 @@ export default function Settings() {
                 className={inputCls}
               />
             </Field>
-            <Field label="Contact email">
+            <Field label={t("settings.contactEmail")}>
               <input
                 type="email"
                 value={site.contactEmail}
@@ -106,8 +142,15 @@ export default function Settings() {
             </Field>
           </div>
 
+          <div className="space-y-1.5">
+            <LanguageSwitcher />
+            <p className="text-xs text-[#9D98B3]">
+              {t("settings.languageDesc")}
+            </p>
+          </div>
+
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Currency">
+            <Field label={t("settings.currency")}>
               <select
                 value={site.currency}
                 onChange={(e) =>
@@ -115,13 +158,15 @@ export default function Settings() {
                 }
                 className={inputCls}
               >
-                <option value="USD">USD — US Dollar</option>
-                <option value="EUR">EUR — Euro</option>
-                <option value="GBP">GBP — British Pound</option>
-                <option value="JPY">JPY — Japanese Yen</option>
+                <option value="USD">{t("settings.currencyUsd")}</option>
+                <option value="EUR">{t("settings.currencyEur")}</option>
+                <option value="GBP">{t("settings.currencyGbp")}</option>
+                <option value="JPY">{t("settings.currencyJpy")}</option>
+                <option value="KRW">{t("settings.currencyKrw")}</option>
+                <option value="CNY">{t("settings.currencyCny")}</option>
               </select>
             </Field>
-            <Field label="Timezone">
+            <Field label={t("settings.timezone")}>
               <select
                 value={site.timezone}
                 onChange={(e) =>
@@ -130,14 +175,18 @@ export default function Settings() {
                 className={inputCls}
               >
                 <option value="America/New_York">
-                  America/New_York (ET)
+                  {t("settings.timezoneEt")}
                 </option>
                 <option value="America/Los_Angeles">
-                  America/Los_Angeles (PT)
+                  {t("settings.timezonePt")}
                 </option>
-                <option value="Europe/London">Europe/London (GMT)</option>
-                <option value="Europe/Paris">Europe/Paris (CET)</option>
-                <option value="Asia/Tokyo">Asia/Tokyo (JST)</option>
+                <option value="Europe/London">{t("settings.timezoneGmt")}</option>
+                <option value="Europe/Paris">{t("settings.timezoneCet")}</option>
+                <option value="Asia/Tokyo">{t("settings.timezoneJst")}</option>
+                <option value="Asia/Seoul">{t("settings.timezoneKst")}</option>
+                <option value="Asia/Shanghai">
+                  {t("settings.timezoneCst")}
+                </option>
               </select>
             </Field>
           </div>
@@ -145,10 +194,10 @@ export default function Settings() {
           <div className="flex flex-col gap-3 rounded-xl border border-[#E5E3EE] bg-[#FAFAFA] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-medium text-[#1C1B1F]">
-                Maintenance mode
+                {t("settings.maintenanceMode")}
               </p>
               <p className="text-xs text-[#9D98B3]">
-                Displays a maintenance page to customers
+                {t("settings.maintenanceModeDesc")}
               </p>
             </div>
             <Toggle
@@ -165,7 +214,7 @@ export default function Settings() {
               disabled={savingSite}
               className="rounded-xl bg-[#6D4AFF] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#5A38E8] disabled:opacity-60"
             >
-              {savingSite ? "Saving…" : "Save changes"}
+              {savingSite ? t("settings.saving") : t("settings.saveChanges")}
             </button>
           </div>
         </form>
@@ -173,39 +222,11 @@ export default function Settings() {
 
       {/* Notifications */}
       <Section
-        title="Notifications"
-        description="Control which events trigger admin email alerts."
+        title={t("settings.sectionNotifications")}
+        description={t("settings.sectionNotificationsDesc")}
       >
         <form onSubmit={saveNotif} className="space-y-4">
-          {(
-            [
-              {
-                key: "newOrder" as NotifKey,
-                label: "New order placed",
-                desc: "Alert when a customer completes checkout",
-              },
-              {
-                key: "lowStock" as NotifKey,
-                label: "Low stock warning",
-                desc: "Alert when a variant SKU has ≤ 5 units in inventory",
-              },
-              {
-                key: "refundRequest" as NotifKey,
-                label: "Refund request",
-                desc: "Alert when a customer requests a refund",
-              },
-              {
-                key: "newUser" as NotifKey,
-                label: "New user registration",
-                desc: "Alert on every new customer signup",
-              },
-              {
-                key: "weeklyReport" as NotifKey,
-                label: "Weekly summary report",
-                desc: "Digest of revenue and orders every Monday",
-              },
-            ] as const
-          ).map(({ key, label, desc }) => (
+          {notifItems.map(({ key, label, desc }) => (
             <div
               key={key}
               className="flex flex-col gap-3 rounded-xl border border-[#E5E3EE] bg-[#FAFAFA] px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
@@ -227,31 +248,35 @@ export default function Settings() {
               disabled={savingNotif}
               className="rounded-xl bg-[#6D4AFF] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#5A38E8] disabled:opacity-60"
             >
-              {savingNotif ? "Saving…" : "Save preferences"}
+              {savingNotif
+                ? t("settings.saving")
+                : t("settings.savePreferences")}
             </button>
           </div>
         </form>
       </Section>
 
       {/* Danger zone */}
-      <Section title="Danger zone" description="Irreversible actions.">
+      <Section
+        title={t("settings.sectionDanger")}
+        description={t("settings.sectionDangerDesc")}
+      >
         <div className="rounded-xl border border-red-200 bg-red-50 p-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-red-900">
-                Clear all product data
+                {t("settings.clearAllProductData")}
               </p>
               <p className="mt-0.5 text-xs text-red-700">
-                Permanently deletes all products from the catalog. This cannot
-                be undone.
+                {t("settings.clearAllProductDataDesc")}
               </p>
             </div>
             <button
               type="button"
               className="shrink-0 rounded-xl border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50"
-              onClick={() => alert("Not implemented in demo.")}
+              onClick={() => alert(t("settings.notImplementedDemo"))}
             >
-              Clear data
+              {t("settings.clearData")}
             </button>
           </div>
         </div>

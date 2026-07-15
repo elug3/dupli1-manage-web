@@ -5,9 +5,17 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useLoaderData,
 } from "react-router";
 
 import "./app.css";
+import {
+  DEFAULT_LOCALE,
+  getLocaleFromRequest,
+  I18nProvider,
+  translate,
+  type Locale,
+} from "~/lib/i18n";
 import { NotificationProvider } from "~/lib/notifications";
 
 export const links = () => [
@@ -23,9 +31,13 @@ export const links = () => [
   },
 ];
 
+export async function loader({ request }: { request: Request }) {
+  return { locale: getLocaleFromRequest(request) };
+}
+
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
         <meta
@@ -49,24 +61,34 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  const { locale } = useLoaderData<typeof loader>();
   return (
-    <NotificationProvider>
-      <Outlet />
-    </NotificationProvider>
+    <I18nProvider initialLocale={locale}>
+      <NotificationProvider>
+        <Outlet />
+      </NotificationProvider>
+    </I18nProvider>
   );
 }
 
 export function ErrorBoundary({ error }: { error: unknown }) {
-  let message = "Oops!";
-  let details = "An unexpected error occurred.";
+  const locale: Locale = DEFAULT_LOCALE;
+  let message = translate(locale, "errors.oops");
+  let details = translate(locale, "errors.unexpected");
 
   if (isRouteErrorResponse(error)) {
-    message = error.status === 404 ? "404" : "Error";
+    message =
+      error.status === 404
+        ? translate(locale, "errors.notFoundStatus")
+        : translate(locale, "errors.error");
     details =
       error.status === 404
-        ? "The requested page could not be found."
+        ? translate(locale, "errors.pageNotFound")
         : error.statusText || details;
-  } else if ((import.meta as { env?: { DEV?: boolean } }).env?.DEV && error instanceof Error) {
+  } else if (
+    (import.meta as { env?: { DEV?: boolean } }).env?.DEV &&
+    error instanceof Error
+  ) {
     details = error.message;
   }
 
