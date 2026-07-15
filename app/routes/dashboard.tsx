@@ -8,12 +8,14 @@ import {
   getOrders,
   getProducts,
 } from "~/lib/api";
+import { useI18n } from "~/lib/i18n";
 
 export function meta() {
   return [{ title: "Dashboard | Dupli1 Admin" }];
 }
 
 export default function Dashboard() {
+  const { t } = useI18n();
   const [products, setProducts] = useState<Product[]>([]);
   const [stockAlerts, setStockAlerts] = useState<VariantStockAlert[]>([]);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
@@ -23,15 +25,24 @@ export default function Dashboard() {
   useEffect(() => {
     const failures: string[] = [];
     const capture = <T,>(label: string, fallback: T) => (err: unknown) => {
-      failures.push(`${label}: ${err instanceof Error ? err.message : "request failed"}`);
+      failures.push(
+        t("dashboard.errorWithLabel", {
+          label,
+          message: err instanceof Error ? err.message : t("common.requestFailed"),
+        })
+      );
       return fallback;
     };
 
     Promise.all([
-      getProducts().catch(capture("Products", [] as Product[])),
-      getCatalogStockAlerts().catch(capture("Stock alerts", [] as VariantStockAlert[])),
+      getProducts().catch(
+        capture(t("dashboard.errorLabelProducts"), [] as Product[])
+      ),
+      getCatalogStockAlerts().catch(
+        capture(t("dashboard.errorLabelStockAlerts"), [] as VariantStockAlert[])
+      ),
       getOrders()
-        .catch(capture("Orders", [] as Order[]))
+        .catch(capture(t("dashboard.errorLabelOrders"), [] as Order[]))
         .then((o) => o.slice(0, 5)),
     ]).then(([prods, alerts, orders]) => {
       setProducts(prods);
@@ -40,7 +51,7 @@ export default function Dashboard() {
       setErrors(failures);
       setLoading(false);
     });
-  }, []);
+  }, [t]);
 
   return (
     <div className="space-y-8">
@@ -64,8 +75,8 @@ export default function Dashboard() {
 }
 
 function PageHeader() {
-  const now = new Date();
-  const formatted = now.toLocaleDateString("en-US", {
+  const { t, formatDate } = useI18n();
+  const formatted = formatDate(new Date(), {
     weekday: "long",
     year: "numeric",
     month: "long",
@@ -75,14 +86,16 @@ function PageHeader() {
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div>
-        <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">Dashboard</h1>
+        <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">
+          {t("dashboard.title")}
+        </h1>
         <p className="mt-0.5 text-sm text-[#6B6480]">{formatted}</p>
       </div>
       <Link
         to="/orders"
         className="w-full rounded-xl bg-[#6D4AFF] px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-[#5A38E8] active:scale-[0.98] sm:w-auto"
       >
-        View all orders
+        {t("dashboard.viewAllOrders")}
       </Link>
     </div>
   );
@@ -95,6 +108,7 @@ function StatsGrid({
   products: Product[];
   loading: boolean;
 }) {
+  const { t } = useI18n();
   const active = products.length;
 
   const cards: {
@@ -106,31 +120,31 @@ function StatsGrid({
     to?: string;
   }[] = [
     {
-      label: "Revenue today",
-      value: "—",
-      sub: "Analytics not yet available",
+      label: t("dashboard.revenueToday"),
+      value: t("common.emptyValue"),
+      sub: t("dashboard.analyticsNotYetAvailable"),
       icon: <RevenueIcon />,
       color: "bg-violet-50 text-violet-600",
     },
     {
-      label: "Orders today",
-      value: "—",
-      sub: "Analytics not yet available",
+      label: t("dashboard.ordersToday"),
+      value: t("common.emptyValue"),
+      sub: t("dashboard.analyticsNotYetAvailable"),
       icon: <OrderIcon />,
       color: "bg-blue-50 text-blue-600",
     },
     {
-      label: "Catalog items",
-      value: loading ? "…" : String(active),
-      sub: loading ? null : "Parent products (styles)",
+      label: t("dashboard.catalogItems"),
+      value: loading ? t("common.loadingEllipsis") : String(active),
+      sub: loading ? null : t("dashboard.parentProductsStyles"),
       icon: <BoxIcon />,
       color: "bg-emerald-50 text-emerald-600",
       to: "/products",
     },
     {
-      label: "Pending orders",
-      value: "—",
-      sub: "Analytics not yet available",
+      label: t("dashboard.pendingOrders"),
+      value: t("common.emptyValue"),
+      sub: t("dashboard.analyticsNotYetAvailable"),
       icon: <ClockIcon />,
       color: "bg-amber-50 text-amber-600",
     },
@@ -182,22 +196,33 @@ function StatsGrid({
 }
 
 function RecentOrdersTable({ orders }: { orders: Order[] }) {
+  const { t, formatCurrency, formatDate } = useI18n();
+  const headers = [
+    t("dashboard.colOrder"),
+    t("dashboard.colCustomer"),
+    t("dashboard.colTotal"),
+    t("dashboard.colStatus"),
+    t("dashboard.colDate"),
+  ];
+
   return (
     <div className="rounded-2xl border border-[#E5E3EE] bg-white shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
       <div className="flex items-center justify-between border-b border-[#E5E3EE] px-5 py-4">
-        <h2 className="font-semibold text-[#1C1B1F]">Recent orders</h2>
+        <h2 className="font-semibold text-[#1C1B1F]">
+          {t("dashboard.recentOrders")}
+        </h2>
         <Link
           to="/orders"
           className="text-xs font-medium text-[#6D4AFF] hover:underline"
         >
-          View all →
+          {t("dashboard.viewAllArrow")}
         </Link>
       </div>
       <div className="overflow-x-auto md:overflow-visible">
         <table className="hidden w-full text-sm md:table">
           <thead>
             <tr className="border-b border-[#F0EEF8] text-left">
-              {["Order", "Customer", "Total", "Status", "Date"].map((h) => (
+              {headers.map((h) => (
                 <th
                   key={h}
                   className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-[#9D98B3]"
@@ -211,7 +236,7 @@ function RecentOrdersTable({ orders }: { orders: Order[] }) {
             {orders.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-5 py-10 text-center text-[#9D98B3]">
-                  No orders yet
+                  {t("dashboard.noOrdersYet")}
                 </td>
               </tr>
             ) : (
@@ -233,7 +258,10 @@ function RecentOrdersTable({ orders }: { orders: Order[] }) {
                     <OrderStatusBadge status={order.status} />
                   </td>
                   <td className="px-5 py-3.5 text-[#9D98B3]">
-                    {formatDate(order.created_at)}
+                    {formatDate(order.created_at, {
+                      month: "short",
+                      day: "numeric",
+                    })}
                   </td>
                 </tr>
               ))
@@ -244,7 +272,9 @@ function RecentOrdersTable({ orders }: { orders: Order[] }) {
 
       <div className="divide-y divide-[#F0EEF8] md:hidden">
         {orders.length === 0 ? (
-          <div className="px-4 py-10 text-center text-[#9D98B3]">No orders yet</div>
+          <div className="px-4 py-10 text-center text-[#9D98B3]">
+            {t("dashboard.noOrdersYet")}
+          </div>
         ) : (
           orders.map((order) => (
             <div key={order.id} className="space-y-2 px-4 py-4">
@@ -261,7 +291,12 @@ function RecentOrdersTable({ orders }: { orders: Order[] }) {
                 <span className="font-semibold text-[#1C1B1F]">
                   {formatCurrency(order.total_cents / 100)}
                 </span>
-                <span className="text-[#9D98B3]">{formatDate(order.created_at)}</span>
+                <span className="text-[#9D98B3]">
+                  {formatDate(order.created_at, {
+                    month: "short",
+                    day: "numeric",
+                  })}
+                </span>
               </div>
             </div>
           ))
@@ -272,6 +307,7 @@ function RecentOrdersTable({ orders }: { orders: Order[] }) {
 }
 
 function QuickPanel({ stockAlerts }: { stockAlerts: VariantStockAlert[] }) {
+  const { t } = useI18n();
   const outOfStock = stockAlerts.filter((row) => row.quantity === 0);
   const lowStock = stockAlerts.filter(
     (row) => row.quantity > 0 && row.quantity <= 5
@@ -285,7 +321,9 @@ function QuickPanel({ stockAlerts }: { stockAlerts: VariantStockAlert[] }) {
   return (
     <div className="space-y-4">
       <div className="rounded-2xl border border-[#E5E3EE] bg-white p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
-        <h2 className="mb-3 font-semibold text-[#1C1B1F]">Quick actions</h2>
+        <h2 className="mb-3 font-semibold text-[#1C1B1F]">
+          {t("dashboard.quickActions")}
+        </h2>
         <div className="space-y-2">
           <Link
             to="/products"
@@ -294,7 +332,7 @@ function QuickPanel({ stockAlerts }: { stockAlerts: VariantStockAlert[] }) {
             <span className="rounded-lg bg-violet-50 p-1.5 text-violet-600">
               <PlusIcon />
             </span>
-            Browse catalog
+            {t("dashboard.browseCatalog")}
           </Link>
           <Link
             to="/orders"
@@ -303,7 +341,7 @@ function QuickPanel({ stockAlerts }: { stockAlerts: VariantStockAlert[] }) {
             <span className="rounded-lg bg-blue-50 p-1.5 text-blue-600">
               <FulfillIcon />
             </span>
-            Fulfil pending orders
+            {t("dashboard.fulfilPendingOrders")}
           </Link>
           <Link
             to="/analytics"
@@ -312,7 +350,7 @@ function QuickPanel({ stockAlerts }: { stockAlerts: VariantStockAlert[] }) {
             <span className="rounded-lg bg-emerald-50 p-1.5 text-emerald-600">
               <ChartIcon />
             </span>
-            View analytics
+            {t("dashboard.viewAnalytics")}
           </Link>
         </div>
       </div>
@@ -320,10 +358,10 @@ function QuickPanel({ stockAlerts }: { stockAlerts: VariantStockAlert[] }) {
       {(outOfStock.length > 0 || lowStock.length > 0) && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
           <h2 className="mb-3 flex items-center gap-2 font-semibold text-amber-900">
-            <span className="text-amber-500">⚠</span> Stock alerts
+            <span className="text-amber-500">⚠</span> {t("dashboard.stockAlerts")}
           </h2>
           <p className="mb-3 text-xs text-amber-800/80">
-            Per variant SKU via inventory service
+            {t("dashboard.stockAlertsHint")}
           </p>
           <div className="space-y-2">
             {outOfStock.map((row) => (
@@ -334,7 +372,7 @@ function QuickPanel({ stockAlerts }: { stockAlerts: VariantStockAlert[] }) {
               >
                 <span className="truncate text-amber-900">{alertLabel(row)}</span>
                 <span className="shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
-                  Out of stock
+                  {t("dashboard.outOfStock")}
                 </span>
               </Link>
             ))}
@@ -346,7 +384,7 @@ function QuickPanel({ stockAlerts }: { stockAlerts: VariantStockAlert[] }) {
               >
                 <span className="truncate text-amber-900">{alertLabel(row)}</span>
                 <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-                  {row.quantity} left
+                  {t("dashboard.quantityLeft", { count: row.quantity })}
                 </span>
               </Link>
             ))}
@@ -358,12 +396,28 @@ function QuickPanel({ stockAlerts }: { stockAlerts: VariantStockAlert[] }) {
 }
 
 export function OrderStatusBadge({ status }: { status: Order["status"] }) {
+  const { t } = useI18n();
   const map: Record<Order["status"], { label: string; class: string }> = {
-    pending: { label: "Pending", class: "bg-amber-100 text-amber-800" },
-    paid: { label: "Paid", class: "bg-blue-100 text-blue-800" },
-    in_transit: { label: "In transit", class: "bg-violet-100 text-violet-800" },
-    fulfilled: { label: "Fulfilled", class: "bg-emerald-100 text-emerald-800" },
-    canceled: { label: "Canceled", class: "bg-slate-100 text-slate-600" },
+    pending: {
+      label: t("common.orderStatusPending"),
+      class: "bg-amber-100 text-amber-800",
+    },
+    paid: {
+      label: t("common.orderStatusPaid"),
+      class: "bg-blue-100 text-blue-800",
+    },
+    in_transit: {
+      label: t("common.orderStatusInTransit"),
+      class: "bg-violet-100 text-violet-800",
+    },
+    fulfilled: {
+      label: t("common.orderStatusFulfilled"),
+      class: "bg-emerald-100 text-emerald-800",
+    },
+    canceled: {
+      label: t("common.orderStatusCanceled"),
+      class: "bg-slate-100 text-slate-600",
+    },
   };
   const { label, class: cls } = map[status] ?? {
     label: status,
@@ -374,18 +428,6 @@ export function OrderStatusBadge({ status }: { status: Order["status"] }) {
       {label}
     </span>
   );
-}
-
-function formatCurrency(n: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-  }).format(n);
-}
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 function RevenueIcon() {
