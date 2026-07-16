@@ -251,6 +251,12 @@ export const en = {
       "Legacy parent upload or variant upload when multi-SKU is enabled",
     uploadImage: "Upload image",
     imageUploaded: "Image uploaded",
+    imageDeleted: "Image deleted",
+    deleteImage: "Delete image",
+    deleteImageConfirm: "Delete this image?",
+    failedToDeleteImage: "Failed to delete image",
+    cannotDeleteLastImage:
+      "Cannot remove the last image yet — upload a replacement first, then delete this one",
     noImagesYet: "No images yet.",
   },
 

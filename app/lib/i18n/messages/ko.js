@@ -235,6 +235,11 @@ export const ko = {
         imagesHint: "레거시 상위 업로드 또는 다중 SKU 사용 시 변형 업로드",
         uploadImage: "이미지 업로드",
         imageUploaded: "이미지가 업로드되었습니다",
+        imageDeleted: "이미지가 삭제되었습니다",
+        deleteImage: "이미지 삭제",
+        deleteImageConfirm: "이 이미지를 삭제할까요?",
+        failedToDeleteImage: "이미지를 삭제하지 못했습니다",
+        cannotDeleteLastImage: "마지막 이미지는 아직 삭제할 수 없습니다 — 대체 이미지를 업로드한 뒤 이 이미지를 삭제하세요",
         noImagesYet: "아직 이미지가 없습니다.",
     },
     catalog: {
