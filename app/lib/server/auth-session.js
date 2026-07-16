@@ -128,6 +128,16 @@ export async function handleSessionMe(request) {
             headers: { "Set-Cookie": clearSessionCookieHeader(request) },
         });
     }
+    // Access token may be stale; exchange via refresh_token (or reuse cache).
+    // If refresh fails the session is no longer usable — clear cookie.
+    const exchanged = await cachedAccessTokenExchange(sessionId, session.refreshToken);
+    if (!exchanged) {
+        deleteSession(sessionId);
+        return jsonResponse({ error: "Session expired" }, {
+            status: 401,
+            headers: { "Set-Cookie": clearSessionCookieHeader(request) },
+        });
+    }
     return jsonResponse({
         email: session.email,
         user_id: session.userId,
