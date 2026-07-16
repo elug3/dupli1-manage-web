@@ -451,6 +451,8 @@ export interface UpdateVariantInput {
   size?: string;
   price?: number;
   status?: string;
+  /** Replaces the variant gallery when non-empty. Empty arrays are ignored by the API merge. */
+  imageUrls?: string[];
 }
 
 export async function updateVariant(
@@ -471,6 +473,36 @@ export async function updateVariant(
   if (!res.ok) throw new Error(await readError(res, "Failed to update variant"));
   const hit = (await res.json()) as ProductSearchHit;
   return mapVariant(hit);
+}
+
+/**
+ * Removes one image URL from a variant gallery.
+ * When other images remain, PUTs the filtered list. Clearing the final image is
+ * unsupported by the API merge (empty imageUrls is treated as "omit").
+ * Callers should surface `LAST_IMAGE` via i18n (`productDetail.cannotDeleteLastImage`).
+ */
+export class LastImageDeleteError extends Error {
+  readonly code = "LAST_IMAGE" as const;
+  constructor() {
+    super("LAST_IMAGE");
+    this.name = "LastImageDeleteError";
+  }
+}
+
+export async function deleteVariantImage(
+  productId: string,
+  sku: string,
+  imageUrl: string,
+  currentUrls: string[]
+): Promise<ProductVariant> {
+  const next = currentUrls.filter((url) => url !== imageUrl);
+  if (next.length === currentUrls.length) {
+    throw new Error("Image not found on variant");
+  }
+  if (next.length === 0) {
+    throw new LastImageDeleteError();
+  }
+  return updateVariant(productId, sku, { imageUrls: next });
 }
 
 export async function deleteVariant(

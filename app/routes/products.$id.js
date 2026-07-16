@@ -1,7 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
-import { createVariant, deleteVariant, formatVariantOption, getInventory, getManageProduct, listColors, listEditions, listSizes, productVariants, setInventory, updateProduct, updateVariant, uploadProductImage, uploadVariantImage, } from "~/lib/api";
+import { createVariant, deleteVariant, deleteVariantImage, LastImageDeleteError, formatVariantOption, getInventory, getManageProduct, listColors, listEditions, listSizes, productVariants, setInventory, updateProduct, updateVariant, uploadProductImage, uploadVariantImage, } from "~/lib/api";
 import { useI18n } from "~/lib/i18n";
 import { useNotify } from "~/lib/notifications";
 const MAX_IMAGE_BYTES = 50 * 1024 * 1024;
@@ -355,6 +355,7 @@ function VariantImageUpload({ productId, variant, onUploaded, }) {
     const { t } = useI18n();
     const inputRef = useRef(null);
     const [uploading, setUploading] = useState(false);
+    const [deletingUrl, setDeletingUrl] = useState(null);
     async function handleFileChange(e) {
         const file = e.target.files?.[0];
         if (!file)
@@ -383,7 +384,27 @@ function VariantImageUpload({ productId, variant, onUploaded, }) {
             e.target.value = "";
         }
     }
-    return (_jsxs("div", { children: [_jsx("input", { ref: inputRef, type: "file", accept: "image/*", className: "hidden", onChange: handleFileChange, disabled: uploading }), _jsx("button", { type: "button", onClick: () => inputRef.current?.click(), disabled: uploading, className: "text-xs font-semibold text-[#6D4AFF] hover:underline disabled:opacity-60", children: uploading
+    async function handleDelete(url) {
+        if (!window.confirm(t("productDetail.deleteImageConfirm")))
+            return;
+        setDeletingUrl(url);
+        try {
+            const updated = await deleteVariantImage(productId, variant.sku, url, variant.imageUrls);
+            onUploaded(updated);
+            notify(t("productDetail.imageDeleted"));
+        }
+        catch (err) {
+            notify(err instanceof LastImageDeleteError
+                ? t("productDetail.cannotDeleteLastImage")
+                : err instanceof Error
+                    ? err.message
+                    : t("productDetail.failedToDeleteImage"), "error");
+        }
+        finally {
+            setDeletingUrl(null);
+        }
+    }
+    return (_jsxs("div", { className: "space-y-2", children: [variant.imageUrls.length > 0 && (_jsx(ProductImageGrid, { urls: variant.imageUrls, deletingUrl: deletingUrl, onDelete: handleDelete, compact: true })), _jsx("input", { ref: inputRef, type: "file", accept: "image/*", className: "hidden", onChange: handleFileChange, disabled: uploading }), _jsx("button", { type: "button", onClick: () => inputRef.current?.click(), disabled: uploading, className: "text-xs font-semibold text-[#6D4AFF] hover:underline disabled:opacity-60", children: uploading
                     ? t("common.uploading")
                     : t("productDetail.uploadWithCount", {
                         count: variant.imageUrls.length,
@@ -394,6 +415,7 @@ function LegacyProductImages({ productId, variant, onUploaded, }) {
     const { t } = useI18n();
     const inputRef = useRef(null);
     const [uploading, setUploading] = useState(false);
+    const [deletingUrl, setDeletingUrl] = useState(null);
     async function handleFileChange(e) {
         const file = e.target.files?.[0];
         if (!file)
@@ -422,8 +444,51 @@ function LegacyProductImages({ productId, variant, onUploaded, }) {
             e.target.value = "";
         }
     }
+    async function handleDelete(url) {
+        if (!window.confirm(t("productDetail.deleteImageConfirm")))
+            return;
+        setDeletingUrl(url);
+        try {
+            await deleteVariantImage(productId, variant.sku, url, variant.imageUrls);
+            const refreshed = await getManageProduct(productId);
+            onUploaded(refreshed);
+            notify(t("productDetail.imageDeleted"));
+        }
+        catch (err) {
+            notify(err instanceof LastImageDeleteError
+                ? t("productDetail.cannotDeleteLastImage")
+                : err instanceof Error
+                    ? err.message
+                    : t("productDetail.failedToDeleteImage"), "error");
+        }
+        finally {
+            setDeletingUrl(null);
+        }
+    }
     const imageUrls = variant.imageUrls;
     return (_jsxs("div", { className: "mt-6 border-t border-[#F0EEF8] pt-6", children: [_jsxs("div", { className: "flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between", children: [_jsxs("div", { children: [_jsx("h2", { className: "text-xs font-semibold uppercase tracking-wide text-[#9D98B3]", children: t("productDetail.images") }), _jsx("p", { className: "mt-1 text-sm text-[#6B6480]", children: t("productDetail.imagesHint") })] }), _jsxs("div", { children: [_jsx("input", { ref: inputRef, type: "file", accept: "image/*", className: "hidden", onChange: handleFileChange, disabled: uploading }), _jsx("button", { type: "button", onClick: () => inputRef.current?.click(), disabled: uploading, className: "inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#6D4AFF] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#5A38E8] disabled:opacity-60 sm:w-auto", children: uploading
                                     ? t("common.uploading")
-                                    : t("productDetail.uploadImage") })] })] }), imageUrls.length > 0 ? (_jsx("div", { className: "mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4", children: imageUrls.map((url) => (_jsx("a", { href: url, target: "_blank", rel: "noopener noreferrer", className: "group overflow-hidden rounded-xl border border-[#E5E3EE] bg-[#FAFAFA]", children: _jsx("img", { src: url, alt: "", className: "aspect-square w-full object-cover transition group-hover:scale-105" }) }, url))) })) : (_jsx("div", { className: "mt-4 rounded-xl border border-dashed border-[#E5E3EE] bg-[#FAFAFA] px-4 py-10 text-center text-sm text-[#9D98B3]", children: t("productDetail.noImagesYet") }))] }));
+                                    : t("productDetail.uploadImage") })] })] }), imageUrls.length > 0 ? (_jsx("div", { className: "mt-4", children: _jsx(ProductImageGrid, { urls: imageUrls, deletingUrl: deletingUrl, onDelete: handleDelete }) })) : (_jsx("div", { className: "mt-4 rounded-xl border border-dashed border-[#E5E3EE] bg-[#FAFAFA] px-4 py-10 text-center text-sm text-[#9D98B3]", children: t("productDetail.noImagesYet") }))] }));
+}
+function ProductImageGrid({ urls, deletingUrl, onDelete, compact = false, }) {
+    const { t } = useI18n();
+    return (_jsx("div", { className: compact
+            ? "grid grid-cols-2 gap-1.5"
+            : "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4", children: urls.map((url) => (_jsxs("div", { className: [
+                "group relative aspect-square overflow-hidden border border-[#E5E3EE] bg-[#FAFAFA]",
+                compact ? "rounded-lg" : "rounded-xl",
+            ].join(" "), children: [_jsx("a", { href: url, target: "_blank", rel: "noopener noreferrer", className: "block size-full", children: _jsx("img", { src: url, alt: "", className: "size-full object-cover transition group-hover:scale-105" }) }), _jsx("button", { type: "button", onClick: (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onDelete(url);
+                    }, disabled: deletingUrl === url, title: t("productDetail.deleteImage"), "aria-label": t("productDetail.deleteImage"), className: [
+                        "absolute right-1.5 top-1.5 z-10 flex items-center justify-center rounded-full bg-black/55 text-white shadow-sm transition hover:bg-red-600 disabled:opacity-60",
+                        compact ? "size-6" : "size-8",
+                    ].join(" "), children: deletingUrl === url ? (_jsx("span", { className: [
+                            "animate-spin rounded-full border-2 border-white border-t-transparent",
+                            compact ? "size-3" : "size-3.5",
+                        ].join(" ") })) : (_jsx(DeleteImageIcon, { compact: compact })) })] }, url))) }));
+}
+function DeleteImageIcon({ compact }) {
+    return (_jsx("svg", { className: compact ? "size-3" : "size-3.5", viewBox: "0 0 24 24", fill: "none", "aria-hidden": "true", children: _jsx("path", { d: "M6 6l12 12M18 6L6 18", stroke: "currentColor", strokeWidth: "2.2", strokeLinecap: "round" }) }));
 }

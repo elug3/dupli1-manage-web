@@ -253,6 +253,12 @@ export const zhCN: Messages = {
       "旧版父级上传，或多 SKU 启用时的变体上传",
     uploadImage: "上传图片",
     imageUploaded: "图片已上传",
+    imageDeleted: "图片已删除",
+    deleteImage: "删除图片",
+    deleteImageConfirm: "删除此图片？",
+    failedToDeleteImage: "删除图片失败",
+    cannotDeleteLastImage:
+      "暂无法删除最后一张图片 — 请先上传替换图，然后再删除此图",
     noImagesYet: "暂无图片。",
   },
 

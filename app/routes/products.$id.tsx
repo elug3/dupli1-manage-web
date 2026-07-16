@@ -6,6 +6,8 @@ import {
   type ProductVariant,
   createVariant,
   deleteVariant,
+  deleteVariantImage,
+  LastImageDeleteError,
   formatVariantOption,
   getInventory,
   getManageProduct,
@@ -999,6 +1001,7 @@ function VariantImageUpload({
   const { t } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [deletingUrl, setDeletingUrl] = useState<string | null>(null);
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -1032,8 +1035,42 @@ function VariantImageUpload({
     }
   }
 
+  async function handleDelete(url: string) {
+    if (!window.confirm(t("productDetail.deleteImageConfirm"))) return;
+    setDeletingUrl(url);
+    try {
+      const updated = await deleteVariantImage(
+        productId,
+        variant.sku,
+        url,
+        variant.imageUrls
+      );
+      onUploaded(updated);
+      notify(t("productDetail.imageDeleted"));
+    } catch (err) {
+      notify(
+        err instanceof LastImageDeleteError
+          ? t("productDetail.cannotDeleteLastImage")
+          : err instanceof Error
+            ? err.message
+            : t("productDetail.failedToDeleteImage"),
+        "error"
+      );
+    } finally {
+      setDeletingUrl(null);
+    }
+  }
+
   return (
-    <div>
+    <div className="space-y-2">
+      {variant.imageUrls.length > 0 && (
+        <ProductImageGrid
+          urls={variant.imageUrls}
+          deletingUrl={deletingUrl}
+          onDelete={handleDelete}
+          compact
+        />
+      )}
       <input
         ref={inputRef}
         type="file"
@@ -1071,6 +1108,7 @@ function LegacyProductImages({
   const { t } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [deletingUrl, setDeletingUrl] = useState<string | null>(null);
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -1101,6 +1139,33 @@ function LegacyProductImages({
     } finally {
       setUploading(false);
       e.target.value = "";
+    }
+  }
+
+  async function handleDelete(url: string) {
+    if (!window.confirm(t("productDetail.deleteImageConfirm"))) return;
+    setDeletingUrl(url);
+    try {
+      await deleteVariantImage(
+        productId,
+        variant.sku,
+        url,
+        variant.imageUrls
+      );
+      const refreshed = await getManageProduct(productId);
+      onUploaded(refreshed);
+      notify(t("productDetail.imageDeleted"));
+    } catch (err) {
+      notify(
+        err instanceof LastImageDeleteError
+          ? t("productDetail.cannotDeleteLastImage")
+          : err instanceof Error
+            ? err.message
+            : t("productDetail.failedToDeleteImage"),
+        "error"
+      );
+    } finally {
+      setDeletingUrl(null);
     }
   }
 
@@ -1140,22 +1205,12 @@ function LegacyProductImages({
       </div>
 
       {imageUrls.length > 0 ? (
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {imageUrls.map((url) => (
-            <a
-              key={url}
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group overflow-hidden rounded-xl border border-[#E5E3EE] bg-[#FAFAFA]"
-            >
-              <img
-                src={url}
-                alt=""
-                className="aspect-square w-full object-cover transition group-hover:scale-105"
-              />
-            </a>
-          ))}
+        <div className="mt-4">
+          <ProductImageGrid
+            urls={imageUrls}
+            deletingUrl={deletingUrl}
+            onDelete={handleDelete}
+          />
         </div>
       ) : (
         <div className="mt-4 rounded-xl border border-dashed border-[#E5E3EE] bg-[#FAFAFA] px-4 py-10 text-center text-sm text-[#9D98B3]">
@@ -1163,5 +1218,96 @@ function LegacyProductImages({
         </div>
       )}
     </div>
+  );
+}
+
+function ProductImageGrid({
+  urls,
+  deletingUrl,
+  onDelete,
+  compact = false,
+}: {
+  urls: string[];
+  deletingUrl: string | null;
+  onDelete: (url: string) => void;
+  compact?: boolean;
+}) {
+  const { t } = useI18n();
+
+  return (
+    <div
+      className={
+        compact
+          ? "grid grid-cols-2 gap-1.5"
+          : "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
+      }
+    >
+      {urls.map((url) => (
+        <div
+          key={url}
+          className={[
+            "group relative aspect-square overflow-hidden border border-[#E5E3EE] bg-[#FAFAFA]",
+            compact ? "rounded-lg" : "rounded-xl",
+          ].join(" ")}
+        >
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block size-full"
+          >
+            <img
+              src={url}
+              alt=""
+              className="size-full object-cover transition group-hover:scale-105"
+            />
+          </a>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onDelete(url);
+            }}
+            disabled={deletingUrl === url}
+            title={t("productDetail.deleteImage")}
+            aria-label={t("productDetail.deleteImage")}
+            className={[
+              "absolute right-1.5 top-1.5 z-10 flex items-center justify-center rounded-full bg-black/55 text-white shadow-sm transition hover:bg-red-600 disabled:opacity-60",
+              compact ? "size-6" : "size-8",
+            ].join(" ")}
+          >
+            {deletingUrl === url ? (
+              <span
+                className={[
+                  "animate-spin rounded-full border-2 border-white border-t-transparent",
+                  compact ? "size-3" : "size-3.5",
+                ].join(" ")}
+              />
+            ) : (
+              <DeleteImageIcon compact={compact} />
+            )}
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DeleteImageIcon({ compact }: { compact?: boolean }) {
+  return (
+    <svg
+      className={compact ? "size-3" : "size-3.5"}
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M6 6l12 12M18 6L6 18"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }
