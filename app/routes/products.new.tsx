@@ -486,13 +486,13 @@ export default function NewProduct() {
               ))}
             </select>
           </Field>
-          <Field label={t("productNew.priceUsd")} id="price" required>
+          <Field label={t("productNew.priceKrw")} id="price" required>
             <input
               id="price"
               type="number"
               required
               min={0}
-              step="0.01"
+              step="1"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
               className={inputCls}

@@ -21,4 +21,5 @@ Where to find more info
 - Dev server: `npm run dev` (defaults to `http://localhost:5173`). The sibling storefront (`dupli1-web`) also defaults to 5173, so when running both, start one on another port, e.g. `npm run dev -- --port 5174`.
 - This app needs the **`dupli1` backend running** (nginx gateway at `http://localhost:8080`). See `../dupli1/AGENTS.md` for starting Docker + `docker compose up`. The SSR server reads `DUPLI1_GATEWAY_URL` (default `http://localhost:8080`) for backend calls.
 - Product image `<img>` tags use `productImageSrc` so gateway MinIO URLs (`/product-images/…`) load via the manage-web origin. Private AWS S3 image URLs still fail in the browser until `dupli1` exposes them (CloudFront or gateway proxy) — see CLAUDE.md “Product images”.
+- Product prices and order totals display as **KRW only** (`STORE_CURRENCY` / `formatCurrency` / `formatCents` in `app/lib/i18n`). Settings currency is locked to KRW (not a multi-currency picker).
 - Log in at `/login` with the seeded owner account `admin@dupli1.com` / `password`. A transient "bad gateway" banner can appear if the backend gateway isn't fully up yet — retry once the stack is healthy.

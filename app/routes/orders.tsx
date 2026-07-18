@@ -336,12 +336,8 @@ function OrderCard({
   onToggle: () => void;
   onAction: (action: OrderAction) => void;
 }) {
-  const { t, formatDate, formatCurrency } = useI18n();
+  const { t, formatDate, formatCents } = useI18n();
   const actions = ORDER_ACTIONS[order.status] ?? [];
-
-  function formatCents(cents: number) {
-    return formatCurrency(cents / 100);
-  }
 
   return (
     <div className="p-4">
@@ -438,12 +434,8 @@ function OrderRows({
   onToggle: () => void;
   onAction: (action: OrderAction) => void;
 }) {
-  const { t, formatDate, formatCurrency } = useI18n();
+  const { t, formatDate, formatCents } = useI18n();
   const actions = ORDER_ACTIONS[order.status] ?? [];
-
-  function formatCents(cents: number) {
-    return formatCurrency(cents / 100);
-  }
 
   return (
     <>
@@ -539,7 +531,7 @@ function OrderItemRow({
   item: OrderItem;
   skuLookup: Map<string, SkuVariantContext>;
 }) {
-  const { t, formatCurrency } = useI18n();
+  const { t, formatCents } = useI18n();
   const ctx = skuLookup.get(item.sku);
   const variantLabel = formatOrderItemVariant(item.sku, skuLookup);
 
@@ -565,7 +557,7 @@ function OrderItemRow({
         </div>
       </div>
       <span className="shrink-0 font-semibold text-[#1C1B1F]">
-        {formatCurrency((item.unit_price_cents * item.quantity) / 100)}
+        {formatCents(item.unit_price_cents * item.quantity)}
       </span>
     </div>
   );

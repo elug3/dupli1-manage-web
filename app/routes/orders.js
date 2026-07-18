@@ -153,11 +153,8 @@ export default function Orders() {
                                             ].map(([key, label]) => (_jsx("th", { className: "px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#9D98B3]", children: label }, key))) }) }), _jsx("tbody", { children: filtered.map((order) => (_jsx(OrderRows, { order: order, skuLookup: skuLookup, expanded: expandedId === order.id, updating: updatingId === order.id, onToggle: () => setExpandedId(expandedId === order.id ? null : order.id), onAction: (action) => handleOrderAction(order, action) }, order.id))) })] }) })] })) })] }));
 }
 function OrderCard({ order, skuLookup, expanded, updating, onToggle, onAction, }) {
-    const { t, formatDate, formatCurrency } = useI18n();
+    const { t, formatDate, formatCents } = useI18n();
     const actions = ORDER_ACTIONS[order.status] ?? [];
-    function formatCents(cents) {
-        return formatCurrency(cents / 100);
-    }
     return (_jsxs("div", { className: "p-4", children: [_jsxs("button", { type: "button", onClick: onToggle, className: "w-full text-left", children: [_jsxs("div", { className: "flex items-start justify-between gap-3", children: [_jsxs("div", { className: "min-w-0", children: [_jsx("p", { className: "truncate font-mono text-xs font-semibold text-[#1C1B1F]", children: order.id }), _jsx("p", { className: "mt-1 text-sm text-[#6B6480]", children: order.customer_id })] }), _jsx(OrderStatusBadge, { status: order.status })] }), _jsxs("div", { className: "mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm", children: [_jsx("span", { className: "font-semibold text-[#1C1B1F]", children: formatCents(order.total_cents) }), _jsx("span", { className: "text-[#6B6480]", children: t("common.itemCount", { count: order.items.length }) }), _jsx("span", { className: "text-xs text-[#9D98B3]", children: formatDate(order.created_at, {
                                     month: "short",
                                     day: "numeric",
@@ -172,11 +169,8 @@ function OrderCard({ order, skuLookup, expanded, updating, onToggle, onAction, }
                         : orderActionLabel(action, t) }, orderActionKey(action)))) })), expanded && (_jsxs("div", { className: "mt-4 rounded-xl border border-[#E5E3EE] bg-[#F4F3F8]/60 p-4", children: [_jsx("p", { className: "mb-3 text-xs font-semibold uppercase tracking-wide text-[#9D98B3]", children: t("orders.orderItems") }), _jsx("div", { className: "space-y-2", children: order.items.map((item, i) => (_jsx(OrderItemRow, { item: item, skuLookup: skuLookup }, i))) }), _jsxs("div", { className: "mt-3 flex items-center justify-between border-t border-[#E5E3EE] pt-3 text-sm font-bold text-[#1C1B1F]", children: [_jsx("span", { children: t("orders.orderTotal") }), _jsx("span", { children: formatCents(order.total_cents) })] })] }))] }));
 }
 function OrderRows({ order, skuLookup, expanded, updating, onToggle, onAction, }) {
-    const { t, formatDate, formatCurrency } = useI18n();
+    const { t, formatDate, formatCents } = useI18n();
     const actions = ORDER_ACTIONS[order.status] ?? [];
-    function formatCents(cents) {
-        return formatCurrency(cents / 100);
-    }
     return (_jsxs(_Fragment, { children: [_jsxs("tr", { className: [
                     "border-b border-[#F0EEF8] cursor-pointer transition-colors",
                     expanded ? "bg-[#F8F7FC]" : "hover:bg-[#FAFAFA]",
@@ -194,8 +188,8 @@ function OrderRows({ order, skuLookup, expanded, updating, onToggle, onAction, }
                                     : orderActionLabel(action, t) }, orderActionKey(action)))) })) })] }), expanded && (_jsx("tr", { className: "border-b border-[#F0EEF8] bg-[#F4F3F8]/60", children: _jsx("td", { colSpan: 7, className: "px-8 py-4", children: _jsxs("div", { className: "rounded-xl border border-[#E5E3EE] bg-white p-4", children: [_jsx("p", { className: "mb-3 text-xs font-semibold uppercase tracking-wide text-[#9D98B3]", children: t("orders.orderItems") }), _jsx("div", { className: "space-y-2", children: order.items.map((item, i) => (_jsx(OrderItemRow, { item: item, skuLookup: skuLookup }, i))) }), _jsxs("div", { className: "mt-3 flex items-center justify-between border-t border-[#E5E3EE] pt-3 text-sm font-bold text-[#1C1B1F]", children: [_jsx("span", { children: t("orders.orderTotal") }), _jsx("span", { children: formatCents(order.total_cents) })] })] }) }) }))] }));
 }
 function OrderItemRow({ item, skuLookup, }) {
-    const { t, formatCurrency } = useI18n();
+    const { t, formatCents } = useI18n();
     const ctx = skuLookup.get(item.sku);
     const variantLabel = formatOrderItemVariant(item.sku, skuLookup);
-    return (_jsxs("div", { className: "flex items-center justify-between gap-3 text-sm", children: [_jsxs("div", { className: "flex min-w-0 items-center gap-3", children: [_jsx("div", { className: "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#F4F3F8] text-xs font-bold text-[#6D4AFF]", children: item.sku.slice(0, 2).toUpperCase() }), _jsxs("div", { className: "min-w-0", children: [_jsx("span", { className: "block truncate font-mono text-xs font-medium text-[#1C1B1F]", children: item.sku }), ctx && (_jsxs("span", { className: "block truncate text-xs text-[#6B6480]", children: [ctx.productName, variantLabel ? ` · ${variantLabel}` : ""] })), _jsx("span", { className: "text-[#9D98B3]", children: t("orders.quantityTimes", { quantity: item.quantity }) })] })] }), _jsx("span", { className: "shrink-0 font-semibold text-[#1C1B1F]", children: formatCurrency((item.unit_price_cents * item.quantity) / 100) })] }));
+    return (_jsxs("div", { className: "flex items-center justify-between gap-3 text-sm", children: [_jsxs("div", { className: "flex min-w-0 items-center gap-3", children: [_jsx("div", { className: "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#F4F3F8] text-xs font-bold text-[#6D4AFF]", children: item.sku.slice(0, 2).toUpperCase() }), _jsxs("div", { className: "min-w-0", children: [_jsx("span", { className: "block truncate font-mono text-xs font-medium text-[#1C1B1F]", children: item.sku }), ctx && (_jsxs("span", { className: "block truncate text-xs text-[#6B6480]", children: [ctx.productName, variantLabel ? ` · ${variantLabel}` : ""] })), _jsx("span", { className: "text-[#9D98B3]", children: t("orders.quantityTimes", { quantity: item.quantity }) })] })] }), _jsx("span", { className: "shrink-0 font-semibold text-[#1C1B1F]", children: formatCents(item.unit_price_cents * item.quantity) })] }));
 }

@@ -696,7 +696,7 @@ function VariantEditForm({
             required
             type="number"
             min={0}
-            step="0.01"
+            step="1"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
             className={`block w-28 ${inputCls}`}
@@ -896,12 +896,12 @@ function AddVariantForm({
           </select>
         </label>
         <label className="space-y-1 text-xs text-[#6B6480]">
-          {t("productDetail.priceUsdRequired")}
+          {t("productDetail.priceKrwRequired")}
           <input
             required
             type="number"
             min={0}
-            step="0.01"
+            step="1"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
             className={`block w-full ${inputCls}`}

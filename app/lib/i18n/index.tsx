@@ -96,18 +96,35 @@ export function translate(
   return interpolate(hit, vars);
 }
 
+/** Storefront / admin display currency — Dupli1 is KRW-only. */
+export const STORE_CURRENCY = "KRW" as const;
+
+/**
+ * Format a major-unit money amount (product `price`, or order cents / 100).
+ * Always KRW; the optional `currency` argument is ignored for API stability.
+ */
 export function formatCurrency(
   locale: Locale,
   amount: number,
-  currency = "USD",
+  _currency?: string,
   options?: Intl.NumberFormatOptions
 ): string {
   return new Intl.NumberFormat(LOCALE_INTL[locale], {
     style: "currency",
-    currency,
+    currency: STORE_CURRENCY,
     minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
     ...options,
   }).format(amount);
+}
+
+/** Format API `*_cents` fields (cart/order still store price × 100). */
+export function formatCents(
+  locale: Locale,
+  cents: number,
+  options?: Intl.NumberFormatOptions
+): string {
+  return formatCurrency(locale, cents / 100, STORE_CURRENCY, options);
 }
 
 export function formatDate(
@@ -141,6 +158,10 @@ interface I18nContextValue {
   formatCurrency: (
     amount: number,
     currency?: string,
+    options?: Intl.NumberFormatOptions
+  ) => string;
+  formatCents: (
+    cents: number,
     options?: Intl.NumberFormatOptions
   ) => string;
   formatDate: (
@@ -221,6 +242,7 @@ export function I18nProvider({
       t: (key, vars) => translate(locale, key, vars),
       formatCurrency: (amount, currency, options) =>
         formatCurrency(locale, amount, currency, options),
+      formatCents: (cents, options) => formatCents(locale, cents, options),
       formatDate: (date, options) => formatDate(locale, date, options),
       formatDateTime: (date, options) =>
         formatDateTime(locale, date, options),

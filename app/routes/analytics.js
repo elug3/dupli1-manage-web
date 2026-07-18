@@ -6,7 +6,7 @@ export function meta() {
     return [{ title: "Analytics | Dupli1 Admin" }];
 }
 export default function Analytics() {
-    const { t, formatCurrency } = useI18n();
+    const { t, formatCents } = useI18n();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -32,8 +32,7 @@ export default function Analytics() {
     }
     const revenueCents = period === "7d" ? data.revenue7d : data.revenue30d;
     const orders = period === "7d" ? data.orders7d : data.orders30d;
-    const revenue = revenueCents / 100;
-    const aov = orders > 0 ? revenue / orders : 0;
+    const aovCents = orders > 0 ? revenueCents / orders : 0;
     return (_jsxs("div", { className: "space-y-8", children: [_jsxs("div", { className: "flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between", children: [_jsxs("div", { children: [_jsx("h1", { className: "text-xl font-bold text-[#1C1B1F] sm:text-2xl", children: t("analytics.title") }), _jsx("p", { className: "mt-0.5 text-sm text-[#6B6480]", children: t("analytics.subtitleFromTotals") })] }), _jsx("div", { className: "flex gap-1 rounded-xl border border-[#E5E3EE] bg-white p-1 shadow-[0_1px_3px_rgba(28,27,31,0.04)]", children: ["7d", "30d"].map((p) => (_jsx("button", { onClick: () => setPeriod(p), className: [
                                 "rounded-lg px-4 py-1.5 text-xs font-semibold transition",
                                 period === p
@@ -41,7 +40,7 @@ export default function Analytics() {
                                     : "text-[#6B6480] hover:bg-[#F4F3F8]",
                             ].join(" "), children: p === "7d"
                                 ? t("analytics.period7Days")
-                                : t("analytics.period30Days") }, p))) })] }), _jsxs("div", { className: "grid gap-4 sm:grid-cols-3", children: [_jsx(KpiCard, { label: t("analytics.kpiRevenue"), value: formatCurrency(revenue) }), _jsx(KpiCard, { label: t("analytics.kpiOrders"), value: String(orders) }), _jsx(KpiCard, { label: t("analytics.kpiAvgOrderValue"), value: formatCurrency(aov) })] })] }));
+                                : t("analytics.period30Days") }, p))) })] }), _jsxs("div", { className: "grid gap-4 sm:grid-cols-3", children: [_jsx(KpiCard, { label: t("analytics.kpiRevenue"), value: formatCents(revenueCents) }), _jsx(KpiCard, { label: t("analytics.kpiOrders"), value: String(orders) }), _jsx(KpiCard, { label: t("analytics.kpiAvgOrderValue"), value: formatCents(aovCents) })] })] }));
 }
 function KpiCard({ label, value }) {
     return (_jsxs("div", { className: "rounded-2xl border border-[#E5E3EE] bg-white p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)]", children: [_jsx("div", { className: "text-2xl font-bold text-[#1C1B1F]", children: value }), _jsx("div", { className: "mt-0.5 text-sm text-[#6B6480]", children: label })] }));

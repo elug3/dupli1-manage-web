@@ -38,8 +38,8 @@ interface NotifConfig {
 const defaultSite: SiteConfig = {
   storeName: "Dupli1",
   contactEmail: "admin@dupli1.co",
-  currency: "USD",
-  timezone: "America/New_York",
+  currency: "KRW",
+  timezone: "Asia/Seoul",
   maintenanceMode: false,
 };
 
@@ -156,20 +156,12 @@ export default function Settings() {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label={t("settings.currency")}>
-              <select
-                value={site.currency}
-                onChange={(e) =>
-                  setSite((s) => ({ ...s, currency: e.target.value }))
-                }
-                className={inputCls}
-              >
-                <option value="USD">{t("settings.currencyUsd")}</option>
-                <option value="EUR">{t("settings.currencyEur")}</option>
-                <option value="GBP">{t("settings.currencyGbp")}</option>
-                <option value="JPY">{t("settings.currencyJpy")}</option>
-                <option value="KRW">{t("settings.currencyKrw")}</option>
-                <option value="CNY">{t("settings.currencyCny")}</option>
-              </select>
+              <input
+                value={t("settings.currencyKrwOnly")}
+                readOnly
+                disabled
+                className={`${inputCls} cursor-not-allowed opacity-80`}
+              />
             </Field>
             <Field label={t("settings.timezone")}>
               <select

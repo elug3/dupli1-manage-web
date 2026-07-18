@@ -45,6 +45,10 @@ Local Docker embeds browser URLs as `{S3_PUBLIC_ENDPOINT}/product-images/{key}` 
 
 **AWS production gap:** the product-images S3 bucket has Block Public Access enabled, `S3_PUBLIC_ENDPOINT` points at the bucket regional domain, and ECS nginx has no `/product-images/` location. Browsers therefore get Access Denied on `<img src>` for API-returned S3 URLs. Fix belongs in `dupli1` (CloudFront OAC or gateway-authenticated image proxy + matching `S3_PUBLIC_ENDPOINT`). `productImageSrc` cannot make private S3 objects public.
 
+### Currency
+
+Admin UI is **KRW-only**. `formatCurrency` / `formatCents` (`app/lib/i18n`) always format as Korean Won; settings does not offer other currencies. Aligns with backend `domain.DefaultCurrency = "krw"`.
+
 ### Auth (`/auth`)
 
 - `POST /auth/api/v1/auth/register` — create account (Bearer; `user.create`)
