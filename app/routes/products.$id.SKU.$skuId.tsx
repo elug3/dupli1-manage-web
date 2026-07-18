@@ -30,7 +30,7 @@ const fieldCls =
 export default function SkuDetail() {
   const { id, skuId } = useParams();
   const navigate = useNavigate();
-  const { t } = useI18n();
+  const { t, formatCurrency } = useI18n();
   const { notify } = useNotify();
   const [product, setProduct] = useState<Product | null>(null);
   const [variant, setVariant] = useState<ProductVariant | null>(null);
@@ -503,7 +503,7 @@ function EditSection({
           <input
             type="number"
             min={0}
-            step="0.01"
+            step="1"
             required
             value={price}
             onChange={(e) => setPrice(e.target.value)}
@@ -536,12 +536,4 @@ function EditSection({
       </form>
     </section>
   );
-}
-
-function formatCurrency(n: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-  }).format(n);
 }

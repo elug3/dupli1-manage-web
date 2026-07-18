@@ -104,10 +104,11 @@ export function productListPrice(product) {
     const value = product.priceFrom ?? product.price;
     if (value == null)
         return null;
-    const formatted = new Intl.NumberFormat("en-US", {
+    const formatted = new Intl.NumberFormat("ko-KR", {
         style: "currency",
-        currency: "USD",
+        currency: "KRW",
         minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
     }).format(value);
     return product.priceFrom != null ? `From ${formatted}` : formatted;
 }
