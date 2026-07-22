@@ -6,6 +6,7 @@ Status
 - `dupli1-manage-web` is the **admin/management dashboard** for the Dupli1 marketplace (React Router 7 + React 19 + Vite + Tailwind v4, SSR). It is the counterpart to `dupli1-web` (customer storefront) and talks to the same backend nginx gateway.
 - See [CLAUDE.md](CLAUDE.md) for the architecture, route map, backend API contracts, and standard commands (`npm run dev`, `npm run build`, `npm run typecheck`).
 - Product creates require existing catalog master codes (`brandCode`/`styleCode`, variant `colorCode`/`sizeCode`); manage dictionaries at `/catalog`.
+- Account types in the UI are `customer` | `manager` | `service`. Auth may still wire human operators as `admin` until [dupli1-auth is updated](docs/ai-instruct-dupli1-auth-account-type-manager.md) — see that AI instruct before changing naming in either repo.
 
 Agent interaction rules
 - Keep changes minimal and scoped. When creating or updating customization files, explain why each change is needed.
