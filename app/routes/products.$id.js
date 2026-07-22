@@ -124,6 +124,11 @@ function ParentSummarySection({ product, onUpdated, }) {
         : product.price != null
             ? formatCurrency(product.price)
             : t("common.emptyValue");
+    const sellingPriceFrom = product.sellingPriceFrom != null && product.sellingPriceFrom > 0
+        ? formatCurrency(product.sellingPriceFrom)
+        : product.sellingPrice != null && product.sellingPrice > 0
+            ? formatCurrency(product.sellingPrice)
+            : t("common.emptyValue");
     return (_jsxs("div", { children: [_jsxs("div", { className: "flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between", children: [_jsxs("div", { children: [_jsx("h1", { className: "text-2xl font-bold text-[#1C1B1F]", children: product.name }), _jsx("p", { className: "mt-1 text-sm capitalize text-[#6B6480]", children: product.category })] }), !editing && (_jsx("button", { type: "button", onClick: () => setEditing(true), className: "rounded-xl border border-[#E5E3EE] px-4 py-2 text-sm font-semibold text-[#6D4AFF] transition hover:border-[#6D4AFF]/40 hover:bg-[#FAFAFA]", children: t("productDetail.editStyle") }))] }), editing ? (_jsxs("form", { onSubmit: handleSubmit, className: "mt-6 space-y-4", children: [_jsx("p", { className: "text-xs font-semibold uppercase tracking-wide text-[#9D98B3]", children: t("productDetail.editParentProduct") }), _jsxs("div", { className: "grid gap-4 sm:grid-cols-2", children: [_jsxs("label", { className: "space-y-1.5 sm:col-span-2", children: [_jsx("span", { className: "text-xs font-semibold uppercase tracking-wide text-[#6B6480]", children: t("productDetail.name") }), _jsx("input", { required: true, value: name, onChange: (e) => setName(e.target.value), className: fieldCls })] }), _jsxs("label", { className: "space-y-1.5", children: [_jsx("span", { className: "text-xs font-semibold uppercase tracking-wide text-[#6B6480]", children: t("productDetail.brand") }), _jsx("input", { required: true, value: brand, onChange: (e) => setBrand(e.target.value), className: fieldCls })] }), _jsxs("label", { className: "space-y-1.5", children: [_jsx("span", { className: "text-xs font-semibold uppercase tracking-wide text-[#6B6480]", children: t("productDetail.material") }), _jsx("input", { required: true, value: material, onChange: (e) => setMaterial(e.target.value), className: fieldCls })] }), _jsxs("label", { className: "space-y-1.5", children: [_jsx("span", { className: "text-xs font-semibold uppercase tracking-wide text-[#6B6480]", children: t("productDetail.status") }), _jsxs("select", { value: status, onChange: (e) => setStatus(e.target.value), className: fieldCls, children: [_jsx("option", { value: "active", children: t("common.statusActive") }), _jsx("option", { value: "draft", children: t("common.statusDraft") }), _jsx("option", { value: "archived", children: t("common.statusArchived") })] })] }), _jsxs("label", { className: "space-y-1.5 sm:col-span-2", children: [_jsx("span", { className: "text-xs font-semibold uppercase tracking-wide text-[#6B6480]", children: t("productDetail.description") }), _jsx("textarea", { value: description, onChange: (e) => setDescription(e.target.value), rows: 3, className: fieldCls })] })] }), _jsxs("div", { className: "flex gap-2", children: [_jsx("button", { type: "submit", disabled: saving, className: "rounded-xl bg-[#6D4AFF] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60", children: saving ? t("common.saving") : t("common.saveChanges") }), _jsx("button", { type: "button", onClick: () => setEditing(false), className: "rounded-xl border border-[#E5E3EE] px-4 py-2 text-sm font-semibold text-[#6B6480]", children: t("common.cancel") })] })] })) : (_jsxs("dl", { className: "mt-6 grid gap-4 sm:grid-cols-2", children: [[
                         [t("productDetail.id"), product.id],
                         [t("productDetail.brand"), product.brand],
@@ -132,6 +137,7 @@ function ParentSummarySection({ product, onUpdated, }) {
                         [t("productDetail.material"), product.material],
                         [t("productDetail.status"), product.status],
                         [t("productDetail.colors"), colors],
+                        [t("productDetail.sellingPriceFrom"), sellingPriceFrom],
                         [t("productDetail.priceFrom"), priceFrom],
                     ].map(([label, value]) => (_jsxs("div", { children: [_jsx("dt", { className: "text-xs font-semibold uppercase tracking-wide text-[#9D98B3]", children: label }), _jsx("dd", { className: "mt-1 text-sm text-[#1C1B1F]", children: value ?? t("common.emptyValue") })] }, label))), product.description && (_jsxs("div", { className: "sm:col-span-2", children: [_jsx("dt", { className: "text-xs font-semibold uppercase tracking-wide text-[#9D98B3]", children: t("productDetail.description") }), _jsx("dd", { className: "mt-1 text-sm text-[#1C1B1F]", children: product.description })] }))] }))] }));
 }
@@ -156,6 +162,7 @@ function VariantsSection({ product, rows, onStockUpdated, onProductUpdated, onRe
         t("productDetail.colSku"),
         t("productDetail.colSkuId"),
         t("productDetail.colOption"),
+        t("productDetail.colSellingPrice"),
         t("productDetail.colPrice"),
         t("productDetail.colStatus"),
         t("productDetail.colStock"),
@@ -165,7 +172,9 @@ function VariantsSection({ product, rows, onStockUpdated, onProductUpdated, onRe
     ];
     return (_jsxs("div", { className: "mt-8 border-t border-[#F0EEF8] pt-6", children: [_jsxs("div", { className: "mb-4", children: [_jsx("h2", { className: "text-xs font-semibold uppercase tracking-wide text-[#9D98B3]", children: t("productDetail.variants") }), _jsx("p", { className: "mt-1 text-sm text-[#6B6480]", children: t("productDetail.variantsHint") })] }), _jsx("div", { className: "overflow-x-auto rounded-xl border border-[#E5E3EE]", children: _jsxs("table", { className: "w-full min-w-[720px] text-sm", children: [_jsx("thead", { children: _jsx("tr", { className: "border-b border-[#F0EEF8] bg-[#FAFAFA] text-left", children: headings.map((heading, index) => (_jsx("th", { className: "px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#9D98B3]", children: heading }, heading || `spacer-${index}`))) }) }), _jsx("tbody", { children: rows.map((row) => (_jsxs(Fragment, { children: [_jsxs("tr", { className: "border-b border-[#F0EEF8] last:border-0 align-top", children: [_jsx("td", { className: "px-4 py-3 font-mono text-xs text-[#1C1B1F]", children: _jsx(Link, { to: productSkuPath(product.id, row.skuId ?? row.sku), className: "text-[#6D4AFF] hover:underline", children: row.sku }) }), _jsx("td", { className: "px-4 py-3 font-mono text-[10px] text-[#9D98B3]", children: row.skuId ? (_jsx(Link, { to: productSkuPath(product.id, row.skuId), className: "hover:text-[#6D4AFF] hover:underline", children: row.skuId })) : (t("common.emptyValue")) }), _jsxs("td", { className: "px-4 py-3 text-[#6B6480]", children: [formatVariantOption(row), (row.colorCode || row.sizeCode || row.editionCode) && (_jsx("div", { className: "mt-0.5 font-mono text-[10px] text-[#9D98B3]", children: [row.colorCode, row.editionCode, row.sizeCode]
                                                             .filter(Boolean)
-                                                            .join(" · ") }))] }), _jsx("td", { className: "px-4 py-3 text-[#1C1B1F]", children: formatCurrency(row.price) }), _jsx("td", { className: "px-4 py-3 capitalize text-[#6B6480]", children: row.status }), _jsx("td", { className: "px-4 py-3", children: _jsx(StockEditor, { sku: row.sku, quantity: row.quantity, reserved: row.reserved, onSave: handleSetStock }) }), _jsx("td", { className: "px-4 py-3", children: _jsx(VariantImageUpload, { productId: product.id, variant: row, onUploaded: (updated) => {
+                                                            .join(" · ") }))] }), _jsx("td", { className: "px-4 py-3 text-[#1C1B1F]", children: row.sellingPrice != null && row.sellingPrice > 0 ? (_jsx("span", { className: row.sellingPrice > row.price
+                                                        ? "text-[#9D98B3] line-through"
+                                                        : undefined, children: formatCurrency(row.sellingPrice) })) : (t("common.emptyValue")) }), _jsx("td", { className: "px-4 py-3 text-[#1C1B1F]", children: formatCurrency(row.price) }), _jsx("td", { className: "px-4 py-3 capitalize text-[#6B6480]", children: row.status }), _jsx("td", { className: "px-4 py-3", children: _jsx(StockEditor, { sku: row.sku, quantity: row.quantity, reserved: row.reserved, onSave: handleSetStock }) }), _jsx("td", { className: "px-4 py-3", children: _jsx(VariantImageUpload, { productId: product.id, variant: row, onUploaded: (updated) => {
                                                         onProductUpdated({
                                                             ...product,
                                                             variants: productVariants(product).map((v) => v.sku === updated.sku ? updated : v),
@@ -193,7 +202,7 @@ function VariantsSection({ product, rows, onStockUpdated, onProductUpdated, onRe
                                                                         ? err.message
                                                                         : t("productDetail.failedToDeleteVariant"), "error");
                                                                 }
-                                                            }, className: "text-xs font-semibold text-red-600 hover:underline disabled:cursor-not-allowed disabled:opacity-40", children: t("common.delete") })] }) })] }), editingSku === row.sku && (_jsx("tr", { className: "bg-[#FAFAFA]", children: _jsx("td", { colSpan: 9, className: "px-4 py-4", children: _jsx(VariantEditForm, { productId: product.id, variant: row, onSaved: async () => {
+                                                            }, className: "text-xs font-semibold text-red-600 hover:underline disabled:cursor-not-allowed disabled:opacity-40", children: t("common.delete") })] }) })] }), editingSku === row.sku && (_jsx("tr", { className: "bg-[#FAFAFA]", children: _jsx("td", { colSpan: 10, className: "px-4 py-4", children: _jsx(VariantEditForm, { productId: product.id, variant: row, onSaved: async () => {
                                                     setEditingSku(null);
                                                     await onReload();
                                                     notify(t("productDetail.updatedSku", { sku: row.sku }));
@@ -208,6 +217,9 @@ function VariantEditForm({ productId, variant, onSaved, onCancel, }) {
     const { t } = useI18n();
     const [color, setColor] = useState(variant.color);
     const [size, setSize] = useState(variant.size);
+    const [sellingPrice, setSellingPrice] = useState(variant.sellingPrice != null && variant.sellingPrice > 0
+        ? String(variant.sellingPrice)
+        : "");
     const [price, setPrice] = useState(String(variant.price));
     const [status, setStatus] = useState(variant.status);
     const [saving, setSaving] = useState(false);
@@ -218,11 +230,20 @@ function VariantEditForm({ productId, variant, onSaved, onCancel, }) {
             notify(t("common.enterValidPrice"), "error");
             return;
         }
+        let parsedSelling;
+        if (sellingPrice.trim() !== "") {
+            parsedSelling = Number.parseFloat(sellingPrice);
+            if (Number.isNaN(parsedSelling) || parsedSelling < 0) {
+                notify(t("common.enterValidPrice"), "error");
+                return;
+            }
+        }
         setSaving(true);
         try {
             await updateVariant(productId, variant.sku, {
                 color: color.trim(),
                 size: size.trim(),
+                sellingPrice: parsedSelling,
                 price: parsedPrice,
                 status: status.trim() || "active",
             });
@@ -237,7 +258,7 @@ function VariantEditForm({ productId, variant, onSaved, onCancel, }) {
             setSaving(false);
         }
     }
-    return (_jsxs("form", { onSubmit: handleSubmit, className: "space-y-3", children: [_jsx("p", { className: "text-xs font-semibold uppercase tracking-wide text-[#9D98B3]", children: t("productDetail.editVariantHeading", { sku: variant.sku }) }), _jsxs("div", { className: "flex flex-wrap gap-3", children: [_jsxs("label", { className: "space-y-1 text-xs text-[#6B6480]", children: [t("productDetail.color"), _jsx("input", { required: true, value: color, onChange: (e) => setColor(e.target.value), className: `block ${inputCls}` })] }), _jsxs("label", { className: "space-y-1 text-xs text-[#6B6480]", children: [t("productDetail.size"), _jsx("input", { value: size, onChange: (e) => setSize(e.target.value), className: `block ${inputCls}` })] }), _jsxs("label", { className: "space-y-1 text-xs text-[#6B6480]", children: [t("productDetail.price"), _jsx("input", { required: true, type: "number", min: 0, step: "1", value: price, onChange: (e) => setPrice(e.target.value), className: `block w-28 ${inputCls}` })] }), _jsxs("label", { className: "space-y-1 text-xs text-[#6B6480]", children: [t("productDetail.status"), _jsxs("select", { value: status, onChange: (e) => setStatus(e.target.value), className: `block ${inputCls}`, children: [_jsx("option", { value: "active", children: t("common.statusActive") }), _jsx("option", { value: "draft", children: t("common.statusDraft") }), _jsx("option", { value: "archived", children: t("common.statusArchived") })] })] })] }), _jsxs("div", { className: "flex gap-2", children: [_jsx("button", { type: "submit", disabled: saving, className: "rounded-lg bg-[#6D4AFF] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60", children: saving ? t("common.saving") : t("common.saveChanges") }), _jsx("button", { type: "button", onClick: onCancel, className: "rounded-lg bg-[#F4F3F8] px-3 py-1.5 text-xs font-semibold text-[#6B6480]", children: t("common.cancel") })] })] }));
+    return (_jsxs("form", { onSubmit: handleSubmit, className: "space-y-3", children: [_jsx("p", { className: "text-xs font-semibold uppercase tracking-wide text-[#9D98B3]", children: t("productDetail.editVariantHeading", { sku: variant.sku }) }), _jsxs("div", { className: "flex flex-wrap gap-3", children: [_jsxs("label", { className: "space-y-1 text-xs text-[#6B6480]", children: [t("productDetail.color"), _jsx("input", { required: true, value: color, onChange: (e) => setColor(e.target.value), className: `block ${inputCls}` })] }), _jsxs("label", { className: "space-y-1 text-xs text-[#6B6480]", children: [t("productDetail.size"), _jsx("input", { value: size, onChange: (e) => setSize(e.target.value), className: `block ${inputCls}` })] }), _jsxs("label", { className: "space-y-1 text-xs text-[#6B6480]", children: [t("productDetail.sellingPrice"), _jsx("input", { type: "number", min: 0, step: "1", value: sellingPrice, onChange: (e) => setSellingPrice(e.target.value), className: `block w-28 ${inputCls}`, placeholder: t("productNew.sellingPricePlaceholder"), title: t("productDetail.sellingPriceHint") })] }), _jsxs("label", { className: "space-y-1 text-xs text-[#6B6480]", children: [t("productDetail.price"), _jsx("input", { required: true, type: "number", min: 0, step: "1", value: price, onChange: (e) => setPrice(e.target.value), className: `block w-28 ${inputCls}` })] }), _jsxs("label", { className: "space-y-1 text-xs text-[#6B6480]", children: [t("productDetail.status"), _jsxs("select", { value: status, onChange: (e) => setStatus(e.target.value), className: `block ${inputCls}`, children: [_jsx("option", { value: "active", children: t("common.statusActive") }), _jsx("option", { value: "draft", children: t("common.statusDraft") }), _jsx("option", { value: "archived", children: t("common.statusArchived") })] })] })] }), _jsxs("div", { className: "flex gap-2", children: [_jsx("button", { type: "submit", disabled: saving, className: "rounded-lg bg-[#6D4AFF] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60", children: saving ? t("common.saving") : t("common.saveChanges") }), _jsx("button", { type: "button", onClick: onCancel, className: "rounded-lg bg-[#F4F3F8] px-3 py-1.5 text-xs font-semibold text-[#6B6480]", children: t("common.cancel") })] })] }));
 }
 function AddVariantForm({ productId, onAdded, onCancel, }) {
     const { notify } = useNotify();
@@ -248,6 +269,7 @@ function AddVariantForm({ productId, onAdded, onCancel, }) {
     const [colorCode, setColorCode] = useState("");
     const [sizeCode, setSizeCode] = useState("OS");
     const [editionCode, setEditionCode] = useState("");
+    const [sellingPrice, setSellingPrice] = useState("");
     const [price, setPrice] = useState("");
     const [initialStock, setInitialStock] = useState("");
     const [status, setStatus] = useState("active");
@@ -291,6 +313,14 @@ function AddVariantForm({ productId, onAdded, onCancel, }) {
             notify(t("common.enterValidPrice"), "error");
             return;
         }
+        let parsedSelling;
+        if (sellingPrice.trim() !== "") {
+            parsedSelling = Number.parseFloat(sellingPrice);
+            if (Number.isNaN(parsedSelling) || parsedSelling < 0) {
+                notify(t("common.enterValidPrice"), "error");
+                return;
+            }
+        }
         if (!colorCode || !sizeCode) {
             notify(t("productDetail.selectColorAndSizeCodes"), "error");
             return;
@@ -305,6 +335,7 @@ function AddVariantForm({ productId, onAdded, onCancel, }) {
                 editionCode: editionCode || undefined,
                 color: colorName,
                 size: sizeName,
+                sellingPrice: parsedSelling,
                 price: parsedPrice,
                 status,
             });
@@ -326,7 +357,7 @@ function AddVariantForm({ productId, onAdded, onCancel, }) {
     if (loadingMasters) {
         return (_jsx("div", { className: "rounded-xl border border-[#E5E3EE] bg-[#FAFAFA] p-4 text-sm text-[#6B6480]", children: t("productDetail.loadingCatalogMasters") }));
     }
-    return (_jsxs("form", { onSubmit: handleSubmit, className: "rounded-xl border border-[#E5E3EE] bg-[#FAFAFA] p-4 space-y-3", children: [_jsx("p", { className: "text-xs font-semibold uppercase tracking-wide text-[#9D98B3]", children: t("productDetail.newVariant") }), _jsx("p", { className: "text-xs text-[#6B6480]", children: t("productDetail.newVariantHint") }), _jsxs("div", { className: "grid gap-3 sm:grid-cols-2 lg:grid-cols-3", children: [_jsxs("label", { className: "space-y-1 text-xs text-[#6B6480]", children: [t("productDetail.colorCodeRequired"), _jsx("select", { required: true, value: colorCode, onChange: (e) => setColorCode(e.target.value), className: `block w-full ${inputCls}`, children: colors.map((c) => (_jsxs("option", { value: c.code, children: [c.code, " \u2014 ", c.name] }, c.code))) })] }), _jsxs("label", { className: "space-y-1 text-xs text-[#6B6480]", children: [t("productDetail.sizeCodeRequired"), _jsx("select", { required: true, value: sizeCode, onChange: (e) => setSizeCode(e.target.value), className: `block w-full ${inputCls}`, children: sizes.map((s) => (_jsxs("option", { value: s.code, children: [s.code, " \u2014 ", s.name] }, s.code))) })] }), _jsxs("label", { className: "space-y-1 text-xs text-[#6B6480]", children: [t("productDetail.editionCode"), _jsxs("select", { value: editionCode, onChange: (e) => setEditionCode(e.target.value), className: `block w-full ${inputCls}`, children: [_jsx("option", { value: "", children: t("common.none") }), editions.map((ed) => (_jsxs("option", { value: ed.code, children: [ed.code, " \u2014 ", ed.name] }, ed.code)))] })] }), _jsxs("label", { className: "space-y-1 text-xs text-[#6B6480]", children: [t("productDetail.priceKrwRequired"), _jsx("input", { required: true, type: "number", min: 0, step: "1", value: price, onChange: (e) => setPrice(e.target.value), className: `block w-full ${inputCls}` })] }), _jsxs("label", { className: "space-y-1 text-xs text-[#6B6480]", children: [t("productDetail.status"), _jsxs("select", { value: status, onChange: (e) => setStatus(e.target.value), className: `block w-full ${inputCls}`, children: [_jsx("option", { value: "active", children: t("common.statusActive") }), _jsx("option", { value: "draft", children: t("common.statusDraft") }), _jsx("option", { value: "archived", children: t("common.statusArchived") })] })] }), _jsxs("label", { className: "space-y-1 text-xs text-[#6B6480]", children: [t("productDetail.initialStock"), _jsx("input", { type: "number", min: 0, value: initialStock, onChange: (e) => setInitialStock(e.target.value), className: `block w-full ${inputCls}`, placeholder: t("productDetail.initialStockPlaceholder") })] })] }), _jsxs("div", { className: "flex gap-2", children: [_jsx("button", { type: "submit", disabled: saving, className: "rounded-lg bg-[#6D4AFF] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60", children: saving ? t("common.adding") : t("productDetail.addVariant") }), _jsx("button", { type: "button", onClick: onCancel, className: "rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-[#6B6480] border border-[#E5E3EE]", children: t("common.cancel") })] })] }));
+    return (_jsxs("form", { onSubmit: handleSubmit, className: "rounded-xl border border-[#E5E3EE] bg-[#FAFAFA] p-4 space-y-3", children: [_jsx("p", { className: "text-xs font-semibold uppercase tracking-wide text-[#9D98B3]", children: t("productDetail.newVariant") }), _jsx("p", { className: "text-xs text-[#6B6480]", children: t("productDetail.newVariantHint") }), _jsxs("div", { className: "grid gap-3 sm:grid-cols-2 lg:grid-cols-3", children: [_jsxs("label", { className: "space-y-1 text-xs text-[#6B6480]", children: [t("productDetail.colorCodeRequired"), _jsx("select", { required: true, value: colorCode, onChange: (e) => setColorCode(e.target.value), className: `block w-full ${inputCls}`, children: colors.map((c) => (_jsxs("option", { value: c.code, children: [c.code, " \u2014 ", c.name] }, c.code))) })] }), _jsxs("label", { className: "space-y-1 text-xs text-[#6B6480]", children: [t("productDetail.sizeCodeRequired"), _jsx("select", { required: true, value: sizeCode, onChange: (e) => setSizeCode(e.target.value), className: `block w-full ${inputCls}`, children: sizes.map((s) => (_jsxs("option", { value: s.code, children: [s.code, " \u2014 ", s.name] }, s.code))) })] }), _jsxs("label", { className: "space-y-1 text-xs text-[#6B6480]", children: [t("productDetail.editionCode"), _jsxs("select", { value: editionCode, onChange: (e) => setEditionCode(e.target.value), className: `block w-full ${inputCls}`, children: [_jsx("option", { value: "", children: t("common.none") }), editions.map((ed) => (_jsxs("option", { value: ed.code, children: [ed.code, " \u2014 ", ed.name] }, ed.code)))] })] }), _jsxs("label", { className: "space-y-1 text-xs text-[#6B6480]", children: [t("productDetail.sellingPriceKrw"), _jsx("input", { type: "number", min: 0, step: "1", value: sellingPrice, onChange: (e) => setSellingPrice(e.target.value), className: `block w-full ${inputCls}`, placeholder: t("productNew.sellingPricePlaceholder"), title: t("productDetail.sellingPriceHint") })] }), _jsxs("label", { className: "space-y-1 text-xs text-[#6B6480]", children: [t("productDetail.priceKrwRequired"), _jsx("input", { required: true, type: "number", min: 0, step: "1", value: price, onChange: (e) => setPrice(e.target.value), className: `block w-full ${inputCls}` })] }), _jsxs("label", { className: "space-y-1 text-xs text-[#6B6480]", children: [t("productDetail.status"), _jsxs("select", { value: status, onChange: (e) => setStatus(e.target.value), className: `block w-full ${inputCls}`, children: [_jsx("option", { value: "active", children: t("common.statusActive") }), _jsx("option", { value: "draft", children: t("common.statusDraft") }), _jsx("option", { value: "archived", children: t("common.statusArchived") })] })] }), _jsxs("label", { className: "space-y-1 text-xs text-[#6B6480]", children: [t("productDetail.initialStock"), _jsx("input", { type: "number", min: 0, value: initialStock, onChange: (e) => setInitialStock(e.target.value), className: `block w-full ${inputCls}`, placeholder: t("productDetail.initialStockPlaceholder") })] })] }), _jsxs("div", { className: "flex gap-2", children: [_jsx("button", { type: "submit", disabled: saving, className: "rounded-lg bg-[#6D4AFF] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60", children: saving ? t("common.adding") : t("productDetail.addVariant") }), _jsx("button", { type: "button", onClick: onCancel, className: "rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-[#6B6480] border border-[#E5E3EE]", children: t("common.cancel") })] })] }));
 }
 function StockEditor({ sku, quantity, reserved, onSave, }) {
     const { t } = useI18n();

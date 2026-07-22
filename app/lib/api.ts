@@ -36,7 +36,12 @@ export interface Product {
   availableColors?: string[];
   availableSizes?: string[];
   defaultImageUrl?: string;
+  /** Official/display (list / "was") price of the cheapest active variant. */
+  sellingPriceFrom?: number;
+  /** Real sale price (min active variant price). */
   priceFrom?: number;
+  /** Legacy mirror of cheapest active variant selling price. */
+  sellingPrice?: number;
   variants?: ProductVariant[];
   raw: ProductSearchHit;
 }
@@ -52,6 +57,9 @@ export interface ProductVariant {
   colorCode?: string;
   sizeCode?: string;
   editionCode?: string;
+  /** Official/display price (strikethrough / "was" price) in KRW won. */
+  sellingPrice?: number;
+  /** Real sale price in KRW won. */
   price: number;
   status: string;
   imageUrls: string[];
@@ -119,6 +127,8 @@ function mapVariant(hit: ProductSearchHit): ProductVariant {
     sizeCode: hitString(hit, "sizeCode") ?? hitString(hit, "size_code"),
     editionCode:
       hitString(hit, "editionCode") ?? hitString(hit, "edition_code"),
+    sellingPrice:
+      hitNumber(hit, "sellingPrice") ?? hitNumber(hit, "selling_price"),
     price: hitNumber(hit, "price") ?? 0,
     status: hitString(hit, "status") ?? "active",
     imageUrls: hitStringArray(hit, "imageUrls") ?? [],
@@ -147,6 +157,7 @@ export function legacyVariantFromProduct(product: Product): ProductVariant {
     productId: product.id,
     color: product.color ?? "",
     size: "",
+    sellingPrice: product.sellingPrice,
     price: product.price ?? 0,
     status: product.status ?? "active",
     imageUrls: product.imageUrls ?? [],
@@ -326,8 +337,13 @@ export function mapProduct(
       hitStringArray(hit, "availableSizes") ??
       hitStringArray(hit, "available_sizes"),
     defaultImageUrl,
+    sellingPriceFrom:
+      hitNumber(hit, "sellingPriceFrom") ??
+      hitNumber(hit, "selling_price_from"),
     priceFrom:
       hitNumber(hit, "priceFrom") ?? hitNumber(hit, "price_from"),
+    sellingPrice:
+      hitNumber(hit, "sellingPrice") ?? hitNumber(hit, "selling_price"),
     variants,
     raw: hit,
   };
@@ -460,6 +476,9 @@ export interface CreateVariantInput {
   colorCode: string;
   sizeCode: string;
   editionCode?: string;
+  /** Official/display (list / "was") price in KRW won. */
+  sellingPrice?: number;
+  /** Real sale price in KRW won. */
   price: number;
   /** Optional display names; backend enriches from masters when blank. */
   color?: string;
@@ -484,6 +503,7 @@ export async function createVariant(
         editionCode: input.editionCode || undefined,
         color: input.color,
         size: input.size,
+        sellingPrice: input.sellingPrice,
         price: input.price,
         status: input.status ?? "active",
       }),
@@ -497,6 +517,9 @@ export async function createVariant(
 export interface UpdateVariantInput {
   color?: string;
   size?: string;
+  /** Official/display (list / "was") price in KRW won. */
+  sellingPrice?: number;
+  /** Real sale price in KRW won. */
   price?: number;
   status?: string;
   /** Replaces the variant gallery when non-empty. Empty arrays are ignored by the API merge. */

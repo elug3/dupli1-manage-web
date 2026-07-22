@@ -250,12 +250,22 @@ function PriceSection({
 }) {
   const { t, formatCurrency } = useI18n();
   const { notify } = useNotify();
+  const [sellingValue, setSellingValue] = useState(
+    variant.sellingPrice != null && variant.sellingPrice > 0
+      ? String(variant.sellingPrice)
+      : ""
+  );
   const [value, setValue] = useState(String(variant.price));
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    setSellingValue(
+      variant.sellingPrice != null && variant.sellingPrice > 0
+        ? String(variant.sellingPrice)
+        : ""
+    );
     setValue(String(variant.price));
-  }, [variant.price]);
+  }, [variant.sellingPrice, variant.price]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -264,9 +274,18 @@ function PriceSection({
       notify(t("common.enterValidPrice"), "error");
       return;
     }
+    let parsedSelling: number | undefined;
+    if (sellingValue.trim() !== "") {
+      parsedSelling = Number.parseFloat(sellingValue);
+      if (Number.isNaN(parsedSelling) || parsedSelling < 0) {
+        notify(t("common.enterValidPrice"), "error");
+        return;
+      }
+    }
     setSaving(true);
     try {
       const updated = await updateVariant(productId, variant.sku, {
+        sellingPrice: parsedSelling,
         price: parsed,
       });
       onSaved(updated);
@@ -282,15 +301,41 @@ function PriceSection({
     }
   }
 
+  const sellingLabel =
+    variant.sellingPrice != null && variant.sellingPrice > 0
+      ? formatCurrency(variant.sellingPrice)
+      : t("common.emptyValue");
+
   return (
     <section className="space-y-3 border-t border-[#F0EEF8] pt-6">
       <h2 className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
         {t("skuDetail.price")}
       </h2>
       <p className="text-sm text-[#6B6480]">
-        {t("skuDetail.currentPrice", { price: formatCurrency(variant.price) })}
+        {t("skuDetail.currentSellingPrice", { price: sellingLabel })}
+        {" · "}
+        {t("skuDetail.currentPrice", {
+          price: formatCurrency(variant.price),
+        })}
+      </p>
+      <p className="text-xs text-[#9D98B3]">
+        {t("productDetail.sellingPriceHint")}
       </p>
       <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-3">
+        <label className="space-y-1.5">
+          <span className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
+            {t("skuDetail.sellingPriceKrw")}
+          </span>
+          <input
+            type="number"
+            min={0}
+            step="1"
+            value={sellingValue}
+            onChange={(e) => setSellingValue(e.target.value)}
+            className={`w-44 ${fieldCls}`}
+            placeholder={t("productNew.sellingPricePlaceholder")}
+          />
+        </label>
         <label className="space-y-1.5">
           <span className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
             {t("skuDetail.priceKrw")}

@@ -34,6 +34,7 @@ function mapVariant(hit) {
         colorCode: hitString(hit, "colorCode") ?? hitString(hit, "color_code"),
         sizeCode: hitString(hit, "sizeCode") ?? hitString(hit, "size_code"),
         editionCode: hitString(hit, "editionCode") ?? hitString(hit, "edition_code"),
+        sellingPrice: hitNumber(hit, "sellingPrice") ?? hitNumber(hit, "selling_price"),
         price: hitNumber(hit, "price") ?? 0,
         status: hitString(hit, "status") ?? "active",
         imageUrls: hitStringArray(hit, "imageUrls") ?? [],
@@ -60,6 +61,7 @@ export function legacyVariantFromProduct(product) {
         productId: product.id,
         color: product.color ?? "",
         size: "",
+        sellingPrice: product.sellingPrice,
         price: product.price ?? 0,
         status: product.status ?? "active",
         imageUrls: product.imageUrls ?? [],
@@ -207,7 +209,10 @@ export function mapProduct(hit, category, index = 0) {
         availableSizes: hitStringArray(hit, "availableSizes") ??
             hitStringArray(hit, "available_sizes"),
         defaultImageUrl,
+        sellingPriceFrom: hitNumber(hit, "sellingPriceFrom") ??
+            hitNumber(hit, "selling_price_from"),
         priceFrom: hitNumber(hit, "priceFrom") ?? hitNumber(hit, "price_from"),
+        sellingPrice: hitNumber(hit, "sellingPrice") ?? hitNumber(hit, "selling_price"),
         variants,
         raw: hit,
     };
@@ -303,6 +308,7 @@ export async function createVariant(productId, input) {
             editionCode: input.editionCode || undefined,
             color: input.color,
             size: input.size,
+            sellingPrice: input.sellingPrice,
             price: input.price,
             status: input.status ?? "active",
         }),

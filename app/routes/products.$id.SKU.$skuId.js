@@ -121,11 +121,17 @@ export default function SkuDetail() {
 function PriceSection({ productId, variant, onSaved, }) {
     const { t, formatCurrency } = useI18n();
     const { notify } = useNotify();
+    const [sellingValue, setSellingValue] = useState(variant.sellingPrice != null && variant.sellingPrice > 0
+        ? String(variant.sellingPrice)
+        : "");
     const [value, setValue] = useState(String(variant.price));
     const [saving, setSaving] = useState(false);
     useEffect(() => {
+        setSellingValue(variant.sellingPrice != null && variant.sellingPrice > 0
+            ? String(variant.sellingPrice)
+            : "");
         setValue(String(variant.price));
-    }, [variant.price]);
+    }, [variant.sellingPrice, variant.price]);
     async function handleSubmit(e) {
         e.preventDefault();
         const parsed = Number.parseFloat(value);
@@ -133,9 +139,18 @@ function PriceSection({ productId, variant, onSaved, }) {
             notify(t("common.enterValidPrice"), "error");
             return;
         }
+        let parsedSelling;
+        if (sellingValue.trim() !== "") {
+            parsedSelling = Number.parseFloat(sellingValue);
+            if (Number.isNaN(parsedSelling) || parsedSelling < 0) {
+                notify(t("common.enterValidPrice"), "error");
+                return;
+            }
+        }
         setSaving(true);
         try {
             const updated = await updateVariant(productId, variant.sku, {
+                sellingPrice: parsedSelling,
                 price: parsed,
             });
             onSaved(updated);
@@ -149,7 +164,12 @@ function PriceSection({ productId, variant, onSaved, }) {
             setSaving(false);
         }
     }
-    return (_jsxs("section", { className: "space-y-3 border-t border-[#F0EEF8] pt-6", children: [_jsx("h2", { className: "text-xs font-semibold uppercase tracking-wide text-[#9D98B3]", children: t("skuDetail.price") }), _jsx("p", { className: "text-sm text-[#6B6480]", children: t("skuDetail.currentPrice", { price: formatCurrency(variant.price) }) }), _jsxs("form", { onSubmit: handleSubmit, className: "flex flex-wrap items-end gap-3", children: [_jsxs("label", { className: "space-y-1.5", children: [_jsx("span", { className: "text-xs font-semibold uppercase tracking-wide text-[#6B6480]", children: t("skuDetail.priceKrw") }), _jsx("input", { type: "number", min: 0, step: "1", required: true, value: value, onChange: (e) => setValue(e.target.value), className: `w-44 ${fieldCls}`, placeholder: t("productNew.pricePlaceholder") })] }), _jsx("button", { type: "submit", disabled: saving, className: "rounded-xl bg-[#6D4AFF] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60", children: saving ? t("common.saving") : t("skuDetail.updatePrice") })] })] }));
+    const sellingLabel = variant.sellingPrice != null && variant.sellingPrice > 0
+        ? formatCurrency(variant.sellingPrice)
+        : t("common.emptyValue");
+    return (_jsxs("section", { className: "space-y-3 border-t border-[#F0EEF8] pt-6", children: [_jsx("h2", { className: "text-xs font-semibold uppercase tracking-wide text-[#9D98B3]", children: t("skuDetail.price") }), _jsxs("p", { className: "text-sm text-[#6B6480]", children: [t("skuDetail.currentSellingPrice", { price: sellingLabel }), " · ", t("skuDetail.currentPrice", {
+                        price: formatCurrency(variant.price),
+                    })] }), _jsx("p", { className: "text-xs text-[#9D98B3]", children: t("productDetail.sellingPriceHint") }), _jsxs("form", { onSubmit: handleSubmit, className: "flex flex-wrap items-end gap-3", children: [_jsxs("label", { className: "space-y-1.5", children: [_jsx("span", { className: "text-xs font-semibold uppercase tracking-wide text-[#6B6480]", children: t("skuDetail.sellingPriceKrw") }), _jsx("input", { type: "number", min: 0, step: "1", value: sellingValue, onChange: (e) => setSellingValue(e.target.value), className: `w-44 ${fieldCls}`, placeholder: t("productNew.sellingPricePlaceholder") })] }), _jsxs("label", { className: "space-y-1.5", children: [_jsx("span", { className: "text-xs font-semibold uppercase tracking-wide text-[#6B6480]", children: t("skuDetail.priceKrw") }), _jsx("input", { type: "number", min: 0, step: "1", required: true, value: value, onChange: (e) => setValue(e.target.value), className: `w-44 ${fieldCls}`, placeholder: t("productNew.pricePlaceholder") })] }), _jsx("button", { type: "submit", disabled: saving, className: "rounded-xl bg-[#6D4AFF] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60", children: saving ? t("common.saving") : t("skuDetail.updatePrice") })] })] }));
 }
 function StockSection({ sku, quantity, onSaved, }) {
     const { t } = useI18n();

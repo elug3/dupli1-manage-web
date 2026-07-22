@@ -51,6 +51,7 @@ export default function NewProduct() {
   const [colorCode, setColorCode] = useState("");
   const [sizeCode, setSizeCode] = useState("OS");
   const [editionCode, setEditionCode] = useState("");
+  const [sellingPrice, setSellingPrice] = useState("");
   const [price, setPrice] = useState("");
   const [status, setStatus] = useState("active");
   const [initialStock, setInitialStock] = useState("");
@@ -234,6 +235,13 @@ export default function NewProduct() {
       if (Number.isNaN(parsedPrice) || parsedPrice < 0) {
         throw new Error(t("productNew.enterValidPriceForFirstVariant"));
       }
+      let parsedSelling: number | undefined;
+      if (sellingPrice.trim() !== "") {
+        parsedSelling = Number.parseFloat(sellingPrice);
+        if (Number.isNaN(parsedSelling) || parsedSelling < 0) {
+          throw new Error(t("productNew.enterValidPriceForFirstVariant"));
+        }
+      }
 
       const brandName = brands.find((b) => b.code === brandCode)?.name;
       const colorName = colors.find((c) => c.code === colorCode)?.name;
@@ -257,6 +265,7 @@ export default function NewProduct() {
           editionCode: editionCode || undefined,
           color: colorName,
           size: sizeName,
+          sellingPrice: parsedSelling,
           price: parsedPrice,
           status,
         });
@@ -485,6 +494,19 @@ export default function NewProduct() {
                 </option>
               ))}
             </select>
+          </Field>
+          <Field label={t("productNew.sellingPriceKrw")} id="sellingPrice">
+            <input
+              id="sellingPrice"
+              type="number"
+              min={0}
+              step="1"
+              value={sellingPrice}
+              onChange={(e) => setSellingPrice(e.target.value)}
+              className={inputCls}
+              placeholder={t("productNew.sellingPricePlaceholder")}
+              title={t("productDetail.sellingPriceHint")}
+            />
           </Field>
           <Field label={t("productNew.priceKrw")} id="price" required>
             <input

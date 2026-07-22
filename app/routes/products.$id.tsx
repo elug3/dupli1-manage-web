@@ -226,6 +226,12 @@ function ParentSummarySection({
       : product.price != null
         ? formatCurrency(product.price)
         : t("common.emptyValue");
+  const sellingPriceFrom =
+    product.sellingPriceFrom != null && product.sellingPriceFrom > 0
+      ? formatCurrency(product.sellingPriceFrom)
+      : product.sellingPrice != null && product.sellingPrice > 0
+        ? formatCurrency(product.sellingPrice)
+        : t("common.emptyValue");
 
   return (
     <div>
@@ -339,6 +345,7 @@ function ParentSummarySection({
             [t("productDetail.material"), product.material],
             [t("productDetail.status"), product.status],
             [t("productDetail.colors"), colors],
+            [t("productDetail.sellingPriceFrom"), sellingPriceFrom],
             [t("productDetail.priceFrom"), priceFrom],
           ].map(([label, value]) => (
             <div key={label}>
@@ -403,6 +410,7 @@ function VariantsSection({
     t("productDetail.colSku"),
     t("productDetail.colSkuId"),
     t("productDetail.colOption"),
+    t("productDetail.colSellingPrice"),
     t("productDetail.colPrice"),
     t("productDetail.colStatus"),
     t("productDetail.colStock"),
@@ -468,6 +476,21 @@ function VariantsSection({
                           .filter(Boolean)
                           .join(" · ")}
                       </div>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-[#1C1B1F]">
+                    {row.sellingPrice != null && row.sellingPrice > 0 ? (
+                      <span
+                        className={
+                          row.sellingPrice > row.price
+                            ? "text-[#9D98B3] line-through"
+                            : undefined
+                        }
+                      >
+                        {formatCurrency(row.sellingPrice)}
+                      </span>
+                    ) : (
+                      t("common.emptyValue")
                     )}
                   </td>
                   <td className="px-4 py-3 text-[#1C1B1F]">
@@ -574,7 +597,7 @@ function VariantsSection({
                 </tr>
                 {editingSku === row.sku && (
                   <tr className="bg-[#FAFAFA]">
-                    <td colSpan={9} className="px-4 py-4">
+                    <td colSpan={10} className="px-4 py-4">
                       <VariantEditForm
                         productId={product.id}
                         variant={row}
@@ -634,6 +657,11 @@ function VariantEditForm({
   const { t } = useI18n();
   const [color, setColor] = useState(variant.color);
   const [size, setSize] = useState(variant.size);
+  const [sellingPrice, setSellingPrice] = useState(
+    variant.sellingPrice != null && variant.sellingPrice > 0
+      ? String(variant.sellingPrice)
+      : ""
+  );
   const [price, setPrice] = useState(String(variant.price));
   const [status, setStatus] = useState(variant.status);
   const [saving, setSaving] = useState(false);
@@ -645,12 +673,21 @@ function VariantEditForm({
       notify(t("common.enterValidPrice"), "error");
       return;
     }
+    let parsedSelling: number | undefined;
+    if (sellingPrice.trim() !== "") {
+      parsedSelling = Number.parseFloat(sellingPrice);
+      if (Number.isNaN(parsedSelling) || parsedSelling < 0) {
+        notify(t("common.enterValidPrice"), "error");
+        return;
+      }
+    }
 
     setSaving(true);
     try {
       await updateVariant(productId, variant.sku, {
         color: color.trim(),
         size: size.trim(),
+        sellingPrice: parsedSelling,
         price: parsedPrice,
         status: status.trim() || "active",
       });
@@ -688,6 +725,19 @@ function VariantEditForm({
             value={size}
             onChange={(e) => setSize(e.target.value)}
             className={`block ${inputCls}`}
+          />
+        </label>
+        <label className="space-y-1 text-xs text-[#6B6480]">
+          {t("productDetail.sellingPrice")}
+          <input
+            type="number"
+            min={0}
+            step="1"
+            value={sellingPrice}
+            onChange={(e) => setSellingPrice(e.target.value)}
+            className={`block w-28 ${inputCls}`}
+            placeholder={t("productNew.sellingPricePlaceholder")}
+            title={t("productDetail.sellingPriceHint")}
           />
         </label>
         <label className="space-y-1 text-xs text-[#6B6480]">
@@ -752,6 +802,7 @@ function AddVariantForm({
   const [colorCode, setColorCode] = useState("");
   const [sizeCode, setSizeCode] = useState("OS");
   const [editionCode, setEditionCode] = useState("");
+  const [sellingPrice, setSellingPrice] = useState("");
   const [price, setPrice] = useState("");
   const [initialStock, setInitialStock] = useState("");
   const [status, setStatus] = useState("active");
@@ -795,6 +846,14 @@ function AddVariantForm({
       notify(t("common.enterValidPrice"), "error");
       return;
     }
+    let parsedSelling: number | undefined;
+    if (sellingPrice.trim() !== "") {
+      parsedSelling = Number.parseFloat(sellingPrice);
+      if (Number.isNaN(parsedSelling) || parsedSelling < 0) {
+        notify(t("common.enterValidPrice"), "error");
+        return;
+      }
+    }
     if (!colorCode || !sizeCode) {
       notify(t("productDetail.selectColorAndSizeCodes"), "error");
       return;
@@ -810,6 +869,7 @@ function AddVariantForm({
         editionCode: editionCode || undefined,
         color: colorName,
         size: sizeName,
+        sellingPrice: parsedSelling,
         price: parsedPrice,
         status,
       });
@@ -894,6 +954,19 @@ function AddVariantForm({
               </option>
             ))}
           </select>
+        </label>
+        <label className="space-y-1 text-xs text-[#6B6480]">
+          {t("productDetail.sellingPriceKrw")}
+          <input
+            type="number"
+            min={0}
+            step="1"
+            value={sellingPrice}
+            onChange={(e) => setSellingPrice(e.target.value)}
+            className={`block w-full ${inputCls}`}
+            placeholder={t("productNew.sellingPricePlaceholder")}
+            title={t("productDetail.sellingPriceHint")}
+          />
         </label>
         <label className="space-y-1 text-xs text-[#6B6480]">
           {t("productDetail.priceKrwRequired")}
