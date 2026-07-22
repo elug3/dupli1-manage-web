@@ -1,3 +1,5 @@
+import { AUTH_PREFIX } from "./gateway";
+
 export interface User {
   id: string;
   email: string;
@@ -40,6 +42,12 @@ function redirectToLogin(): void {
   const path = window.location.pathname;
   if (path === "/login" || path.startsWith("/login?")) return;
   window.location.assign("/login");
+}
+
+/** Browser paths under `/auth/…` (excluding session helpers) hit the auth service. */
+function isAuthServiceUrl(url: string): boolean {
+  const path = url.startsWith("http") ? new URL(url).pathname : url;
+  return path === AUTH_PREFIX || path.startsWith(`${AUTH_PREFIX}/`);
 }
 
 function parseMe(body: {
@@ -127,10 +135,21 @@ export async function authedFetch(
   if (refreshed) {
     res = await doFetch();
     if (res.status !== 401) return res;
+  } else {
+    // Refresh failed: session is no longer usable (auth/session).
+    redirectToLogin();
+    throw new Error("Session expired. Please sign in again.");
   }
 
-  redirectToLogin();
-  throw new Error("Session expired. Please sign in again.");
+  // Still 401 after a successful refresh. Only bounce to login when the
+  // auth service itself rejected the call — product/order/inventory 401s
+  // (e.g. JWKS mismatch) should surface as errors instead.
+  if (isAuthServiceUrl(url)) {
+    redirectToLogin();
+    throw new Error("Session expired. Please sign in again.");
+  }
+
+  return res;
 }
 
 export async function logout(): Promise<void> {
