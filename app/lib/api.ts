@@ -57,6 +57,12 @@ export interface Product {
   brandCode?: string;
   /** Immutable master style code under brand (e.g. CAS001). */
   styleCode?: string;
+  /** Bag type under category (handbags, tote, …). */
+  subCategory?: string;
+  /** Bag occasion / look (casual, evening, …) — not styleCode. */
+  style?: string;
+  /** Audience (men, women, kids). */
+  target?: string;
   color?: string;
   material?: string;
   sku?: string;
@@ -353,6 +359,10 @@ export function mapProduct(
     brand: hitString(hit, "brand"),
     brandCode: hitString(hit, "brandCode") ?? hitString(hit, "brand_code"),
     styleCode: hitString(hit, "styleCode") ?? hitString(hit, "style_code"),
+    subCategory:
+      hitString(hit, "subCategory") ?? hitString(hit, "sub_category"),
+    style: hitString(hit, "style") ?? hitString(hit, "bag_style"),
+    target: hitString(hit, "target"),
     color: hitString(hit, "color"),
     material: hitString(hit, "material"),
     sku: hitString(hit, "sku") ?? hitString(hit, "id"),
@@ -689,6 +699,12 @@ export interface UpdateProductInput {
   material?: string;
   stock?: number;
   category?: string;
+  /** Bag type code; blank clears. Always send with updates to avoid wipe. */
+  subCategory?: string;
+  /** Bag occasion code; blank clears. Always send with updates to avoid wipe. */
+  style?: string;
+  /** Audience code; blank clears. Always send with updates to avoid wipe. */
+  target?: string;
   status?: string;
 }
 
@@ -724,6 +740,26 @@ async function parseCatalogList<T>(res: Response, fallback: string): Promise<T[]
   const data = (await res.json()) as T[] | { results?: T[] };
   if (Array.isArray(data)) return data;
   return Array.isArray(data.results) ? data.results : [];
+}
+
+/** Bag merchandising taxonomy (storefront filters; not SKU segment masters). */
+export interface MasterCatalog {
+  subCategories: CatalogCodeName[];
+  styles: CatalogCodeName[];
+  targets: CatalogCodeName[];
+}
+
+export async function getMasterCatalog(): Promise<MasterCatalog> {
+  const res = await authedFetch(productPath("/api/v1/catalog/master"));
+  if (!res.ok) {
+    throw new Error(await readError(res, "Failed to load master catalog"));
+  }
+  const data = (await res.json()) as Partial<MasterCatalog>;
+  return {
+    subCategories: Array.isArray(data.subCategories) ? data.subCategories : [],
+    styles: Array.isArray(data.styles) ? data.styles : [],
+    targets: Array.isArray(data.targets) ? data.targets : [],
+  };
 }
 
 export async function listBrands(): Promise<CatalogCodeName[]> {

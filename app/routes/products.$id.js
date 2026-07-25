@@ -1,7 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
-import { createVariant, deleteVariant, deleteVariantImage, LastImageDeleteError, formatVariantOption, getInventory, getManageProduct, listColors, listEditions, listSizes, productImageSrc, productSkuPath, productVariants, setInventory, updateProduct, updateVariant, uploadProductImage, uploadVariantImage, } from "~/lib/api";
+import { createVariant, deleteVariant, deleteVariantImage, LastImageDeleteError, formatVariantOption, getInventory, getManageProduct, getMasterCatalog, listBrands, listColors, listEditions, listSizes, productImageSrc, productSkuPath, productVariants, setInventory, updateProduct, updateVariant, uploadProductImage, uploadVariantImage, } from "~/lib/api";
 import { useI18n } from "~/lib/i18n";
 import { useNotify } from "~/lib/notifications";
 const MAX_IMAGE_BYTES = 50 * 1024 * 1024;
@@ -75,23 +75,74 @@ export default function ProductDetail() {
         Boolean(product.availableColors?.length);
     return (_jsxs("div", { className: "space-y-6", children: [_jsx(Link, { to: "/products", className: "text-sm text-[#6D4AFF] hover:underline", children: t("productDetail.backToProducts") }), _jsxs("div", { className: "rounded-2xl border border-[#E5E3EE] bg-white p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)] sm:p-8", children: [_jsx(ParentSummarySection, { product: product, onUpdated: setProduct }), _jsx(VariantsSection, { product: product, rows: variantRows, onStockUpdated: refreshVariantStock, onProductUpdated: setProduct, onReload: loadProduct }), !hasMultipleVariants && variantRows[0] && (_jsx(LegacyProductImages, { productId: product.id, variant: variantRows[0], onUploaded: setProduct }))] })] }));
 }
+function catalogTermLabel(terms, code, empty) {
+    if (!code)
+        return empty;
+    return terms.find((t) => t.code === code)?.name ?? code;
+}
 function ParentSummarySection({ product, onUpdated, }) {
     const { notify } = useNotify();
     const { t, formatCurrency } = useI18n();
     const [editing, setEditing] = useState(false);
     const [name, setName] = useState(product.name);
     const [brand, setBrand] = useState(product.brand ?? "");
+    const [subCategory, setSubCategory] = useState(product.subCategory ?? "");
+    const [style, setStyle] = useState(product.style ?? "");
+    const [target, setTarget] = useState(product.target ?? "");
     const [material, setMaterial] = useState(product.material ?? "");
     const [status, setStatus] = useState(product.status ?? "active");
     const [description, setDescription] = useState(product.description ?? "");
     const [saving, setSaving] = useState(false);
+    const [brands, setBrands] = useState([]);
+    const [subCategories, setSubCategories] = useState([]);
+    const [styles, setStyles] = useState([]);
+    const [targets, setTargets] = useState([]);
+    const [mastersLoading, setMastersLoading] = useState(true);
     useEffect(() => {
         setName(product.name);
         setBrand(product.brand ?? "");
+        setSubCategory(product.subCategory ?? "");
+        setStyle(product.style ?? "");
+        setTarget(product.target ?? "");
         setMaterial(product.material ?? "");
         setStatus(product.status ?? "active");
         setDescription(product.description ?? "");
     }, [product]);
+    // Prefer catalog brand name when brandCode matches (does not clobber mid-edit).
+    useEffect(() => {
+        if (editing || !product.brandCode)
+            return;
+        const match = brands.find((b) => b.code === product.brandCode);
+        if (match)
+            setBrand(match.name);
+    }, [brands, product.brandCode, editing]);
+    useEffect(() => {
+        let cancelled = false;
+        setMastersLoading(true);
+        Promise.all([listBrands(), getMasterCatalog()])
+            .then(([brandRows, master]) => {
+            if (cancelled)
+                return;
+            setBrands(brandRows);
+            setSubCategories(master.subCategories);
+            setStyles(master.styles);
+            setTargets(master.targets);
+        })
+            .catch((err) => {
+            if (cancelled)
+                return;
+            notify(err instanceof Error
+                ? err.message
+                : t("productDetail.failedToLoadCatalogMasters"), "error");
+        })
+            .finally(() => {
+            if (!cancelled)
+                setMastersLoading(false);
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [notify, t]);
     async function handleSubmit(e) {
         e.preventDefault();
         setSaving(true);
@@ -102,6 +153,11 @@ function ParentSummarySection({ product, onUpdated, }) {
                 material: material.trim(),
                 status: status.trim() || "active",
                 description: description.trim() || undefined,
+                // Backend UpdateProduct overwrites taxonomy columns; always send them.
+                category: product.category || "bags",
+                subCategory: subCategory.trim(),
+                style: style.trim(),
+                target: target.trim(),
             });
             onUpdated(updated);
             setEditing(false);
@@ -129,11 +185,38 @@ function ParentSummarySection({ product, onUpdated, }) {
         : product.sellingPrice != null && product.sellingPrice > 0
             ? formatCurrency(product.sellingPrice)
             : t("common.emptyValue");
-    return (_jsxs("div", { children: [_jsxs("div", { className: "flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between", children: [_jsxs("div", { children: [_jsx("h1", { className: "text-2xl font-bold text-[#1C1B1F]", children: product.name }), _jsx("p", { className: "mt-1 text-sm capitalize text-[#6B6480]", children: product.category })] }), !editing && (_jsx("button", { type: "button", onClick: () => setEditing(true), className: "rounded-xl border border-[#E5E3EE] px-4 py-2 text-sm font-semibold text-[#6D4AFF] transition hover:border-[#6D4AFF]/40 hover:bg-[#FAFAFA]", children: t("productDetail.editStyle") }))] }), editing ? (_jsxs("form", { onSubmit: handleSubmit, className: "mt-6 space-y-4", children: [_jsx("p", { className: "text-xs font-semibold uppercase tracking-wide text-[#9D98B3]", children: t("productDetail.editParentProduct") }), _jsxs("div", { className: "grid gap-4 sm:grid-cols-2", children: [_jsxs("label", { className: "space-y-1.5 sm:col-span-2", children: [_jsx("span", { className: "text-xs font-semibold uppercase tracking-wide text-[#6B6480]", children: t("productDetail.name") }), _jsx("input", { required: true, value: name, onChange: (e) => setName(e.target.value), className: fieldCls })] }), _jsxs("label", { className: "space-y-1.5", children: [_jsx("span", { className: "text-xs font-semibold uppercase tracking-wide text-[#6B6480]", children: t("productDetail.brand") }), _jsx("input", { required: true, value: brand, onChange: (e) => setBrand(e.target.value), className: fieldCls })] }), _jsxs("label", { className: "space-y-1.5", children: [_jsx("span", { className: "text-xs font-semibold uppercase tracking-wide text-[#6B6480]", children: t("productDetail.material") }), _jsx("input", { required: true, value: material, onChange: (e) => setMaterial(e.target.value), className: fieldCls })] }), _jsxs("label", { className: "space-y-1.5", children: [_jsx("span", { className: "text-xs font-semibold uppercase tracking-wide text-[#6B6480]", children: t("productDetail.status") }), _jsxs("select", { value: status, onChange: (e) => setStatus(e.target.value), className: fieldCls, children: [_jsx("option", { value: "active", children: t("common.statusActive") }), _jsx("option", { value: "draft", children: t("common.statusDraft") }), _jsx("option", { value: "archived", children: t("common.statusArchived") })] })] }), _jsxs("label", { className: "space-y-1.5 sm:col-span-2", children: [_jsx("span", { className: "text-xs font-semibold uppercase tracking-wide text-[#6B6480]", children: t("productDetail.description") }), _jsx("textarea", { value: description, onChange: (e) => setDescription(e.target.value), rows: 3, className: fieldCls })] })] }), _jsxs("div", { className: "flex gap-2", children: [_jsx("button", { type: "submit", disabled: saving, className: "rounded-xl bg-[#6D4AFF] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60", children: saving ? t("common.saving") : t("common.saveChanges") }), _jsx("button", { type: "button", onClick: () => setEditing(false), className: "rounded-xl border border-[#E5E3EE] px-4 py-2 text-sm font-semibold text-[#6B6480]", children: t("common.cancel") })] })] })) : (_jsxs("dl", { className: "mt-6 grid gap-4 sm:grid-cols-2", children: [[
+    const brandOptions = (() => {
+        const rows = [...brands];
+        if (brand && !rows.some((b) => b.name === brand)) {
+            rows.unshift({
+                code: product.brandCode ?? brand,
+                name: brand,
+            });
+        }
+        return rows;
+    })();
+    function withCurrentTerm(terms, code) {
+        if (!code || terms.some((t) => t.code === code))
+            return terms;
+        return [{ code, name: code }, ...terms];
+    }
+    return (_jsxs("div", { children: [_jsxs("div", { className: "flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between", children: [_jsxs("div", { children: [_jsx("h1", { className: "text-2xl font-bold text-[#1C1B1F]", children: product.name }), _jsx("p", { className: "mt-1 text-sm capitalize text-[#6B6480]", children: product.category })] }), !editing && (_jsx("button", { type: "button", onClick: () => setEditing(true), className: "rounded-xl border border-[#E5E3EE] px-4 py-2 text-sm font-semibold text-[#6D4AFF] transition hover:border-[#6D4AFF]/40 hover:bg-[#FAFAFA]", children: t("productDetail.editStyle") }))] }), editing ? (_jsxs("form", { onSubmit: handleSubmit, className: "mt-6 space-y-4", children: [_jsx("p", { className: "text-xs font-semibold uppercase tracking-wide text-[#9D98B3]", children: t("productDetail.editParentProduct") }), mastersLoading && (_jsx("p", { className: "text-sm text-[#6B6480]", children: t("productDetail.loadingCatalogMasters") })), _jsxs("div", { className: "grid gap-4 sm:grid-cols-2", children: [_jsxs("label", { className: "space-y-1.5 sm:col-span-2", children: [_jsx("span", { className: "text-xs font-semibold uppercase tracking-wide text-[#6B6480]", children: t("productDetail.name") }), _jsx("input", { required: true, value: name, onChange: (e) => setName(e.target.value), className: fieldCls })] }), _jsxs("label", { className: "space-y-1.5", children: [_jsx("span", { className: "text-xs font-semibold uppercase tracking-wide text-[#6B6480]", children: t("productDetail.brand") }), _jsxs("select", { required: true, value: brand, onChange: (e) => setBrand(e.target.value), className: fieldCls, disabled: mastersLoading && brandOptions.length === 0, children: [_jsx("option", { value: "", children: t("productDetail.selectBrand") }), brandOptions.map((b) => (_jsxs("option", { value: b.name, children: [b.name, " (", b.code, ")"] }, b.code)))] })] }), _jsxs("label", { className: "space-y-1.5", children: [_jsx("span", { className: "text-xs font-semibold uppercase tracking-wide text-[#6B6480]", children: t("productDetail.subCategory") }), _jsxs("select", { value: subCategory, onChange: (e) => setSubCategory(e.target.value), className: fieldCls, children: [_jsx("option", { value: "", children: t("common.emptyValue") }), withCurrentTerm(subCategories, subCategory).map((row) => (_jsx("option", { value: row.code, children: row.name }, row.code)))] })] }), _jsxs("label", { className: "space-y-1.5", children: [_jsx("span", { className: "text-xs font-semibold uppercase tracking-wide text-[#6B6480]", children: t("productDetail.style") }), _jsxs("select", { value: style, onChange: (e) => setStyle(e.target.value), className: fieldCls, children: [_jsx("option", { value: "", children: t("common.emptyValue") }), withCurrentTerm(styles, style).map((row) => (_jsx("option", { value: row.code, children: row.name }, row.code)))] })] }), _jsxs("label", { className: "space-y-1.5", children: [_jsx("span", { className: "text-xs font-semibold uppercase tracking-wide text-[#6B6480]", children: t("productDetail.target") }), _jsxs("select", { value: target, onChange: (e) => setTarget(e.target.value), className: fieldCls, children: [_jsx("option", { value: "", children: t("common.emptyValue") }), withCurrentTerm(targets, target).map((row) => (_jsx("option", { value: row.code, children: row.name }, row.code)))] })] }), _jsxs("label", { className: "space-y-1.5", children: [_jsx("span", { className: "text-xs font-semibold uppercase tracking-wide text-[#6B6480]", children: t("productDetail.material") }), _jsx("input", { required: true, value: material, onChange: (e) => setMaterial(e.target.value), className: fieldCls })] }), _jsxs("label", { className: "space-y-1.5", children: [_jsx("span", { className: "text-xs font-semibold uppercase tracking-wide text-[#6B6480]", children: t("productDetail.status") }), _jsxs("select", { value: status, onChange: (e) => setStatus(e.target.value), className: fieldCls, children: [_jsx("option", { value: "active", children: t("common.statusActive") }), _jsx("option", { value: "draft", children: t("common.statusDraft") }), _jsx("option", { value: "archived", children: t("common.statusArchived") })] })] }), _jsxs("label", { className: "space-y-1.5 sm:col-span-2", children: [_jsx("span", { className: "text-xs font-semibold uppercase tracking-wide text-[#6B6480]", children: t("productDetail.description") }), _jsx("textarea", { value: description, onChange: (e) => setDescription(e.target.value), rows: 3, className: fieldCls })] })] }), _jsxs("div", { className: "flex gap-2", children: [_jsx("button", { type: "submit", disabled: saving, className: "rounded-xl bg-[#6D4AFF] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60", children: saving ? t("common.saving") : t("common.saveChanges") }), _jsx("button", { type: "button", onClick: () => setEditing(false), className: "rounded-xl border border-[#E5E3EE] px-4 py-2 text-sm font-semibold text-[#6B6480]", children: t("common.cancel") })] })] })) : (_jsxs("dl", { className: "mt-6 grid gap-4 sm:grid-cols-2", children: [[
                         [t("productDetail.id"), product.id],
                         [t("productDetail.brand"), product.brand],
                         [t("productDetail.brandCode"), product.brandCode],
                         [t("productDetail.styleCode"), product.styleCode],
+                        [
+                            t("productDetail.subCategory"),
+                            catalogTermLabel(subCategories, product.subCategory, t("common.emptyValue")),
+                        ],
+                        [
+                            t("productDetail.style"),
+                            catalogTermLabel(styles, product.style, t("common.emptyValue")),
+                        ],
+                        [
+                            t("productDetail.target"),
+                            catalogTermLabel(targets, product.target, t("common.emptyValue")),
+                        ],
                         [t("productDetail.material"), product.material],
                         [t("productDetail.status"), product.status],
                         [t("productDetail.colors"), colors],

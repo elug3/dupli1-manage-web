@@ -11,6 +11,8 @@ import {
   formatVariantOption,
   getInventory,
   getManageProduct,
+  getMasterCatalog,
+  listBrands,
   listColors,
   listEditions,
   listSizes,
@@ -165,6 +167,15 @@ export default function ProductDetail() {
   );
 }
 
+function catalogTermLabel(
+  terms: CatalogCodeName[],
+  code: string | undefined,
+  empty: string
+): string {
+  if (!code) return empty;
+  return terms.find((t) => t.code === code)?.name ?? code;
+}
+
 function ParentSummarySection({
   product,
   onUpdated,
@@ -177,18 +188,64 @@ function ParentSummarySection({
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(product.name);
   const [brand, setBrand] = useState(product.brand ?? "");
+  const [subCategory, setSubCategory] = useState(product.subCategory ?? "");
+  const [style, setStyle] = useState(product.style ?? "");
+  const [target, setTarget] = useState(product.target ?? "");
   const [material, setMaterial] = useState(product.material ?? "");
   const [status, setStatus] = useState(product.status ?? "active");
   const [description, setDescription] = useState(product.description ?? "");
   const [saving, setSaving] = useState(false);
+  const [brands, setBrands] = useState<CatalogCodeName[]>([]);
+  const [subCategories, setSubCategories] = useState<CatalogCodeName[]>([]);
+  const [styles, setStyles] = useState<CatalogCodeName[]>([]);
+  const [targets, setTargets] = useState<CatalogCodeName[]>([]);
+  const [mastersLoading, setMastersLoading] = useState(true);
 
   useEffect(() => {
     setName(product.name);
     setBrand(product.brand ?? "");
+    setSubCategory(product.subCategory ?? "");
+    setStyle(product.style ?? "");
+    setTarget(product.target ?? "");
     setMaterial(product.material ?? "");
     setStatus(product.status ?? "active");
     setDescription(product.description ?? "");
   }, [product]);
+
+  // Prefer catalog brand name when brandCode matches (does not clobber mid-edit).
+  useEffect(() => {
+    if (editing || !product.brandCode) return;
+    const match = brands.find((b) => b.code === product.brandCode);
+    if (match) setBrand(match.name);
+  }, [brands, product.brandCode, editing]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setMastersLoading(true);
+    Promise.all([listBrands(), getMasterCatalog()])
+      .then(([brandRows, master]) => {
+        if (cancelled) return;
+        setBrands(brandRows);
+        setSubCategories(master.subCategories);
+        setStyles(master.styles);
+        setTargets(master.targets);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        notify(
+          err instanceof Error
+            ? err.message
+            : t("productDetail.failedToLoadCatalogMasters"),
+          "error"
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setMastersLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [notify, t]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -200,6 +257,11 @@ function ParentSummarySection({
         material: material.trim(),
         status: status.trim() || "active",
         description: description.trim() || undefined,
+        // Backend UpdateProduct overwrites taxonomy columns; always send them.
+        category: product.category || "bags",
+        subCategory: subCategory.trim(),
+        style: style.trim(),
+        target: target.trim(),
       });
       onUpdated(updated);
       setEditing(false);
@@ -233,6 +295,25 @@ function ParentSummarySection({
         ? formatCurrency(product.sellingPrice)
         : t("common.emptyValue");
 
+  const brandOptions = (() => {
+    const rows = [...brands];
+    if (brand && !rows.some((b) => b.name === brand)) {
+      rows.unshift({
+        code: product.brandCode ?? brand,
+        name: brand,
+      });
+    }
+    return rows;
+  })();
+
+  function withCurrentTerm(
+    terms: CatalogCodeName[],
+    code: string
+  ): CatalogCodeName[] {
+    if (!code || terms.some((t) => t.code === code)) return terms;
+    return [{ code, name: code }, ...terms];
+  }
+
   return (
     <div>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -258,6 +339,11 @@ function ParentSummarySection({
           <p className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
             {t("productDetail.editParentProduct")}
           </p>
+          {mastersLoading && (
+            <p className="text-sm text-[#6B6480]">
+              {t("productDetail.loadingCatalogMasters")}
+            </p>
+          )}
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="space-y-1.5 sm:col-span-2">
               <span className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
@@ -274,12 +360,71 @@ function ParentSummarySection({
               <span className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
                 {t("productDetail.brand")}
               </span>
-              <input
+              <select
                 required
                 value={brand}
                 onChange={(e) => setBrand(e.target.value)}
                 className={fieldCls}
-              />
+                disabled={mastersLoading && brandOptions.length === 0}
+              >
+                <option value="">{t("productDetail.selectBrand")}</option>
+                {brandOptions.map((b) => (
+                  <option key={b.code} value={b.name}>
+                    {b.name} ({b.code})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="space-y-1.5">
+              <span className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
+                {t("productDetail.subCategory")}
+              </span>
+              <select
+                value={subCategory}
+                onChange={(e) => setSubCategory(e.target.value)}
+                className={fieldCls}
+              >
+                <option value="">{t("common.emptyValue")}</option>
+                {withCurrentTerm(subCategories, subCategory).map((row) => (
+                  <option key={row.code} value={row.code}>
+                    {row.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="space-y-1.5">
+              <span className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
+                {t("productDetail.style")}
+              </span>
+              <select
+                value={style}
+                onChange={(e) => setStyle(e.target.value)}
+                className={fieldCls}
+              >
+                <option value="">{t("common.emptyValue")}</option>
+                {withCurrentTerm(styles, style).map((row) => (
+                  <option key={row.code} value={row.code}>
+                    {row.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="space-y-1.5">
+              <span className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
+                {t("productDetail.target")}
+              </span>
+              <select
+                value={target}
+                onChange={(e) => setTarget(e.target.value)}
+                className={fieldCls}
+              >
+                <option value="">{t("common.emptyValue")}</option>
+                {withCurrentTerm(targets, target).map((row) => (
+                  <option key={row.code} value={row.code}>
+                    {row.name}
+                  </option>
+                ))}
+              </select>
             </label>
             <label className="space-y-1.5">
               <span className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
@@ -342,6 +487,26 @@ function ParentSummarySection({
             [t("productDetail.brand"), product.brand],
             [t("productDetail.brandCode"), product.brandCode],
             [t("productDetail.styleCode"), product.styleCode],
+            [
+              t("productDetail.subCategory"),
+              catalogTermLabel(
+                subCategories,
+                product.subCategory,
+                t("common.emptyValue")
+              ),
+            ],
+            [
+              t("productDetail.style"),
+              catalogTermLabel(styles, product.style, t("common.emptyValue")),
+            ],
+            [
+              t("productDetail.target"),
+              catalogTermLabel(
+                targets,
+                product.target,
+                t("common.emptyValue")
+              ),
+            ],
             [t("productDetail.material"), product.material],
             [t("productDetail.status"), product.status],
             [t("productDetail.colors"), colors],

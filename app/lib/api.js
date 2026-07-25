@@ -198,6 +198,9 @@ export function mapProduct(hit, category, index = 0) {
         brand: hitString(hit, "brand"),
         brandCode: hitString(hit, "brandCode") ?? hitString(hit, "brand_code"),
         styleCode: hitString(hit, "styleCode") ?? hitString(hit, "style_code"),
+        subCategory: hitString(hit, "subCategory") ?? hitString(hit, "sub_category"),
+        style: hitString(hit, "style") ?? hitString(hit, "bag_style"),
+        target: hitString(hit, "target"),
         color: hitString(hit, "color"),
         material: hitString(hit, "material"),
         sku: hitString(hit, "sku") ?? hitString(hit, "id"),
@@ -433,6 +436,18 @@ async function parseCatalogList(res, fallback) {
     if (Array.isArray(data))
         return data;
     return Array.isArray(data.results) ? data.results : [];
+}
+export async function getMasterCatalog() {
+    const res = await authedFetch(productPath("/api/v1/catalog/master"));
+    if (!res.ok) {
+        throw new Error(await readError(res, "Failed to load master catalog"));
+    }
+    const data = (await res.json());
+    return {
+        subCategories: Array.isArray(data.subCategories) ? data.subCategories : [],
+        styles: Array.isArray(data.styles) ? data.styles : [],
+        targets: Array.isArray(data.targets) ? data.targets : [],
+    };
 }
 export async function listBrands() {
     const res = await authedFetch(productPath("/api/v1/catalog/brands"));
