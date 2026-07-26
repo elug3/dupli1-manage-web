@@ -194,6 +194,14 @@ function ParentSummarySection({
   const [material, setMaterial] = useState(product.material ?? "");
   const [status, setStatus] = useState(product.status ?? "active");
   const [description, setDescription] = useState(product.description ?? "");
+  const [price, setPrice] = useState(
+    product.price != null ? String(product.price) : ""
+  );
+  const [officialPrice, setOfficialPrice] = useState(
+    product.officialPrice != null && product.officialPrice > 0
+      ? String(product.officialPrice)
+      : ""
+  );
   const [saving, setSaving] = useState(false);
   const [brands, setBrands] = useState<CatalogCodeName[]>([]);
   const [subCategories, setSubCategories] = useState<CatalogCodeName[]>([]);
@@ -210,6 +218,12 @@ function ParentSummarySection({
     setMaterial(product.material ?? "");
     setStatus(product.status ?? "active");
     setDescription(product.description ?? "");
+    setPrice(product.price != null ? String(product.price) : "");
+    setOfficialPrice(
+      product.officialPrice != null && product.officialPrice > 0
+        ? String(product.officialPrice)
+        : ""
+    );
   }, [product]);
 
   // Prefer catalog brand name when brandCode matches (does not clobber mid-edit).
@@ -249,6 +263,19 @@ function ParentSummarySection({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const parsedPrice = Number.parseFloat(price);
+    if (Number.isNaN(parsedPrice) || parsedPrice < 0) {
+      notify(t("common.enterValidPrice"), "error");
+      return;
+    }
+    let parsedOfficial: number | undefined;
+    if (officialPrice.trim() !== "") {
+      parsedOfficial = Number.parseFloat(officialPrice);
+      if (Number.isNaN(parsedOfficial) || parsedOfficial < 0) {
+        notify(t("common.enterValidPrice"), "error");
+        return;
+      }
+    }
     setSaving(true);
     try {
       const updated = await updateProduct(product.id, {
@@ -257,7 +284,9 @@ function ParentSummarySection({
         material: material.trim(),
         status: status.trim() || "active",
         description: description.trim() || undefined,
-        // Backend UpdateProduct overwrites taxonomy columns; always send them.
+        price: parsedPrice,
+        officialPrice: parsedOfficial,
+        // Backend UpdateProduct merge keeps omitted taxonomy; send current values.
         category: product.category || "bags",
         subCategory: subCategory.trim(),
         style: style.trim(),
@@ -282,18 +311,14 @@ function ParentSummarySection({
     product.availableColors?.join(", ") ??
     product.color ??
     t("common.emptyValue");
-  const priceFrom =
-    product.priceFrom != null
-      ? formatCurrency(product.priceFrom)
-      : product.price != null
-        ? formatCurrency(product.price)
-        : t("common.emptyValue");
-  const sellingPriceFrom =
-    product.sellingPriceFrom != null && product.sellingPriceFrom > 0
-      ? formatCurrency(product.sellingPriceFrom)
-      : product.sellingPrice != null && product.sellingPrice > 0
-        ? formatCurrency(product.sellingPrice)
-        : t("common.emptyValue");
+  const priceLabel =
+    product.price != null
+      ? formatCurrency(product.price)
+      : t("common.emptyValue");
+  const officialPriceLabel =
+    product.officialPrice != null && product.officialPrice > 0
+      ? formatCurrency(product.officialPrice)
+      : t("common.emptyValue");
 
   const brandOptions = (() => {
     const rows = [...brands];
@@ -439,6 +464,36 @@ function ParentSummarySection({
             </label>
             <label className="space-y-1.5">
               <span className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
+                {t("productDetail.officialPrice")}
+              </span>
+              <input
+                type="number"
+                min={0}
+                step="1"
+                value={officialPrice}
+                onChange={(e) => setOfficialPrice(e.target.value)}
+                className={fieldCls}
+                placeholder={t("productNew.officialPricePlaceholder")}
+                title={t("productDetail.officialPriceHint")}
+              />
+            </label>
+            <label className="space-y-1.5">
+              <span className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
+                {t("productDetail.price")}
+              </span>
+              <input
+                required
+                type="number"
+                min={0}
+                step="1"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                className={fieldCls}
+                placeholder={t("productNew.pricePlaceholder")}
+              />
+            </label>
+            <label className="space-y-1.5">
+              <span className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
                 {t("productDetail.status")}
               </span>
               <select
@@ -510,8 +565,8 @@ function ParentSummarySection({
             [t("productDetail.material"), product.material],
             [t("productDetail.status"), product.status],
             [t("productDetail.colors"), colors],
-            [t("productDetail.sellingPriceFrom"), sellingPriceFrom],
-            [t("productDetail.priceFrom"), priceFrom],
+            [t("productDetail.officialPrice"), officialPriceLabel],
+            [t("productDetail.price"), priceLabel],
           ].map(([label, value]) => (
             <div key={label}>
               <dt className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
@@ -552,7 +607,7 @@ function VariantsSection({
   onReload: () => Promise<void>;
 }) {
   const { notify } = useNotify();
-  const { t, formatCurrency } = useI18n();
+  const { t } = useI18n();
   const [editingSku, setEditingSku] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
 
@@ -575,8 +630,6 @@ function VariantsSection({
     t("productDetail.colSku"),
     t("productDetail.colSkuId"),
     t("productDetail.colOption"),
-    t("productDetail.colSellingPrice"),
-    t("productDetail.colPrice"),
     t("productDetail.colStatus"),
     t("productDetail.colStock"),
     t("productDetail.colImages"),
@@ -642,24 +695,6 @@ function VariantsSection({
                           .join(" · ")}
                       </div>
                     )}
-                  </td>
-                  <td className="px-4 py-3 text-[#1C1B1F]">
-                    {row.sellingPrice != null && row.sellingPrice > 0 ? (
-                      <span
-                        className={
-                          row.sellingPrice > row.price
-                            ? "text-[#9D98B3] line-through"
-                            : undefined
-                        }
-                      >
-                        {formatCurrency(row.sellingPrice)}
-                      </span>
-                    ) : (
-                      t("common.emptyValue")
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-[#1C1B1F]">
-                    {formatCurrency(row.price)}
                   </td>
                   <td className="px-4 py-3 capitalize text-[#6B6480]">
                     {row.status}
@@ -762,7 +797,7 @@ function VariantsSection({
                 </tr>
                 {editingSku === row.sku && (
                   <tr className="bg-[#FAFAFA]">
-                    <td colSpan={10} className="px-4 py-4">
+                    <td colSpan={8} className="px-4 py-4">
                       <VariantEditForm
                         productId={product.id}
                         variant={row}
@@ -822,38 +857,16 @@ function VariantEditForm({
   const { t } = useI18n();
   const [color, setColor] = useState(variant.color);
   const [size, setSize] = useState(variant.size);
-  const [sellingPrice, setSellingPrice] = useState(
-    variant.sellingPrice != null && variant.sellingPrice > 0
-      ? String(variant.sellingPrice)
-      : ""
-  );
-  const [price, setPrice] = useState(String(variant.price));
   const [status, setStatus] = useState(variant.status);
   const [saving, setSaving] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const parsedPrice = Number.parseFloat(price);
-    if (Number.isNaN(parsedPrice) || parsedPrice < 0) {
-      notify(t("common.enterValidPrice"), "error");
-      return;
-    }
-    let parsedSelling: number | undefined;
-    if (sellingPrice.trim() !== "") {
-      parsedSelling = Number.parseFloat(sellingPrice);
-      if (Number.isNaN(parsedSelling) || parsedSelling < 0) {
-        notify(t("common.enterValidPrice"), "error");
-        return;
-      }
-    }
-
     setSaving(true);
     try {
       await updateVariant(productId, variant.sku, {
         color: color.trim(),
         size: size.trim(),
-        sellingPrice: parsedSelling,
-        price: parsedPrice,
         status: status.trim() || "active",
       });
       await onSaved();
@@ -874,6 +887,9 @@ function VariantEditForm({
       <p className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
         {t("productDetail.editVariantHeading", { sku: variant.sku })}
       </p>
+      <p className="text-xs text-[#9D98B3]">
+        {t("productDetail.priceOnParentHint")}
+      </p>
       <div className="flex flex-wrap gap-3">
         <label className="space-y-1 text-xs text-[#6B6480]">
           {t("productDetail.color")}
@@ -890,31 +906,6 @@ function VariantEditForm({
             value={size}
             onChange={(e) => setSize(e.target.value)}
             className={`block ${inputCls}`}
-          />
-        </label>
-        <label className="space-y-1 text-xs text-[#6B6480]">
-          {t("productDetail.sellingPrice")}
-          <input
-            type="number"
-            min={0}
-            step="1"
-            value={sellingPrice}
-            onChange={(e) => setSellingPrice(e.target.value)}
-            className={`block w-28 ${inputCls}`}
-            placeholder={t("productNew.sellingPricePlaceholder")}
-            title={t("productDetail.sellingPriceHint")}
-          />
-        </label>
-        <label className="space-y-1 text-xs text-[#6B6480]">
-          {t("productDetail.price")}
-          <input
-            required
-            type="number"
-            min={0}
-            step="1"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            className={`block w-28 ${inputCls}`}
           />
         </label>
         <label className="space-y-1 text-xs text-[#6B6480]">
@@ -967,8 +958,6 @@ function AddVariantForm({
   const [colorCode, setColorCode] = useState("");
   const [sizeCode, setSizeCode] = useState("OS");
   const [editionCode, setEditionCode] = useState("");
-  const [sellingPrice, setSellingPrice] = useState("");
-  const [price, setPrice] = useState("");
   const [initialStock, setInitialStock] = useState("");
   const [status, setStatus] = useState("active");
   const [saving, setSaving] = useState(false);
@@ -1006,19 +995,6 @@ function AddVariantForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const parsedPrice = Number.parseFloat(price);
-    if (Number.isNaN(parsedPrice) || parsedPrice < 0) {
-      notify(t("common.enterValidPrice"), "error");
-      return;
-    }
-    let parsedSelling: number | undefined;
-    if (sellingPrice.trim() !== "") {
-      parsedSelling = Number.parseFloat(sellingPrice);
-      if (Number.isNaN(parsedSelling) || parsedSelling < 0) {
-        notify(t("common.enterValidPrice"), "error");
-        return;
-      }
-    }
     if (!colorCode || !sizeCode) {
       notify(t("productDetail.selectColorAndSizeCodes"), "error");
       return;
@@ -1034,8 +1010,6 @@ function AddVariantForm({
         editionCode: editionCode || undefined,
         color: colorName,
         size: sizeName,
-        sellingPrice: parsedSelling,
-        price: parsedPrice,
         status,
       });
 
@@ -1074,6 +1048,9 @@ function AddVariantForm({
         {t("productDetail.newVariant")}
       </p>
       <p className="text-xs text-[#6B6480]">{t("productDetail.newVariantHint")}</p>
+      <p className="text-xs text-[#9D98B3]">
+        {t("productDetail.priceOnParentHint")}
+      </p>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <label className="space-y-1 text-xs text-[#6B6480]">
           {t("productDetail.colorCodeRequired")}
@@ -1119,31 +1096,6 @@ function AddVariantForm({
               </option>
             ))}
           </select>
-        </label>
-        <label className="space-y-1 text-xs text-[#6B6480]">
-          {t("productDetail.sellingPriceKrw")}
-          <input
-            type="number"
-            min={0}
-            step="1"
-            value={sellingPrice}
-            onChange={(e) => setSellingPrice(e.target.value)}
-            className={`block w-full ${inputCls}`}
-            placeholder={t("productNew.sellingPricePlaceholder")}
-            title={t("productDetail.sellingPriceHint")}
-          />
-        </label>
-        <label className="space-y-1 text-xs text-[#6B6480]">
-          {t("productDetail.priceKrwRequired")}
-          <input
-            required
-            type="number"
-            min={0}
-            step="1"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            className={`block w-full ${inputCls}`}
-          />
         </label>
         <label className="space-y-1 text-xs text-[#6B6480]">
           {t("productDetail.status")}

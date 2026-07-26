@@ -2,7 +2,7 @@
 
 **Target repo:** [elug3/dupli1](https://github.com/elug3/dupli1) — service **`dupli1-auth`** (`auth/`).  
 **Audience:** AI coding agents implementing the rename in the backend.  
-**Related frontend:** `dupli1-manage-web` already displays and edits `manager`; it still maps `manager` ↔ `admin` on the wire until this backend change lands.
+**Related frontend:** `dupli1-manage-web` displays/edits/sends `manager`. It still accepts legacy `admin` on read via `normalizeAccountType`.
 
 ---
 
@@ -70,7 +70,7 @@ customer | manager | service
 Until manage-web drops its wire mapping:
 
 - Responses may temporarily include only `manager` (preferred).
-- manage-web already treats API `admin` **or** `manager` as UI `manager`, and currently **sends** `admin` when saving. After auth accepts `manager`, update manage-web to send `manager` and remove `toApiAccountType` / `normalizeAccountType` shims (`app/lib/api.ts`).
+- manage-web already treats API `admin` **or** `manager` as UI `manager`, and **sends** `manager` when saving (`toApiAccountType` is identity). Keep `normalizeAccountType` only for reading legacy `admin` rows.
 
 Suggested order:
 

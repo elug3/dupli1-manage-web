@@ -171,13 +171,9 @@ export default function Products() {
         });
     }
     function formatListPrice(product) {
-        const value = product.priceFrom ?? product.price;
-        if (value == null)
+        if (product.price == null)
             return null;
-        const formatted = formatCurrency(value);
-        return product.priceFrom != null
-            ? t("common.fromPrice", { price: formatted })
-            : formatted;
+        return formatCurrency(product.price);
     }
     return (_jsxs("div", { className: "space-y-6", children: [_jsxs("div", { className: "flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between", children: [_jsxs("div", { children: [_jsx("h1", { className: "text-xl font-bold text-[#1C1B1F] sm:text-2xl", children: t("products.title") }), _jsx("p", { className: "mt-0.5 text-sm text-[#6B6480]", children: t("products.subtitle") })] }), _jsxs(Link, { to: "/products/new", className: "inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#6D4AFF] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#5A38E8] active:scale-[0.98] sm:w-auto", children: [_jsx(PlusIcon, {}), t("products.newProduct")] })] }), _jsx("div", { className: "flex flex-wrap gap-2", children: categories.map((cat) => (_jsx("button", { type: "button", onClick: () => updateFilters({ category: cat === "all" ? null : cat }), className: [
                         "rounded-full px-4 py-1.5 text-sm font-medium capitalize transition",
@@ -227,12 +223,7 @@ export default function Products() {
 }
 function ProductCard({ product }) {
     const { t, formatCurrency } = useI18n();
-    const value = product.priceFrom ?? product.price;
-    const price = value == null
-        ? null
-        : product.priceFrom != null
-            ? t("common.fromPrice", { price: formatCurrency(value) })
-            : formatCurrency(value);
+    const price = product.price == null ? null : formatCurrency(product.price);
     const imageUrl = productPreviewImage(product);
     const variantCount = productVariantCount(product);
     return (_jsxs(Link, { to: `/products/${encodeURIComponent(product.id)}?category=${encodeURIComponent(product.category)}`, className: "flex gap-3 p-4 transition hover:bg-[#FAFAFA] active:bg-[#F4F3F8]", children: [_jsx(ProductPreviewThumb, { imageUrl: imageUrl, name: product.name }), _jsxs("div", { className: "min-w-0 flex-1 space-y-3", children: [_jsxs("div", { children: [_jsx("p", { className: "font-medium text-[#1C1B1F]", children: product.name }), _jsx("p", { className: "mt-1 font-mono text-xs text-[#6B6480]", children: product.id })] }), _jsxs("div", { className: "flex flex-wrap gap-2 text-xs text-[#6B6480]", children: [_jsx("span", { className: "rounded-full bg-[#F4F3F8] px-2.5 py-1", children: product.brand ?? t("products.noBrand") }), _jsx("span", { className: "rounded-full bg-[#F4F3F8] px-2.5 py-1", children: formatProductColors(product) }), _jsx("span", { className: "rounded-full bg-[#F4F3F8] px-2.5 py-1", children: t("products.variantCount", { count: variantCount }) }), price && (_jsx("span", { className: "rounded-full bg-[#F4F3F8] px-2.5 py-1", children: price })), product.status && (_jsx("span", { className: "rounded-full bg-[#F4F3F8] px-2.5 py-1 capitalize", children: productStatusLabel(product.status, t) }))] })] })] }));

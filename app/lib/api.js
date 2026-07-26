@@ -34,7 +34,10 @@ function mapVariant(hit) {
         colorCode: hitString(hit, "colorCode") ?? hitString(hit, "color_code"),
         sizeCode: hitString(hit, "sizeCode") ?? hitString(hit, "size_code"),
         editionCode: hitString(hit, "editionCode") ?? hitString(hit, "edition_code"),
-        sellingPrice: hitNumber(hit, "sellingPrice") ?? hitNumber(hit, "selling_price"),
+        officialPrice: hitNumber(hit, "officialPrice") ??
+            hitNumber(hit, "official_price") ??
+            hitNumber(hit, "sellingPrice") ??
+            hitNumber(hit, "selling_price"),
         price: hitNumber(hit, "price") ?? 0,
         status: hitString(hit, "status") ?? "active",
         imageUrls: hitStringArray(hit, "imageUrls") ?? [],
@@ -61,7 +64,7 @@ export function legacyVariantFromProduct(product) {
         productId: product.id,
         color: product.color ?? "",
         size: "",
-        sellingPrice: product.sellingPrice,
+        officialPrice: product.officialPrice,
         price: product.price ?? 0,
         status: product.status ?? "active",
         imageUrls: product.imageUrls ?? [],
@@ -103,16 +106,14 @@ export function productVariantCount(product) {
     return 1;
 }
 export function productListPrice(product) {
-    const value = product.priceFrom ?? product.price;
-    if (value == null)
+    if (product.price == null)
         return null;
-    const formatted = new Intl.NumberFormat("ko-KR", {
+    return new Intl.NumberFormat("ko-KR", {
         style: "currency",
         currency: "KRW",
         minimumFractionDigits: 0,
         maximumFractionDigits: 0,
-    }).format(value);
-    return product.priceFrom != null ? `From ${formatted}` : formatted;
+    }).format(product.price);
 }
 /**
  * Make gateway-hosted product image URLs loadable from the manage-web origin.
@@ -189,10 +190,16 @@ export function mapProduct(hit, category, index = 0) {
         id: hitId(hit, index),
         name: hitName(hit),
         category: category ?? hitString(hit, "category") ?? "bags",
-        price: hitNumber(hit, "priceFrom") ??
+        price: hitNumber(hit, "price") ??
+            hitNumber(hit, "priceFrom") ??
             hitNumber(hit, "price_from") ??
-            hitNumber(hit, "price") ??
             hitNumber(hit, "unit_price_cents"),
+        officialPrice: hitNumber(hit, "officialPrice") ??
+            hitNumber(hit, "official_price") ??
+            hitNumber(hit, "sellingPrice") ??
+            hitNumber(hit, "selling_price") ??
+            hitNumber(hit, "sellingPriceFrom") ??
+            hitNumber(hit, "selling_price_from"),
         stock: hitNumber(hit, "stock") ?? hitNumber(hit, "quantity"),
         description: hitString(hit, "description"),
         brand: hitString(hit, "brand"),
@@ -212,10 +219,6 @@ export function mapProduct(hit, category, index = 0) {
         availableSizes: hitStringArray(hit, "availableSizes") ??
             hitStringArray(hit, "available_sizes"),
         defaultImageUrl,
-        sellingPriceFrom: hitNumber(hit, "sellingPriceFrom") ??
-            hitNumber(hit, "selling_price_from"),
-        priceFrom: hitNumber(hit, "priceFrom") ?? hitNumber(hit, "price_from"),
-        sellingPrice: hitNumber(hit, "sellingPrice") ?? hitNumber(hit, "selling_price"),
         variants,
         raw: hit,
     };
@@ -327,6 +330,8 @@ export async function createProductParent(input) {
             category: input.category ?? "bags",
             description: input.description,
             status: input.status ?? "active",
+            price: input.price,
+            officialPrice: input.officialPrice,
         }),
     });
     if (!res.ok)
@@ -344,8 +349,6 @@ export async function createVariant(productId, input) {
             editionCode: input.editionCode || undefined,
             color: input.color,
             size: input.size,
-            sellingPrice: input.sellingPrice,
-            price: input.price,
             status: input.status ?? "active",
         }),
     });
@@ -780,8 +783,7 @@ export const ALL_PERMISSIONS = [
 ];
 /**
  * Normalize auth API account_type into the manage-web model.
- * Backend still stores human operators as `admin`; product language uses
- * `manager` (admin is a permission/management tier, not an account type).
+ * Accepts legacy `admin` (mapped to manager) for older rows/tokens.
  */
 export function normalizeAccountType(value) {
     switch (value) {
@@ -797,7 +799,7 @@ export function normalizeAccountType(value) {
 }
 /** Map manage-web account type to the auth API wire value. */
 export function toApiAccountType(value) {
-    return value === "manager" ? "admin" : value;
+    return value;
 }
 function mapAuthUser(raw) {
     return {

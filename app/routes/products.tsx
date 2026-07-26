@@ -196,12 +196,8 @@ export default function Products() {
   }
 
   function formatListPrice(product: Product): string | null {
-    const value = product.priceFrom ?? product.price;
-    if (value == null) return null;
-    const formatted = formatCurrency(value);
-    return product.priceFrom != null
-      ? t("common.fromPrice", { price: formatted })
-      : formatted;
+    if (product.price == null) return null;
+    return formatCurrency(product.price);
   }
 
   return (
@@ -483,13 +479,8 @@ export default function Products() {
 
 function ProductCard({ product }: { product: Product }) {
   const { t, formatCurrency } = useI18n();
-  const value = product.priceFrom ?? product.price;
   const price =
-    value == null
-      ? null
-      : product.priceFrom != null
-        ? t("common.fromPrice", { price: formatCurrency(value) })
-        : formatCurrency(value);
+    product.price == null ? null : formatCurrency(product.price);
   const imageUrl = productPreviewImage(product);
   const variantCount = productVariantCount(product);
 

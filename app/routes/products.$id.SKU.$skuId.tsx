@@ -170,14 +170,7 @@ export default function SkuDetail() {
           ))}
         </dl>
 
-        <PriceSection
-          productId={product.id}
-          variant={variant}
-          onSaved={(updated) => {
-            setVariant(updated);
-            notify(t("skuDetail.priceUpdated"));
-          }}
-        />
+        <PriceSection product={product} />
 
         <StockSection
           sku={variant.sku}
@@ -239,71 +232,15 @@ export default function SkuDetail() {
   );
 }
 
-function PriceSection({
-  productId,
-  variant,
-  onSaved,
-}: {
-  productId: string;
-  variant: ProductVariant;
-  onSaved: (variant: ProductVariant) => void;
-}) {
+function PriceSection({ product }: { product: Product }) {
   const { t, formatCurrency } = useI18n();
-  const { notify } = useNotify();
-  const [sellingValue, setSellingValue] = useState(
-    variant.sellingPrice != null && variant.sellingPrice > 0
-      ? String(variant.sellingPrice)
-      : ""
-  );
-  const [value, setValue] = useState(String(variant.price));
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    setSellingValue(
-      variant.sellingPrice != null && variant.sellingPrice > 0
-        ? String(variant.sellingPrice)
-        : ""
-    );
-    setValue(String(variant.price));
-  }, [variant.sellingPrice, variant.price]);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const parsed = Number.parseFloat(value);
-    if (Number.isNaN(parsed) || parsed < 0) {
-      notify(t("common.enterValidPrice"), "error");
-      return;
-    }
-    let parsedSelling: number | undefined;
-    if (sellingValue.trim() !== "") {
-      parsedSelling = Number.parseFloat(sellingValue);
-      if (Number.isNaN(parsedSelling) || parsedSelling < 0) {
-        notify(t("common.enterValidPrice"), "error");
-        return;
-      }
-    }
-    setSaving(true);
-    try {
-      const updated = await updateVariant(productId, variant.sku, {
-        sellingPrice: parsedSelling,
-        price: parsed,
-      });
-      onSaved(updated);
-    } catch (err) {
-      notify(
-        err instanceof Error
-          ? err.message
-          : t("productDetail.failedToUpdateVariant"),
-        "error"
-      );
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  const sellingLabel =
-    variant.sellingPrice != null && variant.sellingPrice > 0
-      ? formatCurrency(variant.sellingPrice)
+  const officialLabel =
+    product.officialPrice != null && product.officialPrice > 0
+      ? formatCurrency(product.officialPrice)
+      : t("common.emptyValue");
+  const priceLabel =
+    product.price != null
+      ? formatCurrency(product.price)
       : t("common.emptyValue");
 
   return (
@@ -312,53 +249,19 @@ function PriceSection({
         {t("skuDetail.price")}
       </h2>
       <p className="text-sm text-[#6B6480]">
-        {t("skuDetail.currentSellingPrice", { price: sellingLabel })}
+        {t("skuDetail.currentOfficialPrice", { price: officialLabel })}
         {" · "}
-        {t("skuDetail.currentPrice", {
-          price: formatCurrency(variant.price),
-        })}
+        {t("skuDetail.currentPrice", { price: priceLabel })}
       </p>
       <p className="text-xs text-[#9D98B3]">
-        {t("productDetail.sellingPriceHint")}
+        {t("productDetail.priceOnParentHint")}
       </p>
-      <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-3">
-        <label className="space-y-1.5">
-          <span className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
-            {t("skuDetail.sellingPriceKrw")}
-          </span>
-          <input
-            type="number"
-            min={0}
-            step="1"
-            value={sellingValue}
-            onChange={(e) => setSellingValue(e.target.value)}
-            className={`w-44 ${fieldCls}`}
-            placeholder={t("productNew.sellingPricePlaceholder")}
-          />
-        </label>
-        <label className="space-y-1.5">
-          <span className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
-            {t("skuDetail.priceKrw")}
-          </span>
-          <input
-            type="number"
-            min={0}
-            step="1"
-            required
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            className={`w-44 ${fieldCls}`}
-            placeholder={t("productNew.pricePlaceholder")}
-          />
-        </label>
-        <button
-          type="submit"
-          disabled={saving}
-          className="rounded-xl bg-[#6D4AFF] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
-        >
-          {saving ? t("common.saving") : t("skuDetail.updatePrice")}
-        </button>
-      </form>
+      <Link
+        to={`/products/${encodeURIComponent(product.id)}`}
+        className="inline-flex text-sm font-semibold text-[#6D4AFF] hover:underline"
+      >
+        {t("skuDetail.editPriceOnParent")}
+      </Link>
     </section>
   );
 }
