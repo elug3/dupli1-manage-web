@@ -69,6 +69,11 @@ export interface Product {
   style?: string;
   /** Audience (men, women, kids). */
   target?: string;
+  /**
+   * Free-form parent memo (string key → string value).
+   * Display-only; not used for search/pricing/checkout.
+   */
+  attributes?: Record<string, string>;
   color?: string;
   material?: string;
   sku?: string;
@@ -151,6 +156,48 @@ function hitStringArray(hit: ProductSearchHit, key: string): string[] | undefine
   if (!Array.isArray(value)) return undefined;
   const strings = value.filter((v): v is string => typeof v === "string");
   return strings.length > 0 ? strings : undefined;
+}
+
+function hitStringMap(
+  hit: ProductSearchHit,
+  key: string
+): Record<string, string> | undefined {
+  const value = hit[key];
+  if (value == null || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof k === "string" && typeof v === "string") {
+      out[k] = v;
+    }
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/** Backend limits for product attributes (see dupli1 product-attributes.md). */
+export const MAX_PRODUCT_ATTRIBUTES = 32;
+export const MAX_ATTRIBUTE_KEY_LEN = 64;
+export const MAX_ATTRIBUTE_VALUE_LEN = 512;
+
+/** Normalize attribute rows into an API map (trim, drop empty keys). */
+export function attributesFromRows(
+  rows: { key: string; value: string }[]
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const row of rows) {
+    const key = row.key.trim();
+    if (!key) continue;
+    out[key] = row.value.trim();
+  }
+  return out;
+}
+
+export function attributeRowsFromMap(
+  attrs: Record<string, string> | undefined
+): { key: string; value: string }[] {
+  if (!attrs) return [];
+  return Object.entries(attrs).map(([key, value]) => ({ key, value }));
 }
 
 function mapVariant(hit: ProductSearchHit): ProductVariant {
@@ -374,6 +421,7 @@ export function mapProduct(
       hitString(hit, "subCategory") ?? hitString(hit, "sub_category"),
     style: hitString(hit, "style") ?? hitString(hit, "bag_style"),
     target: hitString(hit, "target"),
+    attributes: hitStringMap(hit, "attributes"),
     color: hitString(hit, "color"),
     material: hitString(hit, "material"),
     sku: hitString(hit, "sku") ?? hitString(hit, "id"),
@@ -535,6 +583,8 @@ export interface CreateProductParentInput {
   price?: number;
   /** Reference / list price on the parent (not charged). */
   officialPrice?: number;
+  /** Free-form parent memo; omit to leave unset on create. */
+  attributes?: Record<string, string>;
 }
 
 export async function createProductParent(
@@ -554,6 +604,7 @@ export async function createProductParent(
       status: input.status ?? "active",
       price: input.price,
       officialPrice: input.officialPrice,
+      attributes: input.attributes,
     }),
   });
   if (!res.ok) throw new Error(await readError(res, "Failed to create product"));
@@ -708,6 +759,11 @@ export interface UpdateProductInput {
   style?: string;
   /** Audience code; blank clears. Always send with updates to avoid wipe. */
   target?: string;
+  /**
+   * Full attributes map replace. Omit to keep existing; `{}` clears.
+   * Partial key patches are not supported by the API.
+   */
+  attributes?: Record<string, string>;
   status?: string;
 }
 
