@@ -49,7 +49,13 @@ export interface Product {
   id: string;
   name: string;
   category: string;
+  /**
+   * Actual sale price (KRW won) on the parent product.
+   * Variants echo this on read; create/update variant ignores price.
+   */
   price?: number;
+  /** Reference / list price on the parent (not charged). */
+  officialPrice?: number;
   stock?: number;
   description?: string;
   brand?: string;
@@ -72,12 +78,6 @@ export interface Product {
   availableColors?: string[];
   availableSizes?: string[];
   defaultImageUrl?: string;
-  /** Official/display (list / "was") price of the cheapest active variant. */
-  sellingPriceFrom?: number;
-  /** Real sale price (min active variant price). */
-  priceFrom?: number;
-  /** Legacy mirror of cheapest active variant selling price. */
-  sellingPrice?: number;
   variants?: ProductVariant[];
   raw: ProductSearchHit;
 }
@@ -93,9 +93,12 @@ export interface ProductVariant {
   colorCode?: string;
   sizeCode?: string;
   editionCode?: string;
-  /** Official/display price (strikethrough / "was" price) in KRW won. */
-  sellingPrice?: number;
-  /** Real sale price in KRW won. */
+  /**
+   * Echo of parent officialPrice (API still includes it for cart clients).
+   * Not stored or writable on the variant.
+   */
+  officialPrice?: number;
+  /** Echo of parent sale price (not stored on the variant). */
   price: number;
   status: string;
   imageUrls: string[];
@@ -163,8 +166,11 @@ function mapVariant(hit: ProductSearchHit): ProductVariant {
     sizeCode: hitString(hit, "sizeCode") ?? hitString(hit, "size_code"),
     editionCode:
       hitString(hit, "editionCode") ?? hitString(hit, "edition_code"),
-    sellingPrice:
-      hitNumber(hit, "sellingPrice") ?? hitNumber(hit, "selling_price"),
+    officialPrice:
+      hitNumber(hit, "officialPrice") ??
+      hitNumber(hit, "official_price") ??
+      hitNumber(hit, "sellingPrice") ??
+      hitNumber(hit, "selling_price"),
     price: hitNumber(hit, "price") ?? 0,
     status: hitString(hit, "status") ?? "active",
     imageUrls: hitStringArray(hit, "imageUrls") ?? [],
@@ -193,7 +199,7 @@ export function legacyVariantFromProduct(product: Product): ProductVariant {
     productId: product.id,
     color: product.color ?? "",
     size: "",
-    sellingPrice: product.sellingPrice,
+    officialPrice: product.officialPrice,
     price: product.price ?? 0,
     status: product.status ?? "active",
     imageUrls: product.imageUrls ?? [],
@@ -246,15 +252,13 @@ export function productVariantCount(product: Product): number {
 }
 
 export function productListPrice(product: Product): string | null {
-  const value = product.priceFrom ?? product.price;
-  if (value == null) return null;
-  const formatted = new Intl.NumberFormat("ko-KR", {
+  if (product.price == null) return null;
+  return new Intl.NumberFormat("ko-KR", {
     style: "currency",
     currency: "KRW",
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(value);
-  return product.priceFrom != null ? `From ${formatted}` : formatted;
+  }).format(product.price);
 }
 
 /**
@@ -350,10 +354,17 @@ export function mapProduct(
     name: hitName(hit),
     category: category ?? hitString(hit, "category") ?? "bags",
     price:
+      hitNumber(hit, "price") ??
       hitNumber(hit, "priceFrom") ??
       hitNumber(hit, "price_from") ??
-      hitNumber(hit, "price") ??
       hitNumber(hit, "unit_price_cents"),
+    officialPrice:
+      hitNumber(hit, "officialPrice") ??
+      hitNumber(hit, "official_price") ??
+      hitNumber(hit, "sellingPrice") ??
+      hitNumber(hit, "selling_price") ??
+      hitNumber(hit, "sellingPriceFrom") ??
+      hitNumber(hit, "selling_price_from"),
     stock: hitNumber(hit, "stock") ?? hitNumber(hit, "quantity"),
     description: hitString(hit, "description"),
     brand: hitString(hit, "brand"),
@@ -377,13 +388,6 @@ export function mapProduct(
       hitStringArray(hit, "availableSizes") ??
       hitStringArray(hit, "available_sizes"),
     defaultImageUrl,
-    sellingPriceFrom:
-      hitNumber(hit, "sellingPriceFrom") ??
-      hitNumber(hit, "selling_price_from"),
-    priceFrom:
-      hitNumber(hit, "priceFrom") ?? hitNumber(hit, "price_from"),
-    sellingPrice:
-      hitNumber(hit, "sellingPrice") ?? hitNumber(hit, "selling_price"),
     variants,
     raw: hit,
   };
@@ -527,6 +531,10 @@ export interface CreateProductParentInput {
   category?: string;
   description?: string;
   status?: string;
+  /** Actual sale price (KRW won) on the parent. */
+  price?: number;
+  /** Reference / list price on the parent (not charged). */
+  officialPrice?: number;
 }
 
 export async function createProductParent(
@@ -544,6 +552,8 @@ export async function createProductParent(
       category: input.category ?? "bags",
       description: input.description,
       status: input.status ?? "active",
+      price: input.price,
+      officialPrice: input.officialPrice,
     }),
   });
   if (!res.ok) throw new Error(await readError(res, "Failed to create product"));
@@ -555,10 +565,6 @@ export interface CreateVariantInput {
   colorCode: string;
   sizeCode: string;
   editionCode?: string;
-  /** Official/display (list / "was") price in KRW won. */
-  sellingPrice?: number;
-  /** Real sale price in KRW won. */
-  price: number;
   /** Optional display names; backend enriches from masters when blank. */
   color?: string;
   size?: string;
@@ -582,8 +588,6 @@ export async function createVariant(
         editionCode: input.editionCode || undefined,
         color: input.color,
         size: input.size,
-        sellingPrice: input.sellingPrice,
-        price: input.price,
         status: input.status ?? "active",
       }),
     }
@@ -596,10 +600,6 @@ export async function createVariant(
 export interface UpdateVariantInput {
   color?: string;
   size?: string;
-  /** Official/display (list / "was") price in KRW won. */
-  sellingPrice?: number;
-  /** Real sale price in KRW won. */
-  price?: number;
   status?: string;
   /** Replaces the variant gallery when non-empty. Empty arrays are ignored by the API merge. */
   imageUrls?: string[];
@@ -692,7 +692,10 @@ export async function createBagProduct(
 export interface UpdateProductInput {
   name?: string;
   description?: string;
+  /** Actual sale price (KRW won). Omitted keeps current (backend merge). */
   price?: number;
+  /** Reference / list price. Omitted keeps current (backend merge). */
+  officialPrice?: number;
   cost?: number;
   brand?: string;
   color?: string;
@@ -1296,13 +1299,9 @@ export const ALL_PERMISSIONS = [
 
 export type AccountType = "customer" | "manager" | "service";
 
-/** Wire values currently accepted by dupli1-auth ValidAccountType. */
-type ApiAccountType = "customer" | "admin" | "service";
-
 /**
  * Normalize auth API account_type into the manage-web model.
- * Backend still stores human operators as `admin`; product language uses
- * `manager` (admin is a permission/management tier, not an account type).
+ * Accepts legacy `admin` (mapped to manager) for older rows/tokens.
  */
 export function normalizeAccountType(
   value: string | null | undefined
@@ -1320,8 +1319,8 @@ export function normalizeAccountType(
 }
 
 /** Map manage-web account type to the auth API wire value. */
-export function toApiAccountType(value: AccountType): ApiAccountType {
-  return value === "manager" ? "admin" : value;
+export function toApiAccountType(value: AccountType): AccountType {
+  return value;
 }
 
 export interface AuthUser {

@@ -51,7 +51,7 @@ export default function NewProduct() {
   const [colorCode, setColorCode] = useState("");
   const [sizeCode, setSizeCode] = useState("OS");
   const [editionCode, setEditionCode] = useState("");
-  const [sellingPrice, setSellingPrice] = useState("");
+  const [officialPrice, setOfficialPrice] = useState("");
   const [price, setPrice] = useState("");
   const [status, setStatus] = useState("active");
   const [initialStock, setInitialStock] = useState("");
@@ -233,13 +233,13 @@ export default function NewProduct() {
 
       const parsedPrice = Number.parseFloat(price);
       if (Number.isNaN(parsedPrice) || parsedPrice < 0) {
-        throw new Error(t("productNew.enterValidPriceForFirstVariant"));
+        throw new Error(t("productNew.enterValidPrice"));
       }
-      let parsedSelling: number | undefined;
-      if (sellingPrice.trim() !== "") {
-        parsedSelling = Number.parseFloat(sellingPrice);
-        if (Number.isNaN(parsedSelling) || parsedSelling < 0) {
-          throw new Error(t("productNew.enterValidPriceForFirstVariant"));
+      let parsedOfficial: number | undefined;
+      if (officialPrice.trim() !== "") {
+        parsedOfficial = Number.parseFloat(officialPrice);
+        if (Number.isNaN(parsedOfficial) || parsedOfficial < 0) {
+          throw new Error(t("productNew.enterValidPrice"));
         }
       }
 
@@ -255,6 +255,8 @@ export default function NewProduct() {
         material: material.trim(),
         description: description.trim() || undefined,
         status,
+        price: parsedPrice,
+        officialPrice: parsedOfficial,
       });
 
       let createdVariantSku: string | undefined;
@@ -265,8 +267,6 @@ export default function NewProduct() {
           editionCode: editionCode || undefined,
           color: colorName,
           size: sizeName,
-          sellingPrice: parsedSelling,
-          price: parsedPrice,
           status,
         });
         createdVariantSku = variant.sku;
@@ -495,17 +495,17 @@ export default function NewProduct() {
               ))}
             </select>
           </Field>
-          <Field label={t("productNew.sellingPriceKrw")} id="sellingPrice">
+          <Field label={t("productNew.officialPriceKrw")} id="officialPrice">
             <input
-              id="sellingPrice"
+              id="officialPrice"
               type="number"
               min={0}
               step="1"
-              value={sellingPrice}
-              onChange={(e) => setSellingPrice(e.target.value)}
+              value={officialPrice}
+              onChange={(e) => setOfficialPrice(e.target.value)}
               className={inputCls}
-              placeholder={t("productNew.sellingPricePlaceholder")}
-              title={t("productDetail.sellingPriceHint")}
+              placeholder={t("productNew.officialPricePlaceholder")}
+              title={t("productDetail.officialPriceHint")}
             />
           </Field>
           <Field label={t("productNew.priceKrw")} id="price" required>
