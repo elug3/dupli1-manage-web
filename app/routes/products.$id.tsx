@@ -4,6 +4,11 @@ import {
   type CatalogCodeName,
   type Product,
   type ProductVariant,
+  MAX_ATTRIBUTE_KEY_LEN,
+  MAX_ATTRIBUTE_VALUE_LEN,
+  MAX_PRODUCT_ATTRIBUTES,
+  attributeRowsFromMap,
+  attributesFromRows,
   createVariant,
   deleteVariant,
   deleteVariantImage,
@@ -202,6 +207,9 @@ function ParentSummarySection({
       ? String(product.officialPrice)
       : ""
   );
+  const [attributeRows, setAttributeRows] = useState(
+    () => attributeRowsFromMap(product.attributes)
+  );
   const [saving, setSaving] = useState(false);
   const [brands, setBrands] = useState<CatalogCodeName[]>([]);
   const [subCategories, setSubCategories] = useState<CatalogCodeName[]>([]);
@@ -224,6 +232,7 @@ function ParentSummarySection({
         ? String(product.officialPrice)
         : ""
     );
+    setAttributeRows(attributeRowsFromMap(product.attributes));
   }, [product]);
 
   // Prefer catalog brand name when brandCode matches (does not clobber mid-edit).
@@ -276,6 +285,40 @@ function ParentSummarySection({
         return;
       }
     }
+
+    const attrs = attributesFromRows(attributeRows);
+    const attrKeys = Object.keys(attrs);
+    if (attrKeys.length > MAX_PRODUCT_ATTRIBUTES) {
+      notify(
+        t("productDetail.attributesTooMany", {
+          max: String(MAX_PRODUCT_ATTRIBUTES),
+        }),
+        "error"
+      );
+      return;
+    }
+    for (const key of attrKeys) {
+      if ([...key].length > MAX_ATTRIBUTE_KEY_LEN) {
+        notify(
+          t("productDetail.attributeKeyTooLong", {
+            max: String(MAX_ATTRIBUTE_KEY_LEN),
+          }),
+          "error"
+        );
+        return;
+      }
+      if ([...attrs[key]].length > MAX_ATTRIBUTE_VALUE_LEN) {
+        notify(
+          t("productDetail.attributeValueTooLong", {
+            key,
+            max: String(MAX_ATTRIBUTE_VALUE_LEN),
+          }),
+          "error"
+        );
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       const updated = await updateProduct(product.id, {
@@ -291,6 +334,8 @@ function ParentSummarySection({
         subCategory: subCategory.trim(),
         style: style.trim(),
         target: target.trim(),
+        // Full map replace; {} clears.
+        attributes: attrs,
       });
       onUpdated(updated);
       setEditing(false);
@@ -517,6 +562,84 @@ function ParentSummarySection({
                 className={fieldCls}
               />
             </label>
+            <div className="space-y-2 sm:col-span-2">
+              <div className="flex flex-wrap items-end justify-between gap-2">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
+                    {t("productDetail.attributes")}
+                  </p>
+                  <p className="mt-0.5 text-xs text-[#9D98B3]">
+                    {t("productDetail.attributesHint")}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={attributeRows.length >= MAX_PRODUCT_ATTRIBUTES}
+                  onClick={() =>
+                    setAttributeRows((rows) => [...rows, { key: "", value: "" }])
+                  }
+                  className="rounded-lg border border-[#E5E3EE] px-3 py-1.5 text-xs font-semibold text-[#6D4AFF] hover:border-[#6D4AFF]/40 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {t("productDetail.addAttribute")}
+                </button>
+              </div>
+              {attributeRows.length === 0 ? (
+                <p className="text-sm text-[#6B6480]">
+                  {t("productDetail.noAttributes")}
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {attributeRows.map((row, index) => (
+                    <div
+                      key={index}
+                      className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto]"
+                    >
+                      <input
+                        value={row.key}
+                        onChange={(e) => {
+                          const next = e.target.value;
+                          setAttributeRows((rows) =>
+                            rows.map((r, i) =>
+                              i === index ? { ...r, key: next } : r
+                            )
+                          );
+                        }}
+                        maxLength={MAX_ATTRIBUTE_KEY_LEN}
+                        placeholder={t("productDetail.attributeKeyPlaceholder")}
+                        className={fieldCls}
+                      />
+                      <input
+                        value={row.value}
+                        onChange={(e) => {
+                          const next = e.target.value;
+                          setAttributeRows((rows) =>
+                            rows.map((r, i) =>
+                              i === index ? { ...r, value: next } : r
+                            )
+                          );
+                        }}
+                        maxLength={MAX_ATTRIBUTE_VALUE_LEN}
+                        placeholder={t(
+                          "productDetail.attributeValuePlaceholder"
+                        )}
+                        className={fieldCls}
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setAttributeRows((rows) =>
+                            rows.filter((_, i) => i !== index)
+                          )
+                        }
+                        className="rounded-xl border border-[#E5E3EE] px-3 py-2.5 text-xs font-semibold text-red-600 hover:border-red-200"
+                      >
+                        {t("common.delete")}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
           <div className="flex gap-2">
             <button
@@ -587,6 +710,33 @@ function ParentSummarySection({
               </dd>
             </div>
           )}
+          <div className="sm:col-span-2">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+              {t("productDetail.attributes")}
+            </dt>
+            <dd className="mt-2">
+              {product.attributes &&
+              Object.keys(product.attributes).length > 0 ? (
+                <dl className="grid gap-2 sm:grid-cols-2">
+                  {Object.entries(product.attributes).map(([key, value]) => (
+                    <div
+                      key={key}
+                      className="rounded-xl border border-[#F0EEF8] bg-[#FAFAFA] px-3 py-2"
+                    >
+                      <dt className="font-mono text-[11px] text-[#9D98B3]">
+                        {key}
+                      </dt>
+                      <dd className="mt-0.5 text-sm text-[#1C1B1F]">{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              ) : (
+                <p className="text-sm text-[#6B6480]">
+                  {t("productDetail.noAttributes")}
+                </p>
+              )}
+            </dd>
+          </div>
         </dl>
       )}
     </div>
