@@ -43,7 +43,7 @@ Client example: `GET /product/api/v1/products` → gateway `GET /api/v1/products
 
 Local Docker embeds browser URLs as `{S3_PUBLIC_ENDPOINT}/product-images/{key}` (default `http://localhost:8080/product-images/…`); nginx proxies that path to MinIO. Manage-web rewrites those absolute URLs to same-origin `/product-images/…` and proxies via Vite (dev) or the `product-images/*` SSR route (prod) so the browser does not need to reach the gateway host directly.
 
-**AWS production gap:** the product-images S3 bucket has Block Public Access enabled, `S3_PUBLIC_ENDPOINT` points at the bucket regional domain, and ECS nginx has no `/product-images/` location. Browsers therefore get Access Denied on `<img src>` for API-returned S3 URLs. Fix belongs in `dupli1` (CloudFront OAC or gateway-authenticated image proxy + matching `S3_PUBLIC_ENDPOINT`). `productImageSrc` cannot make private S3 objects public.
+**AWS production:** product `imageUrls` use CloudFront (`images.dupli1.com`); see backend [docs/product-images-browser-access.md](../dupli1/docs/product-images-browser-access.md). `productImageSrc` still rewrites legacy gateway/MinIO-style URLs for local dev.
 
 ### Currency
 
@@ -62,8 +62,8 @@ Admin UI is **KRW-only**. `formatCurrency` / `formatCents` (`app/lib/i18n`) alwa
 
 - `GET /product/api/v1/products` — list parents (`product.read` widens drafts/cost)
 - `POST /product/api/v1/products` — create parent (ULID `id`; requires existing `brandCode` + `styleCode`)
-- `GET /product/api/v1/products/{id}` — parent PDP with `variants[]`
-- `PUT /product/api/v1/products/{id}` — update parent
+- `GET /product/api/v1/products/{id}` — parent PDP with `variants[]`, `price`, `officialPrice`, `attributes`, merchandising fields (`brandCode`, `styleCode`, `subCategory`, `style`, `target`, `material`, …)
+- `PUT /product/api/v1/products/{id}` — update parent (including price, officialPrice, attributes, catalog master codes)
 - `DELETE /product/api/v1/products/{id}` — delete parent
 - `POST /product/api/v1/products/{id}/variants` — create variant (requires existing `colorCode` + `sizeCode`)
 - `PUT|DELETE /product/api/v1/products/{id}/variants/{sku}`
@@ -72,7 +72,7 @@ Admin UI is **KRW-only**. `formatCurrency` / `formatCents` (`app/lib/i18n`) alwa
 - `GET|POST|PATCH|DELETE /product/api/v1/catalog/brands|colors|sizes|editions` (+ styles under brands) — master data (`product.master.read|write`)
 - `GET|POST /product/api/v1/coupons`, `PUT|DELETE /product/api/v1/coupons/{code}`
 
-SKU identity: each variant has immutable `skuId` (ULID) and human `sku` composed from master codes. See backend `docs/product-sku-system.md`.
+SKU identity: each variant has immutable `skuId` (ULID) and human `sku` composed from master codes. Parent `attributes` is a display-only string map — see backend [docs/product-attributes.md](../dupli1/docs/product-attributes.md). Parent pricing: [docs/product-price-on-parent.md](../dupli1/docs/product-price-on-parent.md).
 
 ### Order (`/order`)
 
@@ -112,7 +112,7 @@ app/
 
 Route modules use React Router 7 conventions: `loader` for data fetching, `action` for mutations, `default` export for the component.
 
-Admin surfaces: products (parent + variants), **SKU detail** (`/products/:id/SKU/:skuId`), **catalog masters** (`/catalog`), orders, coupons, users, settings (local UI; manager settings API still sketch on backend).
+Admin surfaces: products (parent + variants with inline **price**, **officialPrice**, **attributes** key-value editor, and catalog master fields on PDP), **SKU detail** (`/products/:id/SKU/:skuId`), **catalog masters** (`/catalog`), orders, coupons, users (**Customers / Managers / Services** tabs by `account_type`), settings (local UI; manager settings API still sketch on backend).
 
 ## Production access
 
