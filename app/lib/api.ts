@@ -2,6 +2,7 @@ import { authedFetch } from "./auth";
 import {
   authPath,
   inventoryPath,
+  notificationPath,
   orderPath,
   productPath,
 } from "./gateway";
@@ -1346,6 +1347,8 @@ export const PERMISSION_CATALOG = [
   "cart.read",
   "payment.create",
   "payment.read.all",
+  "notification.telegram.read",
+  "notification.telegram.manage",
 ] as const;
 
 export const ALL_PERMISSIONS = [
@@ -1550,4 +1553,126 @@ export async function getAnalytics(): Promise<AnalyticsSummary | null> {
     orders7d: last7.length,
     orders30d: last30.length,
   };
+}
+
+// ── Notification (Telegram ops bot) ──────────────────────────────────────────
+
+export type TelegramSubscriptionStatus = "pending" | "accepted" | "rejected";
+
+/** A Telegram user or chat registered for ops alerts (notification service). */
+export interface TelegramSubscription {
+  id: string;
+  telegram_user_id?: number;
+  chat_id: string;
+  chat_type?: string;
+  chat_label?: string;
+  username?: string;
+  status: TelegramSubscriptionStatus;
+  alert_order: boolean;
+  alert_product: boolean;
+  created_at: string;
+  updated_at: string;
+  accepted_at?: string;
+  accepted_by?: string;
+}
+
+/** Which event streams a subscription receives. */
+export interface TelegramAlertFlags {
+  alert_order: boolean;
+  alert_product: boolean;
+}
+
+export interface TelegramSubscriptionInput extends TelegramAlertFlags {
+  telegram_user_id?: number;
+  chat_id?: string;
+  chat_label?: string;
+}
+
+/** Runtime flags from `GET /api/v1/notification/settings` (no secrets). */
+export interface NotificationSettings {
+  service: string;
+  api_version: string;
+  features?: Record<string, boolean>;
+}
+
+function telegramSubscriptionPath(id?: string, action?: string): string {
+  const base = "/api/v1/notification/telegram/subscriptions";
+  if (!id) return notificationPath(base);
+  const suffix = action ? `/${action}` : "";
+  return notificationPath(`${base}/${encodeURIComponent(id)}${suffix}`);
+}
+
+export async function getTelegramSubscriptions(
+  status?: TelegramSubscriptionStatus
+): Promise<TelegramSubscription[]> {
+  const query = status ? `?status=${encodeURIComponent(status)}` : "";
+  const res = await authedFetch(`${telegramSubscriptionPath()}${query}`);
+  if (!res.ok) {
+    throw new Error(await readError(res, "Failed to load Telegram subscriptions"));
+  }
+  const data = (await res.json()) as { items?: TelegramSubscription[] | null };
+  return Array.isArray(data.items) ? data.items : [];
+}
+
+export async function createTelegramSubscription(
+  input: TelegramSubscriptionInput
+): Promise<TelegramSubscription> {
+  const res = await authedFetch(telegramSubscriptionPath(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    throw new Error(await readError(res, "Failed to add Telegram subscription"));
+  }
+  return res.json() as Promise<TelegramSubscription>;
+}
+
+export async function acceptTelegramSubscription(
+  id: string,
+  alerts: TelegramAlertFlags
+): Promise<TelegramSubscription> {
+  const res = await authedFetch(telegramSubscriptionPath(id, "accept"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(alerts),
+  });
+  if (!res.ok) {
+    throw new Error(await readError(res, "Failed to accept Telegram subscription"));
+  }
+  return res.json() as Promise<TelegramSubscription>;
+}
+
+export async function rejectTelegramSubscription(
+  id: string
+): Promise<TelegramSubscription> {
+  const res = await authedFetch(telegramSubscriptionPath(id, "reject"), {
+    method: "POST",
+  });
+  if (!res.ok) {
+    throw new Error(await readError(res, "Failed to reject Telegram subscription"));
+  }
+  return res.json() as Promise<TelegramSubscription>;
+}
+
+export async function deleteTelegramSubscription(id: string): Promise<void> {
+  const res = await authedFetch(telegramSubscriptionPath(id), {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    throw new Error(await readError(res, "Failed to remove Telegram subscription"));
+  }
+}
+
+/** Best-effort service status; the settings endpoint is public and may be absent. */
+export async function getNotificationSettings(): Promise<NotificationSettings | null> {
+  try {
+    const res = await authedFetch(
+      notificationPath("/api/v1/notification/settings")
+    );
+    if (!res.ok) return null;
+    return (await res.json()) as NotificationSettings;
+  } catch {
+    return null;
+  }
 }
