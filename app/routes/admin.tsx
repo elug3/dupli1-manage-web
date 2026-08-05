@@ -137,6 +137,7 @@ export default function AdminLayout() {
             <SidebarLink to="/coupons" icon={<CouponsIcon />} label={t("nav.coupons")} onNavigate={() => setSidebarOpen(false)} />
             <SidebarLink to="/analytics" icon={<AnalyticsIcon />} label={t("nav.analytics")} onNavigate={() => setSidebarOpen(false)} />
             <SidebarLink to="/users" icon={<UsersIcon />} label={t("nav.users")} onNavigate={() => setSidebarOpen(false)} />
+            <SidebarLink to="/telegram" icon={<TelegramIcon />} label={t("nav.telegram")} onNavigate={() => setSidebarOpen(false)} />
           </div>
 
           <div className="mt-4 border-t border-white/10 pt-4">
@@ -347,6 +348,19 @@ function CouponsIcon() {
     <svg className="size-[18px]" viewBox="0 0 24 24" fill="none">
       <path d="M12.5 3H7a2 2 0 0 0-2 2v5.5l9.5 9.5a2 2 0 0 0 2.83 0l4.17-4.17a2 2 0 0 0 0-2.83L12.5 3Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
       <circle cx="9" cy="9" r="1" fill="currentColor" />
+    </svg>
+  );
+}
+
+function TelegramIcon() {
+  return (
+    <svg className="size-[18px]" viewBox="0 0 24 24" fill="none">
+      <path
+        d="M21.5 4.3 18.7 19c-.2 1-.8 1.2-1.6.8l-4.4-3.3-2.1 2c-.24.24-.44.44-.9.44l.32-4.5 8.2-7.4c.36-.32-.08-.5-.56-.18L7.56 12.2 3.2 10.8c-.95-.3-.97-.95.2-1.4L20.3 2.9c.8-.3 1.5.18 1.2 1.4Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }

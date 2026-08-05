@@ -17,6 +17,7 @@ export default [
   route("product-images/*", "routes/gateway.product-images.tsx"),
   route("inventory/*", "routes/gateway.inventory.tsx"),
   route("order/*", "routes/gateway.order.tsx"),
+  route("notification/*", "routes/gateway.notification.tsx"),
   route("login", "routes/login.tsx"),
   layout("routes/admin.tsx", [
     index("routes/dashboard.tsx"),
@@ -28,6 +29,7 @@ export default [
     route("orders", "routes/orders.tsx"),
     route("coupons", "routes/coupons.tsx"),
     route("analytics", "routes/analytics.tsx"),
+    route("telegram", "routes/telegram.tsx"),
     route("users", "routes/users.tsx"),
     route("users/new", "routes/users.new.tsx"),
     route("users/:id", "routes/users.$id.tsx"),
