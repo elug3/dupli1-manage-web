@@ -54,6 +54,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: stripGatewayPrefix("/order"),
       },
+      "/notification/": {
+        target: "http://localhost:8080",
+        changeOrigin: true,
+        rewrite: stripGatewayPrefix("/notification"),
+      },
       // Product images: gateway path is already `/product-images/…` (no prefix strip).
       "/product-images/": {
         target: "http://localhost:8080",
