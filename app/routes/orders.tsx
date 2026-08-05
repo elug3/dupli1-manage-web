@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router";
 import {
   type Order,
   type OrderItem,
@@ -99,6 +100,8 @@ function OrderStatusBadge({ status }: { status: OrderStatus }) {
 export default function Orders() {
   const { notify } = useNotify();
   const { t } = useI18n();
+  const navigate = useNavigate();
+  const { id: routeOrderId } = useParams();
   const [orders, setOrders] = useState<Order[]>([]);
   const [skuLookup, setSkuLookup] = useState<Map<string, SkuVariantContext>>(
     () => new Map()
@@ -106,7 +109,9 @@ export default function Orders() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<OrderStatus | "all">("all");
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(
+    routeOrderId ?? null
+  );
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -126,6 +131,34 @@ export default function Orders() {
       })
       .finally(() => setLoading(false));
   }, [t]);
+
+  useEffect(() => {
+    setExpandedId(routeOrderId ?? null);
+  }, [routeOrderId]);
+
+  // Orders arrive after the first paint, so the deep-linked row can only be
+  // brought into view once the list has rendered. Each order renders twice
+  // (mobile card and desktop row); only the one for the current breakpoint is
+  // laid out, and scrollIntoView does nothing on the hidden one.
+  useEffect(() => {
+    if (loading || !routeOrderId) return;
+    const rows = document.querySelectorAll<HTMLElement>("[data-order-row]");
+    for (const row of rows) {
+      if (row.dataset.orderRow === routeOrderId && row.offsetParent !== null) {
+        row.scrollIntoView({ block: "center" });
+        return;
+      }
+    }
+  }, [loading, routeOrderId]);
+
+  /** Keep the URL on the expanded order so alert links and shares stay in sync. */
+  function toggleOrder(orderId: string) {
+    const next = expandedId === orderId ? null : orderId;
+    navigate(next ? `/orders/${encodeURIComponent(next)}` : "/orders", {
+      replace: true,
+      preventScrollReset: true,
+    });
+  }
 
   const filtered =
     activeTab === "all"
@@ -263,9 +296,7 @@ export default function Orders() {
                   skuLookup={skuLookup}
                   expanded={expandedId === order.id}
                   updating={updatingId === order.id}
-                  onToggle={() =>
-                    setExpandedId(expandedId === order.id ? null : order.id)
-                  }
+                  onToggle={() => toggleOrder(order.id)}
                   onAction={(action) => handleOrderAction(order, action)}
                 />
               ))}
@@ -303,11 +334,7 @@ export default function Orders() {
                       skuLookup={skuLookup}
                       expanded={expandedId === order.id}
                       updating={updatingId === order.id}
-                      onToggle={() =>
-                        setExpandedId(
-                          expandedId === order.id ? null : order.id
-                        )
-                      }
+                      onToggle={() => toggleOrder(order.id)}
                       onAction={(action) => handleOrderAction(order, action)}
                     />
                   ))}
@@ -340,7 +367,7 @@ function OrderCard({
   const actions = ORDER_ACTIONS[order.status] ?? [];
 
   return (
-    <div className="p-4">
+    <div className="p-4" data-order-row={order.id}>
       <button
         type="button"
         onClick={onToggle}
@@ -440,6 +467,7 @@ function OrderRows({
   return (
     <>
       <tr
+        data-order-row={order.id}
         className={[
           "border-b border-[#F0EEF8] cursor-pointer transition-colors",
           expanded ? "bg-[#F8F7FC]" : "hover:bg-[#FAFAFA]",

@@ -27,6 +27,8 @@ export default [
     route("products/:id", "routes/products.$id.tsx"),
     route("catalog", "routes/catalog.tsx"),
     route("orders", "routes/orders.tsx"),
+    // Telegram order alerts link to /orders/{id} (dupli1#158).
+    route("orders/:id", "routes/orders.tsx", { id: "order-detail" }),
     route("coupons", "routes/coupons.tsx"),
     route("analytics", "routes/analytics.tsx"),
     route("telegram", "routes/telegram.tsx"),
