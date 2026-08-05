@@ -1,6 +1,12 @@
 const DEFAULT_GATEWAY_URL = "http://localhost:8080";
 
-const GATEWAY_PREFIXES = ["/auth", "/product", "/inventory", "/order"] as const;
+const GATEWAY_PREFIXES = [
+  "/auth",
+  "/product",
+  "/inventory",
+  "/order",
+  "/notification",
+] as const;
 
 function gatewayBase(): string {
   return (

@@ -1,4 +1,5 @@
 build/
 node_modules/
+.react-router/
 vpn/*.conf
 !vpn/*.conf.example
