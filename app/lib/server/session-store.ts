@@ -77,6 +77,14 @@ export function setCachedAccessToken(
   record.accessTokenExpiresAt = expiresAt;
 }
 
+/** Drop a cached access token so the next exchange hits auth refresh. */
+export function clearCachedAccessToken(sessionId: string): void {
+  const record = sessions.get(sessionId);
+  if (!record) return;
+  record.accessToken = null;
+  record.accessTokenExpiresAt = 0;
+}
+
 export function updateSessionRefreshToken(
   sessionId: string,
   refreshToken: string

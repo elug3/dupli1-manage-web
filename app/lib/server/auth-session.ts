@@ -9,6 +9,7 @@ import {
   setSessionCookieHeader,
 } from "./session-cookie";
 import {
+  clearCachedAccessToken,
   createSession,
   deleteSession,
   getCachedAccessToken,
@@ -16,6 +17,7 @@ import {
   getSession,
   setCachedAccessToken,
 } from "./session-store";
+import { AUTH_PREFIX } from "../gateway";
 
 interface LoginResponse {
   refresh_token: string;
@@ -92,13 +94,22 @@ function cacheAccessToken(sessionId: string, accessToken: string): void {
   );
 }
 
-/** Exchange the session's refresh token for an access token, reusing a cached one while it's fresh. */
+/**
+ * Exchange the session's refresh token for an access token, reusing a cached
+ * one while it's fresh. Pass `forceRefresh` after an upstream 401 (or for
+ * `/auth/session/refresh`) so we don't hand back the same rejected token.
+ */
 async function cachedAccessTokenExchange(
   sessionId: string,
-  refreshToken: string
+  refreshToken: string,
+  options: { forceRefresh?: boolean } = {}
 ): Promise<{ accessToken: string } | null> {
-  const cached = getCachedAccessToken(sessionId);
-  if (cached) return { accessToken: cached };
+  if (options.forceRefresh) {
+    clearCachedAccessToken(sessionId);
+  } else {
+    const cached = getCachedAccessToken(sessionId);
+    if (cached) return { accessToken: cached };
+  }
 
   const exchanged = await exchangeRefreshToken(refreshToken);
   if (!exchanged) return null;
@@ -170,7 +181,11 @@ export async function handleSessionLogin(request: Request): Promise<Response> {
 }
 
 export async function handleSessionRefresh(request: Request): Promise<Response> {
-  const tokenResult = await accessTokenFromSession(request);
+  // Always hit auth refresh — callers only reach this after a 401, so a cached
+  // access token is exactly what just failed upstream.
+  const tokenResult = await accessTokenFromSession(request, {
+    forceRefresh: true,
+  });
   if (tokenResult instanceof Response) return tokenResult;
   return jsonResponse({ access_token: tokenResult.accessToken });
 }
@@ -270,7 +285,8 @@ export async function handleSessionRegister(
 }
 
 async function accessTokenFromSession(
-  request: Request
+  request: Request,
+  options: { forceRefresh?: boolean } = {}
 ): Promise<{ accessToken: string } | Response> {
   const sessionId = getSessionId(request);
   if (!sessionId) {
@@ -285,7 +301,11 @@ async function accessTokenFromSession(
     });
   }
 
-  const exchanged = await cachedAccessTokenExchange(sessionId, refreshToken);
+  const exchanged = await cachedAccessTokenExchange(
+    sessionId,
+    refreshToken,
+    options
+  );
   if (!exchanged) {
     deleteSession(sessionId);
     return jsonResponse({ error: "Session expired" }, {
@@ -297,9 +317,22 @@ async function accessTokenFromSession(
   return exchanged;
 }
 
+/** Browser gateway prefixes that hit the auth service (source of truth for login). */
+function isAuthGatewayPath(gatewayPathname: string): boolean {
+  return (
+    gatewayPathname === AUTH_PREFIX ||
+    gatewayPathname.startsWith(`${AUTH_PREFIX}/`)
+  );
+}
+
 /**
  * Proxy gateway API calls using a fresh access token from the signed-in session.
  * Avoids stale or missing browser tokens when calling product/auth/order APIs.
+ *
+ * Auth is the source of truth for login state (same policy as dupli1-web):
+ * a non-auth upstream 401 triggers one forced refresh + retry. If auth refresh
+ * fails the session is cleared (real logout). If refresh succeeds but the
+ * upstream still rejects, return 502 so the browser does not bounce to /login.
  */
 export async function handleSessionGatewayProxy(
   request: Request
@@ -319,9 +352,47 @@ export async function handleSessionGatewayProxy(
     return tokenResult;
   }
 
-  return proxyGatewayRequestForPath(
+  // Buffer once so a post-refresh retry can resend the same payload.
+  const hasBody = request.method !== "GET" && request.method !== "HEAD";
+  const body = hasBody ? await request.arrayBuffer() : undefined;
+
+  let upstream = await proxyGatewayRequestForPath(
     request,
     gatewayPathname,
-    tokenResult.accessToken
+    tokenResult.accessToken,
+    body
+  );
+
+  if (upstream.status !== 401 || isAuthGatewayPath(gatewayPathname)) {
+    return upstream;
+  }
+
+  // Non-auth upstream rejected the token — force a refresh handshake once.
+  const refreshed = await accessTokenFromSession(request, {
+    forceRefresh: true,
+  });
+  if (refreshed instanceof Response) {
+    return refreshed;
+  }
+
+  upstream = await proxyGatewayRequestForPath(
+    request,
+    gatewayPathname,
+    refreshed.accessToken,
+    body
+  );
+
+  if (upstream.status !== 401) {
+    return upstream;
+  }
+
+  // Session is still valid per auth; the upstream rejected the token
+  // (JWKS mismatch, misconfig, outage). Do not log the user out.
+  return jsonResponse(
+    {
+      error: "Upstream rejected a valid session token",
+      code: "upstream_unauthorized",
+    },
+    { status: 502 }
   );
 }

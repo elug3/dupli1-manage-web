@@ -60,7 +60,9 @@ export function gatewayRelativePath(pathname: string): string | null {
 export async function proxyGatewayRequestForPath(
   request: Request,
   gatewayPathname: string,
-  accessToken?: string
+  accessToken?: string,
+  /** Pre-buffered body for retries — Request streams can only be read once. */
+  body?: ArrayBuffer
 ): Promise<Response> {
   const path = gatewayRelativePath(gatewayPathname);
   if (!path) {
@@ -87,11 +89,13 @@ export async function proxyGatewayRequestForPath(
   headers.set("Accept", request.headers.get("Accept") ?? "application/json");
 
   const hasBody = request.method !== "GET" && request.method !== "HEAD";
+  const payload =
+    hasBody ? (body ?? (await request.arrayBuffer())) : undefined;
 
   return fetch(upstream, {
     method: request.method,
     headers,
-    body: hasBody ? await request.arrayBuffer() : undefined,
+    body: payload,
   });
 }
 
