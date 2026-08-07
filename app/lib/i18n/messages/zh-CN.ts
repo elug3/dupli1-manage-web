@@ -509,6 +509,8 @@ export const zhCN: Messages = {
       "运营人员向机器人发送 /start 后，其注册请求会显示在这里等待审批。",
     noSubscriptionsInStatus: "该状态下暂无订阅",
     failedToLoad: "加载 Telegram 订阅失败",
+    authNotConfigured:
+      "通知服务未配置 AUTH_JWKS_URL，管理 API 返回 503。见 docs/ai-instruct-dupli1-notification-jwks.md",
     subscriptionAdded: "订阅已添加",
     subscriptionAccepted: "订阅已通过",
     subscriptionRejected: "订阅已拒绝",

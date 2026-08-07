@@ -7,6 +7,7 @@ Status
 - See [CLAUDE.md](CLAUDE.md) for the architecture, route map, backend API contracts, and standard commands (`npm run dev`, `npm run build`, `npm run typecheck`).
 - Product creates require existing catalog master codes (`brandCode`/`styleCode`, variant `colorCode`/`sizeCode`); manage dictionaries at `/catalog`.
 - Account types in the UI are `customer` | `manager` | `service`. Auth may still wire human operators as `admin` until [dupli1-auth is updated](docs/ai-instruct-dupli1-auth-account-type-manager.md) — see that AI instruct before changing naming in either repo.
+- Telegram tab (`/telegram`) needs `AUTH_JWKS_URL` on `dupli1-notification` in ECS. If the tab fails to load with `auth not configured`, apply [docs/ai-instruct-dupli1-notification-jwks.md](docs/ai-instruct-dupli1-notification-jwks.md) in the `dupli1` repo.
 
 Agent interaction rules
 - Keep changes minimal and scoped. When creating or updating customization files, explain why each change is needed.
