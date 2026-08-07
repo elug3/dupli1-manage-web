@@ -509,6 +509,8 @@ export const en = {
       "Ops staff message the bot (/start); their registration shows up here for approval.",
     noSubscriptionsInStatus: "No subscriptions with this status",
     failedToLoad: "Failed to load Telegram subscriptions",
+    authNotConfigured:
+      "Notification service has no AUTH_JWKS_URL — manager API returns 503. See docs/ai-instruct-dupli1-notification-jwks.md",
     subscriptionAdded: "Subscription added",
     subscriptionAccepted: "Subscription accepted",
     subscriptionRejected: "Subscription rejected",

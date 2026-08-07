@@ -74,7 +74,14 @@ export default function Telegram() {
       .then(setSubscriptions)
       .catch((err) => {
         setSubscriptions([]);
-        setError(err instanceof Error ? err.message : t("telegram.failedToLoad"));
+        const raw =
+          err instanceof Error ? err.message : t("telegram.failedToLoad");
+        // Upstream notification service with no AUTH_JWKS_URL returns this 503.
+        setError(
+          /auth not configured/i.test(raw)
+            ? t("telegram.authNotConfigured")
+            : raw
+        );
       })
       .finally(() => setLoading(false));
   }

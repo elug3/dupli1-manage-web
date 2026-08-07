@@ -510,6 +510,8 @@ export const ko: Messages = {
       "운영 담당자가 봇에 /start를 보내면 승인 대기 항목으로 여기에 표시됩니다.",
     noSubscriptionsInStatus: "해당 상태의 구독이 없습니다",
     failedToLoad: "텔레그램 구독을 불러오지 못했습니다",
+    authNotConfigured:
+      "알림 서비스에 AUTH_JWKS_URL이 없어 관리자 API가 503을 반환합니다. docs/ai-instruct-dupli1-notification-jwks.md 참고",
     subscriptionAdded: "구독을 추가했습니다",
     subscriptionAccepted: "구독을 승인했습니다",
     subscriptionRejected: "구독을 거부했습니다",

@@ -87,6 +87,15 @@ Statuses: `pending` → `paid` → `in_transit` → `fulfilled` (or `canceled` f
 
 `/inventory/api/v1/inventory/{sku}` and `/by-sku-id/{skuId}`, adjust, reservations (served by product).
 
+### Notification (`/notification`)
+
+Telegram ops bot manager API (served by `dupli1-notification`):
+
+- `GET /notification/api/v1/notification/telegram/subscriptions` — list (`notification.telegram.read`)
+- `POST …/subscriptions`, `…/{id}/accept|reject`, `DELETE …/{id}` — manage (`notification.telegram.manage`)
+
+UI: `/telegram`. **Production requires `AUTH_JWKS_URL` on the notification ECS task** — without it the API returns `503 auth not configured` and the tab fails to load. See [docs/ai-instruct-dupli1-notification-jwks.md](docs/ai-instruct-dupli1-notification-jwks.md).
+
 ## Auth (browser)
 
 Server-side session storage keeps both refresh and access tokens off the browser entirely:
@@ -112,7 +121,7 @@ app/
 
 Route modules use React Router 7 conventions: `loader` for data fetching, `action` for mutations, `default` export for the component.
 
-Admin surfaces: products (parent + variants with inline **price**, **officialPrice**, **attributes** key-value editor, and catalog master fields on PDP), **SKU detail** (`/products/:id/SKU/:skuId`), **catalog masters** (`/catalog`), orders, coupons, users (**Customers / Managers / Services** tabs by `account_type`), settings (local UI; manager settings API still sketch on backend).
+Admin surfaces: products (parent + variants with inline **price**, **officialPrice**, **attributes** key-value editor, and catalog master fields on PDP), **SKU detail** (`/products/:id/SKU/:skuId`), **catalog masters** (`/catalog`), orders, coupons, users (**Customers / Managers / Services** tabs by `account_type`), **Telegram** (`/telegram` — ops alert subscriptions), settings (local UI; manager settings API still sketch on backend).
 
 ## Production access
 
