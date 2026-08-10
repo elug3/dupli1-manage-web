@@ -6,11 +6,14 @@ import {
   LastImageDeleteError,
   deleteVariant,
   deleteVariantImage,
+  dimensionsEmpty,
   findVariant,
+  formatDimensionsMm,
   formatVariantOption,
   getInventory,
   getInventoryBySkuId,
   getManageProduct,
+  parseDimensionsInput,
   productImageSrc,
   setInventory,
   updateVariant,
@@ -157,6 +160,10 @@ export default function SkuDetail() {
             [
               t("skuDetail.editionCode"),
               variant.editionCode ?? t("common.emptyValue"),
+            ],
+            [
+              t("skuDetail.dimensions"),
+              formatDimensionsMm(variant.dimensions) ?? t("common.emptyValue"),
             ],
             [t("productDetail.status"), variant.status],
             [t("productDetail.colStock"), stockLabel],
@@ -467,22 +474,48 @@ function EditSection({
   const [color, setColor] = useState(variant.color);
   const [size, setSize] = useState(variant.size);
   const [status, setStatus] = useState(variant.status);
+  const [widthMm, setWidthMm] = useState(
+    variant.dimensions?.widthMm?.toString() ?? ""
+  );
+  const [heightMm, setHeightMm] = useState(
+    variant.dimensions?.heightMm?.toString() ?? ""
+  );
+  const [depthMm, setDepthMm] = useState(
+    variant.dimensions?.depthMm?.toString() ?? ""
+  );
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setColor(variant.color);
     setSize(variant.size);
     setStatus(variant.status);
+    setWidthMm(variant.dimensions?.widthMm?.toString() ?? "");
+    setHeightMm(variant.dimensions?.heightMm?.toString() ?? "");
+    setDepthMm(variant.dimensions?.depthMm?.toString() ?? "");
   }, [variant]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const parsed = parseDimensionsInput({ widthMm, heightMm, depthMm });
+    if (parsed.error === "INVALID_DIMENSION") {
+      notify(t("skuDetail.invalidDimension"), "error");
+      return;
+    }
+    if (parsed.error === "DIMENSION_TOO_LARGE") {
+      notify(t("skuDetail.dimensionTooLarge"), "error");
+      return;
+    }
+
     setSaving(true);
     try {
+      const hadDimensions = !dimensionsEmpty(variant.dimensions);
+      const nextDimensions =
+        parsed.dimensions ?? (hadDimensions ? {} : null);
       await updateVariant(productId, variant.sku, {
         color: color.trim(),
         size: size.trim(),
         status: status.trim() || "active",
+        dimensions: nextDimensions,
       });
       await onSaved();
     } catch (err) {
@@ -537,6 +570,59 @@ function EditSection({
             <option value="archived">{t("common.statusArchived")}</option>
           </select>
         </label>
+        <div className="sm:col-span-2 space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
+            {t("skuDetail.dimensions")}
+          </p>
+          <p className="text-xs text-[#9D98B3]">{t("skuDetail.dimensionsHint")}</p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <label className="space-y-1.5">
+              <span className="text-xs text-[#6B6480]">
+                {t("skuDetail.widthMm")}
+              </span>
+              <input
+                type="number"
+                min={0}
+                max={10000}
+                inputMode="numeric"
+                value={widthMm}
+                onChange={(e) => setWidthMm(e.target.value)}
+                placeholder={t("skuDetail.mmPlaceholder")}
+                className={fieldCls}
+              />
+            </label>
+            <label className="space-y-1.5">
+              <span className="text-xs text-[#6B6480]">
+                {t("skuDetail.heightMm")}
+              </span>
+              <input
+                type="number"
+                min={0}
+                max={10000}
+                inputMode="numeric"
+                value={heightMm}
+                onChange={(e) => setHeightMm(e.target.value)}
+                placeholder={t("skuDetail.mmPlaceholder")}
+                className={fieldCls}
+              />
+            </label>
+            <label className="space-y-1.5">
+              <span className="text-xs text-[#6B6480]">
+                {t("skuDetail.depthMm")}
+              </span>
+              <input
+                type="number"
+                min={0}
+                max={10000}
+                inputMode="numeric"
+                value={depthMm}
+                onChange={(e) => setDepthMm(e.target.value)}
+                placeholder={t("skuDetail.mmPlaceholder")}
+                className={fieldCls}
+              />
+            </label>
+          </div>
+        </div>
         <div className="sm:col-span-2">
           <button
             type="submit"

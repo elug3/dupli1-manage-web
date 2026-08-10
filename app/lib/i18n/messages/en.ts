@@ -320,6 +320,15 @@ export const en = {
     editSku: "Edit SKU",
     deleteSku: "Delete SKU",
     open: "Open",
+    dimensions: "Dimensions (mm)",
+    dimensionsHint:
+      "Physical size in millimeters — separate from letter size. Leave blank to omit; clear all fields to remove.",
+    widthMm: "Width",
+    heightMm: "Height",
+    depthMm: "Depth",
+    mmPlaceholder: "mm",
+    invalidDimension: "Dimensions must be whole millimeters (0–10000)",
+    dimensionTooLarge: "Each dimension must be at most 10000 mm",
   },
 
   catalog: {
@@ -407,6 +416,12 @@ export const en = {
     orderItems: "Order items",
     orderTotal: "Order total",
     quantityTimes: "× {quantity}",
+    fulfillment: "Shipping",
+    recipientName: "Recipient",
+    recipientPhone: "Phone",
+    shippingAddress: "Address",
+    postalCodeValue: "Postal {code}",
+    noFulfillment: "No shipping snapshot on this order (direct create or pre-fulfillment checkout).",
   },
 
   coupons: {

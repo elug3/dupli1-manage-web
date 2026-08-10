@@ -9,6 +9,7 @@ import {
   formatOrderItemVariant,
   getOrders,
   listAllProducts,
+  orderHasFulfillment,
   shipOrder,
   updateOrderStatus,
 } from "~/lib/api";
@@ -423,22 +424,25 @@ function OrderCard({
       )}
 
       {expanded && (
-        <div className="mt-4 rounded-xl border border-[#E5E3EE] bg-[#F4F3F8]/60 p-4">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
-            {t("orders.orderItems")}
-          </p>
-          <div className="space-y-2">
-            {order.items.map((item, i) => (
-              <OrderItemRow
-                key={i}
-                item={item}
-                skuLookup={skuLookup}
-              />
-            ))}
-          </div>
-          <div className="mt-3 flex items-center justify-between border-t border-[#E5E3EE] pt-3 text-sm font-bold text-[#1C1B1F]">
-            <span>{t("orders.orderTotal")}</span>
-            <span>{formatCents(order.total_cents)}</span>
+        <div className="mt-4 space-y-3 rounded-xl border border-[#E5E3EE] bg-[#F4F3F8]/60 p-4">
+          <OrderFulfillment order={order} />
+          <div>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+              {t("orders.orderItems")}
+            </p>
+            <div className="space-y-2">
+              {order.items.map((item, i) => (
+                <OrderItemRow
+                  key={i}
+                  item={item}
+                  skuLookup={skuLookup}
+                />
+              ))}
+            </div>
+            <div className="mt-3 flex items-center justify-between border-t border-[#E5E3EE] pt-3 text-sm font-bold text-[#1C1B1F]">
+              <span>{t("orders.orderTotal")}</span>
+              <span>{formatCents(order.total_cents)}</span>
+            </div>
           </div>
         </div>
       )}
@@ -527,28 +531,99 @@ function OrderRows({
       {expanded && (
         <tr className="border-b border-[#F0EEF8] bg-[#F4F3F8]/60">
           <td colSpan={7} className="px-8 py-4">
-            <div className="rounded-xl border border-[#E5E3EE] bg-white p-4">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
-                {t("orders.orderItems")}
-              </p>
-              <div className="space-y-2">
-                {order.items.map((item, i) => (
-                  <OrderItemRow
-                    key={i}
-                    item={item}
-                    skuLookup={skuLookup}
-                  />
-                ))}
-              </div>
-              <div className="mt-3 flex items-center justify-between border-t border-[#E5E3EE] pt-3 text-sm font-bold text-[#1C1B1F]">
-                <span>{t("orders.orderTotal")}</span>
-                <span>{formatCents(order.total_cents)}</span>
+            <div className="space-y-3 rounded-xl border border-[#E5E3EE] bg-white p-4">
+              <OrderFulfillment order={order} />
+              <div>
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+                  {t("orders.orderItems")}
+                </p>
+                <div className="space-y-2">
+                  {order.items.map((item, i) => (
+                    <OrderItemRow
+                      key={i}
+                      item={item}
+                      skuLookup={skuLookup}
+                    />
+                  ))}
+                </div>
+                <div className="mt-3 flex items-center justify-between border-t border-[#E5E3EE] pt-3 text-sm font-bold text-[#1C1B1F]">
+                  <span>{t("orders.orderTotal")}</span>
+                  <span>{formatCents(order.total_cents)}</span>
+                </div>
               </div>
             </div>
           </td>
         </tr>
       )}
     </>
+  );
+}
+
+function formatPhoneDisplay(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length === 11 && digits.startsWith("010")) {
+    return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+  }
+  if (digits.length === 10 && digits.startsWith("01")) {
+    return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+  return phone;
+}
+
+function OrderFulfillment({ order }: { order: Order }) {
+  const { t } = useI18n();
+  if (!orderHasFulfillment(order)) {
+    return (
+      <div className="rounded-lg border border-dashed border-[#E5E3EE] bg-[#FAFAFA] px-3 py-2.5 text-xs text-[#9D98B3]">
+        {t("orders.noFulfillment")}
+      </div>
+    );
+  }
+
+  const addr = order.shipping_address;
+  const lines = [
+    addr?.address_line1,
+    addr?.address_line2,
+    [addr?.city, addr?.province].filter(Boolean).join(" "),
+    addr?.postal_code
+      ? t("orders.postalCodeValue", { code: addr.postal_code })
+      : undefined,
+  ].filter((line): line is string => Boolean(line?.trim()));
+
+  return (
+    <div>
+      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+        {t("orders.fulfillment")}
+      </p>
+      <dl className="grid gap-2 text-sm sm:grid-cols-2">
+        {order.recipient_name && (
+          <div>
+            <dt className="text-xs text-[#9D98B3]">{t("orders.recipientName")}</dt>
+            <dd className="mt-0.5 font-medium text-[#1C1B1F]">
+              {order.recipient_name}
+            </dd>
+          </div>
+        )}
+        {order.recipient_phone && (
+          <div>
+            <dt className="text-xs text-[#9D98B3]">{t("orders.recipientPhone")}</dt>
+            <dd className="mt-0.5 font-medium text-[#1C1B1F]">
+              {formatPhoneDisplay(order.recipient_phone)}
+            </dd>
+          </div>
+        )}
+        {lines.length > 0 && (
+          <div className="sm:col-span-2">
+            <dt className="text-xs text-[#9D98B3]">{t("orders.shippingAddress")}</dt>
+            <dd className="mt-0.5 space-y-0.5 text-[#1C1B1F]">
+              {lines.map((line) => (
+                <p key={line}>{line}</p>
+              ))}
+            </dd>
+          </div>
+        )}
+      </dl>
+    </div>
   );
 }
 

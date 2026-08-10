@@ -13,6 +13,8 @@ import {
   deleteVariant,
   deleteVariantImage,
   LastImageDeleteError,
+  dimensionsEmpty,
+  formatDimensionsMm,
   formatVariantOption,
   getInventory,
   getManageProduct,
@@ -21,6 +23,7 @@ import {
   listColors,
   listEditions,
   listSizes,
+  parseDimensionsInput,
   productImageSrc,
   productSkuPath,
   productVariants,
@@ -845,6 +848,14 @@ function VariantsSection({
                           .join(" · ")}
                       </div>
                     )}
+                    {(() => {
+                      const dims = formatDimensionsMm(row.dimensions);
+                      return dims ? (
+                        <div className="mt-0.5 text-[10px] text-[#9D98B3]">
+                          {dims}
+                        </div>
+                      ) : null;
+                    })()}
                   </td>
                   <td className="px-4 py-3 capitalize text-[#6B6480]">
                     {row.status}
@@ -1008,16 +1019,39 @@ function VariantEditForm({
   const [color, setColor] = useState(variant.color);
   const [size, setSize] = useState(variant.size);
   const [status, setStatus] = useState(variant.status);
+  const [widthMm, setWidthMm] = useState(
+    variant.dimensions?.widthMm?.toString() ?? ""
+  );
+  const [heightMm, setHeightMm] = useState(
+    variant.dimensions?.heightMm?.toString() ?? ""
+  );
+  const [depthMm, setDepthMm] = useState(
+    variant.dimensions?.depthMm?.toString() ?? ""
+  );
   const [saving, setSaving] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const parsed = parseDimensionsInput({ widthMm, heightMm, depthMm });
+    if (parsed.error === "INVALID_DIMENSION") {
+      notify(t("skuDetail.invalidDimension"), "error");
+      return;
+    }
+    if (parsed.error === "DIMENSION_TOO_LARGE") {
+      notify(t("skuDetail.dimensionTooLarge"), "error");
+      return;
+    }
+
     setSaving(true);
     try {
+      const hadDimensions = !dimensionsEmpty(variant.dimensions);
+      const nextDimensions =
+        parsed.dimensions ?? (hadDimensions ? {} : null);
       await updateVariant(productId, variant.sku, {
         color: color.trim(),
         size: size.trim(),
         status: status.trim() || "active",
+        dimensions: nextDimensions,
       });
       await onSaved();
     } catch (err) {
@@ -1071,6 +1105,51 @@ function VariantEditForm({
           </select>
         </label>
       </div>
+      <div className="space-y-1">
+        <p className="text-xs text-[#6B6480]">{t("skuDetail.dimensions")}</p>
+        <p className="text-xs text-[#9D98B3]">{t("skuDetail.dimensionsHint")}</p>
+        <div className="flex flex-wrap gap-3">
+          <label className="space-y-1 text-xs text-[#6B6480]">
+            {t("skuDetail.widthMm")}
+            <input
+              type="number"
+              min={0}
+              max={10000}
+              inputMode="numeric"
+              value={widthMm}
+              onChange={(e) => setWidthMm(e.target.value)}
+              placeholder={t("skuDetail.mmPlaceholder")}
+              className={`block w-24 ${inputCls}`}
+            />
+          </label>
+          <label className="space-y-1 text-xs text-[#6B6480]">
+            {t("skuDetail.heightMm")}
+            <input
+              type="number"
+              min={0}
+              max={10000}
+              inputMode="numeric"
+              value={heightMm}
+              onChange={(e) => setHeightMm(e.target.value)}
+              placeholder={t("skuDetail.mmPlaceholder")}
+              className={`block w-24 ${inputCls}`}
+            />
+          </label>
+          <label className="space-y-1 text-xs text-[#6B6480]">
+            {t("skuDetail.depthMm")}
+            <input
+              type="number"
+              min={0}
+              max={10000}
+              inputMode="numeric"
+              value={depthMm}
+              onChange={(e) => setDepthMm(e.target.value)}
+              placeholder={t("skuDetail.mmPlaceholder")}
+              className={`block w-24 ${inputCls}`}
+            />
+          </label>
+        </div>
+      </div>
       <div className="flex gap-2">
         <button
           type="submit"
@@ -1110,6 +1189,9 @@ function AddVariantForm({
   const [editionCode, setEditionCode] = useState("");
   const [initialStock, setInitialStock] = useState("");
   const [status, setStatus] = useState("active");
+  const [widthMm, setWidthMm] = useState("");
+  const [heightMm, setHeightMm] = useState("");
+  const [depthMm, setDepthMm] = useState("");
   const [saving, setSaving] = useState(false);
   const [loadingMasters, setLoadingMasters] = useState(true);
 
@@ -1150,6 +1232,16 @@ function AddVariantForm({
       return;
     }
 
+    const parsed = parseDimensionsInput({ widthMm, heightMm, depthMm });
+    if (parsed.error === "INVALID_DIMENSION") {
+      notify(t("skuDetail.invalidDimension"), "error");
+      return;
+    }
+    if (parsed.error === "DIMENSION_TOO_LARGE") {
+      notify(t("skuDetail.dimensionTooLarge"), "error");
+      return;
+    }
+
     setSaving(true);
     try {
       const colorName = colors.find((c) => c.code === colorCode)?.name;
@@ -1161,6 +1253,7 @@ function AddVariantForm({
         color: colorName,
         size: sizeName,
         status,
+        dimensions: parsed.dimensions,
       });
 
       const stockQty = Number.parseInt(initialStock, 10);
@@ -1270,6 +1363,51 @@ function AddVariantForm({
             placeholder={t("productDetail.initialStockPlaceholder")}
           />
         </label>
+        <div className="space-y-1 sm:col-span-2 lg:col-span-3">
+          <p className="text-xs text-[#6B6480]">{t("skuDetail.dimensions")}</p>
+          <p className="text-xs text-[#9D98B3]">{t("skuDetail.dimensionsHint")}</p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <label className="space-y-1 text-xs text-[#6B6480]">
+              {t("skuDetail.widthMm")}
+              <input
+                type="number"
+                min={0}
+                max={10000}
+                inputMode="numeric"
+                value={widthMm}
+                onChange={(e) => setWidthMm(e.target.value)}
+                placeholder={t("skuDetail.mmPlaceholder")}
+                className={`block w-full ${inputCls}`}
+              />
+            </label>
+            <label className="space-y-1 text-xs text-[#6B6480]">
+              {t("skuDetail.heightMm")}
+              <input
+                type="number"
+                min={0}
+                max={10000}
+                inputMode="numeric"
+                value={heightMm}
+                onChange={(e) => setHeightMm(e.target.value)}
+                placeholder={t("skuDetail.mmPlaceholder")}
+                className={`block w-full ${inputCls}`}
+              />
+            </label>
+            <label className="space-y-1 text-xs text-[#6B6480]">
+              {t("skuDetail.depthMm")}
+              <input
+                type="number"
+                min={0}
+                max={10000}
+                inputMode="numeric"
+                value={depthMm}
+                onChange={(e) => setDepthMm(e.target.value)}
+                placeholder={t("skuDetail.mmPlaceholder")}
+                className={`block w-full ${inputCls}`}
+              />
+            </label>
+          </div>
+        </div>
       </div>
       <div className="flex gap-2">
         <button

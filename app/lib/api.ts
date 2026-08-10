@@ -88,6 +88,15 @@ export interface Product {
   raw: ProductSearchHit;
 }
 
+/** Physical SKU size in millimeters (distinct from letter size / sizeCode). */
+export interface SkuDimensions {
+  widthMm?: number;
+  heightMm?: number;
+  depthMm?: number;
+}
+
+export const MAX_DIMENSION_MM = 10000;
+
 export interface ProductVariant {
   /** Canonical ULID used by inventory / cart / order. */
   skuId?: string;
@@ -108,6 +117,8 @@ export interface ProductVariant {
   price: number;
   status: string;
   imageUrls: string[];
+  /** Physical measurements in mm; omit when unset. */
+  dimensions?: SkuDimensions;
   inStock?: boolean;
   raw: ProductSearchHit;
 }
@@ -201,6 +212,79 @@ export function attributeRowsFromMap(
   return Object.entries(attrs).map(([key, value]) => ({ key, value }));
 }
 
+function hitDimensionAxis(
+  obj: Record<string, unknown>,
+  camel: string,
+  snake: string
+): number | undefined {
+  const value = obj[camel] ?? obj[snake];
+  if (typeof value !== "number" || !Number.isFinite(value)) return undefined;
+  const n = Math.trunc(value);
+  return n > 0 ? n : undefined;
+}
+
+/** Parse variant `dimensions` from API JSON (camelCase or snake_case axes). */
+export function mapDimensions(raw: unknown): SkuDimensions | undefined {
+  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
+    return undefined;
+  }
+  const obj = raw as Record<string, unknown>;
+  const widthMm = hitDimensionAxis(obj, "widthMm", "width_mm");
+  const heightMm = hitDimensionAxis(obj, "heightMm", "height_mm");
+  const depthMm = hitDimensionAxis(obj, "depthMm", "depth_mm");
+  if (widthMm == null && heightMm == null && depthMm == null) return undefined;
+  return { widthMm, heightMm, depthMm };
+}
+
+export function dimensionsEmpty(d?: SkuDimensions | null): boolean {
+  return (
+    d == null ||
+    ((d.widthMm == null || d.widthMm === 0) &&
+      (d.heightMm == null || d.heightMm === 0) &&
+      (d.depthMm == null || d.depthMm === 0))
+  );
+}
+
+/** Format for display, e.g. `340 × 220 × 80 mm`. */
+export function formatDimensionsMm(d?: SkuDimensions | null): string | undefined {
+  if (dimensionsEmpty(d) || !d) return undefined;
+  const parts = [d.widthMm, d.heightMm, d.depthMm]
+    .filter((n): n is number => typeof n === "number" && n > 0)
+    .map(String);
+  if (parts.length === 0) return undefined;
+  return `${parts.join(" × ")} mm`;
+}
+
+/**
+ * Build a create/update payload from form axis strings.
+ * Returns `undefined` when every axis is blank (caller may omit or clear).
+ */
+export function parseDimensionsInput(input: {
+  widthMm: string;
+  heightMm: string;
+  depthMm: string;
+}): { dimensions?: SkuDimensions; error?: string } {
+  const axes: { key: keyof SkuDimensions; raw: string }[] = [
+    { key: "widthMm", raw: input.widthMm.trim() },
+    { key: "heightMm", raw: input.heightMm.trim() },
+    { key: "depthMm", raw: input.depthMm.trim() },
+  ];
+  const out: SkuDimensions = {};
+  for (const { key, raw } of axes) {
+    if (raw === "") continue;
+    const n = Number.parseInt(raw, 10);
+    if (!Number.isFinite(n) || String(n) !== raw || n < 0) {
+      return { error: "INVALID_DIMENSION" };
+    }
+    if (n > MAX_DIMENSION_MM) {
+      return { error: "DIMENSION_TOO_LARGE" };
+    }
+    if (n > 0) out[key] = n;
+  }
+  if (dimensionsEmpty(out)) return {};
+  return { dimensions: out };
+}
+
 function mapVariant(hit: ProductSearchHit): ProductVariant {
   const sku =
     hitString(hit, "sku") ?? hitString(hit, "id") ?? "unknown-sku";
@@ -222,6 +306,7 @@ function mapVariant(hit: ProductSearchHit): ProductVariant {
     price: hitNumber(hit, "price") ?? 0,
     status: hitString(hit, "status") ?? "active",
     imageUrls: hitStringArray(hit, "imageUrls") ?? [],
+    dimensions: mapDimensions(hit.dimensions),
     inStock:
       typeof hit.inStock === "boolean"
         ? hit.inStock
@@ -621,12 +706,25 @@ export interface CreateVariantInput {
   color?: string;
   size?: string;
   status?: string;
+  /** Optional physical size in mm. */
+  dimensions?: SkuDimensions;
 }
 
 export async function createVariant(
   productId: string,
   input: CreateVariantInput
 ): Promise<ProductVariant> {
+  const body: Record<string, unknown> = {
+    colorCode: input.colorCode,
+    sizeCode: input.sizeCode,
+    editionCode: input.editionCode || undefined,
+    color: input.color,
+    size: input.size,
+    status: input.status ?? "active",
+  };
+  if (input.dimensions && !dimensionsEmpty(input.dimensions)) {
+    body.dimensions = input.dimensions;
+  }
   const res = await authedFetch(
     productPath(
       `/api/v1/products/${encodeURIComponent(productId)}/variants`
@@ -634,14 +732,7 @@ export async function createVariant(
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        colorCode: input.colorCode,
-        sizeCode: input.sizeCode,
-        editionCode: input.editionCode || undefined,
-        color: input.color,
-        size: input.size,
-        status: input.status ?? "active",
-      }),
+      body: JSON.stringify(body),
     }
   );
   if (!res.ok) throw new Error(await readError(res, "Failed to create variant"));
@@ -655,6 +746,11 @@ export interface UpdateVariantInput {
   status?: string;
   /** Replaces the variant gallery when non-empty. Empty arrays are ignored by the API merge. */
   imageUrls?: string[];
+  /**
+   * Merge-on-update: omit to keep; `{}` clears; non-empty object replaces all axes.
+   * Pass `null` to omit from the JSON body.
+   */
+  dimensions?: SkuDimensions | Record<string, never> | null;
 }
 
 export async function updateVariant(
@@ -662,6 +758,14 @@ export async function updateVariant(
   sku: string,
   input: UpdateVariantInput
 ): Promise<ProductVariant> {
+  const body: Record<string, unknown> = {};
+  if (input.color !== undefined) body.color = input.color;
+  if (input.size !== undefined) body.size = input.size;
+  if (input.status !== undefined) body.status = input.status;
+  if (input.imageUrls !== undefined) body.imageUrls = input.imageUrls;
+  if (input.dimensions !== undefined && input.dimensions !== null) {
+    body.dimensions = input.dimensions;
+  }
   const res = await authedFetch(
     productPath(
       `/api/v1/products/${encodeURIComponent(productId)}/variants/${encodeURIComponent(sku)}`
@@ -669,7 +773,7 @@ export async function updateVariant(
     {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
+      body: JSON.stringify(body),
     }
   );
   if (!res.ok) throw new Error(await readError(res, "Failed to update variant"));
@@ -1131,6 +1235,15 @@ export interface OrderItem {
   unit_price_cents: number;
 }
 
+/** Immutable shipping location snapshot captured at checkout complete. */
+export interface ShippingAddress {
+  postal_code: string;
+  address_line1: string;
+  address_line2?: string;
+  city: string;
+  province: string;
+}
+
 export interface Order {
   id: string;
   customer_id: string;
@@ -1141,8 +1254,28 @@ export interface Order {
   subtotal_cents: number;
   discount_cents: number;
   total_cents: number;
+  /** Recipient display name from checkout fulfillment snapshot. */
+  recipient_name?: string;
+  /** KR mobile digits from checkout fulfillment snapshot. */
+  recipient_phone?: string;
+  shipping_address?: ShippingAddress;
+  /** Audit-only link to auth saved address id (optional). */
+  source_address_id?: string;
+  payment_id?: string;
+  paid_at?: string;
+  payment_due_at?: string;
   created_at: string;
   updated_at: string;
+}
+
+/** True when the order carries a usable fulfillment snapshot. */
+export function orderHasFulfillment(order: Order): boolean {
+  return Boolean(
+    order.recipient_name?.trim() ||
+      order.recipient_phone?.trim() ||
+      order.shipping_address?.address_line1?.trim() ||
+      order.shipping_address?.postal_code?.trim()
+  );
 }
 
 export interface OrdersResponse {

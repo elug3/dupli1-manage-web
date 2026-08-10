@@ -72,7 +72,7 @@ Admin UI is **KRW-only**. `formatCurrency` / `formatCents` (`app/lib/i18n`) alwa
 - `GET|POST|PATCH|DELETE /product/api/v1/catalog/brands|colors|sizes|editions` (+ styles under brands) — master data (`product.master.read|write`)
 - `GET|POST /product/api/v1/coupons`, `PUT|DELETE /product/api/v1/coupons/{code}`
 
-SKU identity: each variant has immutable `skuId` (ULID) and human `sku` composed from master codes. Parent `attributes` is a display-only string map — see backend [docs/product-attributes.md](../dupli1/docs/product-attributes.md). Parent pricing: [docs/product-price-on-parent.md](../dupli1/docs/product-price-on-parent.md).
+SKU identity: each variant has immutable `skuId` (ULID) and human `sku` composed from master codes. Parent `attributes` is a display-only string map — see backend [docs/product-attributes.md](../dupli1/docs/product-attributes.md). Parent pricing: [docs/product-price-on-parent.md](../dupli1/docs/product-price-on-parent.md). Optional variant `dimensions` (`widthMm` / `heightMm` / `depthMm` in mm) is edited on SKU detail and variant create/edit — see [docs/product-sku-dimensions.md](../dupli1/docs/product-sku-dimensions.md).
 
 ### Order (`/order`)
 
@@ -82,6 +82,8 @@ SKU identity: each variant has immutable `skuId` (ULID) and human `sku` composed
 - `PUT /order/api/v1/orders/{id}/status` — `canceled` or `fulfilled` only (`order.status.update`)
 
 Statuses: `pending` → `paid` → `in_transit` → `fulfilled` (or `canceled` from pending/paid).
+
+Orders from checkout complete include an immutable fulfillment snapshot (`recipient_name`, `recipient_phone`, `shipping_address`) shown in the order expand panel.
 
 ### Inventory (`/inventory`)
 
