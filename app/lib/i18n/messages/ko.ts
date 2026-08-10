@@ -321,6 +321,15 @@ export const ko: Messages = {
     editSku: "SKU 수정",
     deleteSku: "SKU 삭제",
     open: "열기",
+    dimensions: "실측 (mm)",
+    dimensionsHint:
+      "밀리미터 단위 실측 크기 — 레터 사이즈와 별개입니다. 비우면 생략, 모두 지우면 삭제됩니다.",
+    widthMm: "가로",
+    heightMm: "세로",
+    depthMm: "깊이",
+    mmPlaceholder: "mm",
+    invalidDimension: "실측은 0–10000 사이의 정수(mm)여야 합니다",
+    dimensionTooLarge: "각 축은 최대 10000 mm까지입니다",
   },
 
   catalog: {
@@ -408,6 +417,13 @@ export const ko: Messages = {
     orderItems: "주문 항목",
     orderTotal: "주문 합계",
     quantityTimes: "× {quantity}",
+    fulfillment: "배송 정보",
+    recipientName: "수령인",
+    recipientPhone: "전화번호",
+    shippingAddress: "주소",
+    postalCodeValue: "우편번호 {code}",
+    noFulfillment:
+      "이 주문에는 배송 스냅샷이 없습니다 (직접 생성 또는 이전 체크아웃).",
   },
 
   coupons: {

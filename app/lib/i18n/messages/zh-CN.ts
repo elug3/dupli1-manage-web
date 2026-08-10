@@ -320,6 +320,15 @@ export const zhCN: Messages = {
     editSku: "编辑 SKU",
     deleteSku: "删除 SKU",
     open: "打开",
+    dimensions: "尺寸（mm）",
+    dimensionsHint:
+      "毫米为单位的实际尺寸 — 与字母尺码无关。留空表示省略；清空全部字段即删除。",
+    widthMm: "宽",
+    heightMm: "高",
+    depthMm: "深",
+    mmPlaceholder: "mm",
+    invalidDimension: "尺寸须为 0–10000 的整数毫米",
+    dimensionTooLarge: "每条边最长 10000 mm",
   },
 
   catalog: {
@@ -407,6 +416,12 @@ export const zhCN: Messages = {
     orderItems: "订单商品",
     orderTotal: "订单合计",
     quantityTimes: "× {quantity}",
+    fulfillment: "配送信息",
+    recipientName: "收件人",
+    recipientPhone: "电话",
+    shippingAddress: "地址",
+    postalCodeValue: "邮编 {code}",
+    noFulfillment: "此订单无配送快照（直接创建或旧结账流程）。",
   },
 
   coupons: {
