@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { login } from "~/lib/auth";
 import { useI18n } from "~/lib/i18n";
 import { LanguageSwitcher } from "~/lib/i18n/LanguageSwitcher";
+import { ThemeSwitcher } from "~/lib/ThemeSwitcher";
 import { useNotify } from "~/lib/notifications";
 
 export function meta() {
@@ -35,7 +36,8 @@ export default function Login() {
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center bg-page px-4 py-8">
-      <div className="absolute right-4 top-4 sm:right-6 sm:top-6">
+      <div className="absolute right-4 top-4 flex items-center gap-2 sm:right-6 sm:top-6">
+        <ThemeSwitcher compact />
         <LanguageSwitcher compact />
       </div>
       <div className="w-full max-w-sm">
