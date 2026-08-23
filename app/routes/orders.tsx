@@ -218,14 +218,14 @@ export default function Orders() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">
+          <h1 className="text-xl font-bold text-ink sm:text-2xl">
             {t("orders.title")}
           </h1>
-          <p className="mt-0.5 text-sm text-[#6B6480]">
+          <p className="mt-0.5 text-sm text-muted">
             {t("orders.ordersTotal", { count: orders.length })}
           </p>
         </div>
-        <div className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#E5E3EE] bg-white px-4 py-2.5 text-sm text-[#6B6480] shadow-[0_1px_3px_rgba(28,27,31,0.04)] sm:w-auto sm:justify-start">
+        <div className="flex w-full items-center justify-center gap-2 rounded-xl border border-edge bg-surface px-4 py-2.5 text-sm text-muted shadow-[0_1px_3px_rgba(28,27,31,0.04)] sm:w-auto sm:justify-start">
           <svg className="size-4" viewBox="0 0 24 24" fill="none">
             <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
           </svg>
@@ -234,14 +234,14 @@ export default function Orders() {
       </div>
 
       {error && (
-        <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+        <div className="rounded-xl bg-danger-bg px-4 py-3 text-sm text-danger-fg">
           {error}
         </div>
       )}
 
       {/* Status tabs */}
       <div className="-mx-1 overflow-x-auto px-1 pb-1">
-        <div className="flex w-max max-w-full flex-wrap gap-1 rounded-xl border border-[#E5E3EE] bg-white p-1 shadow-[0_1px_3px_rgba(28,27,31,0.04)] sm:w-fit">
+        <div className="flex w-max max-w-full flex-wrap gap-1 rounded-xl border border-edge bg-surface p-1 shadow-[0_1px_3px_rgba(28,27,31,0.04)] sm:w-fit">
         {STATUS_TAB_VALUES.map((value) => {
           const count =
             value === "all"
@@ -254,8 +254,8 @@ export default function Orders() {
               className={[
                 "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition",
                 activeTab === value
-                  ? "bg-[#6D4AFF] text-white shadow-sm"
-                  : "text-[#6B6480] hover:bg-[#F4F3F8] hover:text-[#1C1B1F]",
+                  ? "bg-accent text-white shadow-sm"
+                  : "text-muted hover:bg-page hover:text-ink",
               ].join(" ")}
             >
               {statusTabLabel(value)}
@@ -265,7 +265,7 @@ export default function Orders() {
                     "rounded-full px-1.5 py-0.5 text-[10px] font-bold",
                     activeTab === value
                       ? "bg-white/20 text-white"
-                      : "bg-[#F4F3F8] text-[#6B6480]",
+                      : "bg-page text-muted",
                   ].join(" ")}
                 >
                   {count}
@@ -278,18 +278,18 @@ export default function Orders() {
       </div>
 
       {/* Orders list */}
-      <div className="rounded-2xl border border-[#E5E3EE] bg-white shadow-[0_1px_4px_rgba(28,27,31,0.04)] overflow-hidden">
+      <div className="rounded-2xl border border-edge bg-surface shadow-[0_1px_4px_rgba(28,27,31,0.04)] overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#6D4AFF] border-t-transparent" />
+            <div className="h-7 w-7 animate-spin rounded-full border-2 border-accent border-t-transparent" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="px-5 py-16 text-center text-[#9D98B3]">
+          <div className="px-5 py-16 text-center text-faint">
             {t("orders.noOrdersInStatus")}
           </div>
         ) : (
           <>
-            <div className="divide-y divide-[#F0EEF8] md:hidden">
+            <div className="divide-y divide-edge-soft md:hidden">
               {filtered.map((order) => (
                 <OrderCard
                   key={order.id}
@@ -306,7 +306,7 @@ export default function Orders() {
             <div className="hidden overflow-x-auto md:block">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-[#F0EEF8] bg-[#FAFAFA]">
+                  <tr className="border-b border-edge-soft bg-subtle">
                     {(
                       [
                         ["id", t("orders.colOrderId")],
@@ -320,7 +320,7 @@ export default function Orders() {
                     ).map(([key, label]) => (
                       <th
                         key={key}
-                        className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#9D98B3]"
+                        className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-faint"
                       >
                         {label}
                       </th>
@@ -376,21 +376,21 @@ function OrderCard({
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="truncate font-mono text-xs font-semibold text-[#1C1B1F]">
+            <p className="truncate font-mono text-xs font-semibold text-ink">
               {order.id}
             </p>
-            <p className="mt-1 text-sm text-[#6B6480]">{order.customer_id}</p>
+            <p className="mt-1 text-sm text-muted">{order.customer_id}</p>
           </div>
           <OrderStatusBadge status={order.status} />
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-          <span className="font-semibold text-[#1C1B1F]">
+          <span className="font-semibold text-ink">
             {formatCents(order.total_cents)}
           </span>
-          <span className="text-[#6B6480]">
+          <span className="text-muted">
             {t("common.itemCount", { count: order.items.length })}
           </span>
-          <span className="text-xs text-[#9D98B3]">
+          <span className="text-xs text-faint">
             {formatDate(order.created_at, {
               month: "short",
               day: "numeric",
@@ -411,8 +411,8 @@ function OrderCard({
               className={[
                 "rounded-lg px-3 py-2 text-xs font-semibold transition disabled:opacity-50",
                 action.kind === "status" && action.status === "canceled"
-                  ? "border border-red-200 text-red-600 hover:bg-red-50"
-                  : "border border-[#E5E3EE] text-[#6B6480] hover:border-[#6D4AFF]/40 hover:bg-[#F8F7FC] hover:text-[#6D4AFF]",
+                  ? "border border-red-200 text-danger-fg hover:bg-danger-bg"
+                  : "border border-edge text-muted hover:border-accent/40 hover:bg-panel hover:text-accent",
               ].join(" ")}
             >
               {updating
@@ -424,10 +424,10 @@ function OrderCard({
       )}
 
       {expanded && (
-        <div className="mt-4 space-y-3 rounded-xl border border-[#E5E3EE] bg-[#F4F3F8]/60 p-4">
+        <div className="mt-4 space-y-3 rounded-xl border border-edge bg-page/60 p-4">
           <OrderFulfillment order={order} />
           <div>
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-faint">
               {t("orders.orderItems")}
             </p>
             <div className="space-y-2">
@@ -439,7 +439,7 @@ function OrderCard({
                 />
               ))}
             </div>
-            <div className="mt-3 flex items-center justify-between border-t border-[#E5E3EE] pt-3 text-sm font-bold text-[#1C1B1F]">
+            <div className="mt-3 flex items-center justify-between border-t border-edge pt-3 text-sm font-bold text-ink">
               <span>{t("orders.orderTotal")}</span>
               <span>{formatCents(order.total_cents)}</span>
             </div>
@@ -473,29 +473,29 @@ function OrderRows({
       <tr
         data-order-row={order.id}
         className={[
-          "border-b border-[#F0EEF8] cursor-pointer transition-colors",
-          expanded ? "bg-[#F8F7FC]" : "hover:bg-[#FAFAFA]",
+          "border-b border-edge-soft cursor-pointer transition-colors",
+          expanded ? "bg-panel" : "hover:bg-subtle",
         ].join(" ")}
         onClick={onToggle}
       >
         <td className="px-5 py-3.5">
-          <span className="font-mono text-xs font-semibold text-[#1C1B1F]">
+          <span className="font-mono text-xs font-semibold text-ink">
             {order.id}
           </span>
         </td>
-        <td className="px-5 py-3.5 text-[#1C1B1F]">
+        <td className="px-5 py-3.5 text-ink">
           {order.customer_id}
         </td>
-        <td className="px-5 py-3.5 text-[#6B6480]">
+        <td className="px-5 py-3.5 text-muted">
           {t("common.itemCount", { count: order.items.length })}
         </td>
-        <td className="px-5 py-3.5 font-semibold text-[#1C1B1F]">
+        <td className="px-5 py-3.5 font-semibold text-ink">
           {formatCents(order.total_cents)}
         </td>
         <td className="px-5 py-3.5">
           <OrderStatusBadge status={order.status} />
         </td>
-        <td className="px-5 py-3.5 text-[#9D98B3] text-xs">
+        <td className="px-5 py-3.5 text-faint text-xs">
           {formatDate(order.created_at, {
             month: "short",
             day: "numeric",
@@ -513,8 +513,8 @@ function OrderRows({
                   className={[
                     "rounded-lg px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50",
                     action.kind === "status" && action.status === "canceled"
-                      ? "border border-red-200 text-red-600 hover:bg-red-50"
-                      : "border border-[#E5E3EE] text-[#6B6480] hover:border-[#6D4AFF]/40 hover:bg-[#F8F7FC] hover:text-[#6D4AFF]",
+                      ? "border border-red-200 text-danger-fg hover:bg-danger-bg"
+                      : "border border-edge text-muted hover:border-accent/40 hover:bg-panel hover:text-accent",
                   ].join(" ")}
                 >
                   {updating
@@ -529,12 +529,12 @@ function OrderRows({
 
       {/* Expanded order detail */}
       {expanded && (
-        <tr className="border-b border-[#F0EEF8] bg-[#F4F3F8]/60">
+        <tr className="border-b border-edge-soft bg-page/60">
           <td colSpan={7} className="px-8 py-4">
-            <div className="space-y-3 rounded-xl border border-[#E5E3EE] bg-white p-4">
+            <div className="space-y-3 rounded-xl border border-edge bg-surface p-4">
               <OrderFulfillment order={order} />
               <div>
-                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-faint">
                   {t("orders.orderItems")}
                 </p>
                 <div className="space-y-2">
@@ -546,7 +546,7 @@ function OrderRows({
                     />
                   ))}
                 </div>
-                <div className="mt-3 flex items-center justify-between border-t border-[#E5E3EE] pt-3 text-sm font-bold text-[#1C1B1F]">
+                <div className="mt-3 flex items-center justify-between border-t border-edge pt-3 text-sm font-bold text-ink">
                   <span>{t("orders.orderTotal")}</span>
                   <span>{formatCents(order.total_cents)}</span>
                 </div>
@@ -574,7 +574,7 @@ function OrderFulfillment({ order }: { order: Order }) {
   const { t } = useI18n();
   if (!orderHasFulfillment(order)) {
     return (
-      <div className="rounded-lg border border-dashed border-[#E5E3EE] bg-[#FAFAFA] px-3 py-2.5 text-xs text-[#9D98B3]">
+      <div className="rounded-lg border border-dashed border-edge bg-subtle px-3 py-2.5 text-xs text-faint">
         {t("orders.noFulfillment")}
       </div>
     );
@@ -592,30 +592,30 @@ function OrderFulfillment({ order }: { order: Order }) {
 
   return (
     <div>
-      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-faint">
         {t("orders.fulfillment")}
       </p>
       <dl className="grid gap-2 text-sm sm:grid-cols-2">
         {order.recipient_name && (
           <div>
-            <dt className="text-xs text-[#9D98B3]">{t("orders.recipientName")}</dt>
-            <dd className="mt-0.5 font-medium text-[#1C1B1F]">
+            <dt className="text-xs text-faint">{t("orders.recipientName")}</dt>
+            <dd className="mt-0.5 font-medium text-ink">
               {order.recipient_name}
             </dd>
           </div>
         )}
         {order.recipient_phone && (
           <div>
-            <dt className="text-xs text-[#9D98B3]">{t("orders.recipientPhone")}</dt>
-            <dd className="mt-0.5 font-medium text-[#1C1B1F]">
+            <dt className="text-xs text-faint">{t("orders.recipientPhone")}</dt>
+            <dd className="mt-0.5 font-medium text-ink">
               {formatPhoneDisplay(order.recipient_phone)}
             </dd>
           </div>
         )}
         {lines.length > 0 && (
           <div className="sm:col-span-2">
-            <dt className="text-xs text-[#9D98B3]">{t("orders.shippingAddress")}</dt>
-            <dd className="mt-0.5 space-y-0.5 text-[#1C1B1F]">
+            <dt className="text-xs text-faint">{t("orders.shippingAddress")}</dt>
+            <dd className="mt-0.5 space-y-0.5 text-ink">
               {lines.map((line) => (
                 <p key={line}>{line}</p>
               ))}
@@ -641,25 +641,25 @@ function OrderItemRow({
   return (
     <div className="flex items-center justify-between gap-3 text-sm">
       <div className="flex min-w-0 items-center gap-3">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#F4F3F8] text-xs font-bold text-[#6D4AFF]">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-page text-xs font-bold text-accent">
           {item.sku.slice(0, 2).toUpperCase()}
         </div>
         <div className="min-w-0">
-          <span className="block truncate font-mono text-xs font-medium text-[#1C1B1F]">
+          <span className="block truncate font-mono text-xs font-medium text-ink">
             {item.sku}
           </span>
           {ctx && (
-            <span className="block truncate text-xs text-[#6B6480]">
+            <span className="block truncate text-xs text-muted">
               {ctx.productName}
               {variantLabel ? ` · ${variantLabel}` : ""}
             </span>
           )}
-          <span className="text-[#9D98B3]">
+          <span className="text-faint">
             {t("orders.quantityTimes", { quantity: item.quantity })}
           </span>
         </div>
       </div>
-      <span className="shrink-0 font-semibold text-[#1C1B1F]">
+      <span className="shrink-0 font-semibold text-ink">
         {formatCents(item.unit_price_cents * item.quantity)}
       </span>
     </div>

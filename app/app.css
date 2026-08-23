@@ -1,13 +1,79 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+
+  --color-page: var(--dupli-page);
+  --color-surface: var(--dupli-surface);
+  --color-ink: var(--dupli-ink);
+  --color-muted: var(--dupli-muted);
+  --color-faint: var(--dupli-faint);
+  --color-soft: var(--dupli-soft);
+  --color-edge: var(--dupli-edge);
+  --color-edge-soft: var(--dupli-edge-soft);
+  --color-subtle: var(--dupli-subtle);
+  --color-panel: var(--dupli-panel);
+  --color-accent: var(--dupli-accent);
+  --color-accent-hover: var(--dupli-accent-hover);
+  --color-placeholder: var(--dupli-placeholder);
+  --color-danger-bg: var(--dupli-danger-bg);
+  --color-danger-fg: var(--dupli-danger-fg);
+  --color-success-bg: var(--dupli-success-bg);
+  --color-success-fg: var(--dupli-success-fg);
+  --color-warn-bg: var(--dupli-warn-bg);
+  --color-warn-fg: var(--dupli-warn-fg);
+}
+
+:root {
+  --dupli-page: #f4f3f8;
+  --dupli-surface: #ffffff;
+  --dupli-ink: #1c1b1f;
+  --dupli-muted: #6b6480;
+  --dupli-faint: #9d98b3;
+  --dupli-soft: #b4b0c8;
+  --dupli-edge: #e5e3ee;
+  --dupli-edge-soft: #f0eef8;
+  --dupli-subtle: #fafafa;
+  --dupli-panel: #f8f7fc;
+  --dupli-accent: #6d4aff;
+  --dupli-accent-hover: #5a38e8;
+  --dupli-placeholder: #c4c1d4;
+  --dupli-danger-bg: #fef2f2;
+  --dupli-danger-fg: #dc2626;
+  --dupli-success-bg: #ecfdf5;
+  --dupli-success-fg: #059669;
+  --dupli-warn-bg: #fffbeb;
+  --dupli-warn-fg: #d97706;
+}
+
+.dark {
+  --dupli-page: #0f0d16;
+  --dupli-surface: #1a1628;
+  --dupli-ink: #f2f0f7;
+  --dupli-muted: #a39bb8;
+  --dupli-faint: #7b7394;
+  --dupli-soft: #6b6480;
+  --dupli-edge: #2e2942;
+  --dupli-edge-soft: #252038;
+  --dupli-subtle: #14111f;
+  --dupli-panel: #161322;
+  --dupli-accent: #8b6fff;
+  --dupli-accent-hover: #9d84ff;
+  --dupli-placeholder: #5c5478;
+  --dupli-danger-bg: rgba(127, 29, 29, 0.35);
+  --dupli-danger-fg: #fca5a5;
+  --dupli-success-bg: rgba(6, 78, 59, 0.4);
+  --dupli-success-fg: #6ee7b7;
+  --dupli-warn-bg: rgba(120, 53, 15, 0.4);
+  --dupli-warn-fg: #fcd34d;
 }
 
 html,
 body {
-  @apply bg-white;
+  @apply bg-page text-ink;
 }
 
 html {
@@ -22,5 +88,5 @@ body {
 }
 
 .input {
-  @apply w-full rounded-xl border border-[#E5E3EE] bg-white px-3.5 py-2.5 text-sm text-[#1C1B1F] outline-none transition focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/10 placeholder:text-[#C4C1D4];
+  @apply w-full rounded-xl border border-edge bg-surface px-3.5 py-2.5 text-sm text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/10 placeholder:text-placeholder;
 }

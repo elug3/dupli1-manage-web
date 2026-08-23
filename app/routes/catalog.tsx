@@ -33,7 +33,7 @@ export function meta() {
 type Tab = "brands" | "colors" | "sizes" | "editions";
 
 const inputCls =
-  "w-full rounded-xl border border-[#E5E3EE] bg-[#F8F7FC] px-3 py-2 text-sm text-[#1C1B1F] outline-none transition placeholder:text-[#B4B0C8] focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/20";
+  "w-full rounded-xl border border-edge bg-panel px-3 py-2 text-sm text-ink outline-none transition placeholder:text-soft focus:border-accent focus:ring-2 focus:ring-accent/20";
 
 export default function CatalogMasters() {
   const { notify } = useNotify();
@@ -108,7 +108,7 @@ export default function CatalogMasters() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-32">
-        <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#6D4AFF] border-t-transparent" />
+        <div className="h-7 w-7 animate-spin rounded-full border-2 border-accent border-t-transparent" />
       </div>
     );
   }
@@ -116,21 +116,21 @@ export default function CatalogMasters() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">
+        <h1 className="text-xl font-bold text-ink sm:text-2xl">
           {t("catalog.title")}
         </h1>
-        <p className="mt-0.5 text-sm text-[#6B6480]">
+        <p className="mt-0.5 text-sm text-muted">
           {t("catalog.subtitle")}
         </p>
       </div>
 
       {error && (
-        <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+        <div className="rounded-xl bg-danger-bg px-4 py-3 text-sm text-danger-fg">
           {error}
         </div>
       )}
 
-      <div className="flex w-max max-w-full flex-wrap gap-1 rounded-xl border border-[#E5E3EE] bg-white p-1 shadow-[0_1px_3px_rgba(28,27,31,0.04)]">
+      <div className="flex w-max max-w-full flex-wrap gap-1 rounded-xl border border-edge bg-surface p-1 shadow-[0_1px_3px_rgba(28,27,31,0.04)]">
         {(
           [
             ["brands", t("catalog.tabBrandsStyles")],
@@ -146,8 +146,8 @@ export default function CatalogMasters() {
             className={[
               "rounded-lg px-3 py-1.5 text-xs font-semibold transition",
               tab === value
-                ? "bg-[#6D4AFF] text-white shadow-sm"
-                : "text-[#6B6480] hover:bg-[#F4F3F8] hover:text-[#1C1B1F]",
+                ? "bg-accent text-white shadow-sm"
+                : "text-muted hover:bg-page hover:text-ink",
             ].join(" ")}
           >
             {label}
@@ -181,17 +181,17 @@ export default function CatalogMasters() {
             codeHint={t("catalog.codeHintLetters")}
           />
 
-          <div className="space-y-4 rounded-2xl border border-[#E5E3EE] bg-white p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
+          <div className="space-y-4 rounded-2xl border border-edge bg-surface p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
             <div>
-              <h2 className="text-sm font-semibold text-[#1C1B1F]">
+              <h2 className="text-sm font-semibold text-ink">
                 {t("catalog.stylesTitle")}
               </h2>
-              <p className="mt-0.5 text-xs text-[#6B6480]">
+              <p className="mt-0.5 text-xs text-muted">
                 {t("catalog.stylesDescription")}
               </p>
             </div>
             <label className="block space-y-1.5">
-              <span className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted">
                 {t("catalog.brand")}
               </span>
               <select
@@ -234,7 +234,7 @@ export default function CatalogMasters() {
                 codeHint={t("catalog.codeHintAlphanumeric")}
               />
             ) : (
-              <p className="text-sm text-[#6B6480]">
+              <p className="text-sm text-muted">
                 {t("catalog.selectBrandToManageStyles")}
               </p>
             )}
@@ -345,10 +345,10 @@ function MasterPanel({
   codeHint: string;
 }) {
   return (
-    <div className="space-y-4 rounded-2xl border border-[#E5E3EE] bg-white p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
+    <div className="space-y-4 rounded-2xl border border-edge bg-surface p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
       <div>
-        <h2 className="text-sm font-semibold text-[#1C1B1F]">{title}</h2>
-        <p className="mt-0.5 text-xs text-[#6B6480]">{description}</p>
+        <h2 className="text-sm font-semibold text-ink">{title}</h2>
+        <p className="mt-0.5 text-xs text-muted">{description}</p>
       </div>
       <MasterTable
         rows={rows}
@@ -430,16 +430,16 @@ function MasterTable({
         <button
           type="submit"
           disabled={saving}
-          className="rounded-xl bg-[#6D4AFF] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+          className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
         >
           {saving ? t("common.loadingEllipsis") : t("catalog.add")}
         </button>
       </form>
 
-      <div className="overflow-x-auto rounded-xl border border-[#E5E3EE]">
+      <div className="overflow-x-auto rounded-xl border border-edge">
         <table className="w-full min-w-[320px] text-sm">
           <thead>
-            <tr className="border-b border-[#F0EEF8] bg-[#FAFAFA] text-left">
+            <tr className="border-b border-edge-soft bg-subtle text-left">
               {(
                 [
                   ["code", t("catalog.colCode")],
@@ -449,7 +449,7 @@ function MasterTable({
               ).map(([key, label]) => (
                 <th
                   key={key}
-                  className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-[#9D98B3]"
+                  className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-faint"
                 >
                   {label}
                 </th>
@@ -459,17 +459,17 @@ function MasterTable({
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={3} className="px-3 py-6 text-center text-[#6B6480]">
+                <td colSpan={3} className="px-3 py-6 text-center text-muted">
                   {t("catalog.noEntriesYet")}
                 </td>
               </tr>
             ) : (
               rows.map((row) => (
-                <tr key={row.code} className="border-b border-[#F0EEF8] last:border-0">
-                  <td className="px-3 py-2 font-mono text-xs text-[#1C1B1F]">
+                <tr key={row.code} className="border-b border-edge-soft last:border-0">
+                  <td className="px-3 py-2 font-mono text-xs text-ink">
                     {row.code}
                   </td>
-                  <td className="px-3 py-2 text-[#1C1B1F]">
+                  <td className="px-3 py-2 text-ink">
                     {editingCode === row.code ? (
                       <input
                         value={editName}
@@ -487,7 +487,7 @@ function MasterTable({
                         <>
                           <button
                             type="button"
-                            className="text-xs font-semibold text-[#6D4AFF] hover:underline"
+                            className="text-xs font-semibold text-accent hover:underline"
                             onClick={async () => {
                               try {
                                 await onRename(row.code, editName.trim());
@@ -506,7 +506,7 @@ function MasterTable({
                           </button>
                           <button
                             type="button"
-                            className="text-xs font-semibold text-[#9D98B3] hover:underline"
+                            className="text-xs font-semibold text-faint hover:underline"
                             onClick={() => setEditingCode(null)}
                           >
                             {t("common.cancel")}
@@ -516,7 +516,7 @@ function MasterTable({
                         <>
                           <button
                             type="button"
-                            className="text-xs font-semibold text-[#6D4AFF] hover:underline"
+                            className="text-xs font-semibold text-accent hover:underline"
                             onClick={() => {
                               setEditingCode(row.code);
                               setEditName(row.name);
@@ -526,7 +526,7 @@ function MasterTable({
                           </button>
                           <button
                             type="button"
-                            className="text-xs font-semibold text-red-600 hover:underline"
+                            className="text-xs font-semibold text-danger-fg hover:underline"
                             onClick={async () => {
                               if (
                                 !window.confirm(

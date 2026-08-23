@@ -28,7 +28,7 @@ export function meta() {
 
 const MAX_IMAGE_BYTES = 50 * 1024 * 1024;
 const fieldCls =
-  "w-full rounded-xl border border-[#E5E3EE] bg-[#F8F7FC] px-4 py-2.5 text-sm text-[#1C1B1F] outline-none transition focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/20";
+  "w-full rounded-xl border border-edge bg-panel px-4 py-2.5 text-sm text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20";
 
 export default function SkuDetail() {
   const { id, skuId } = useParams();
@@ -84,7 +84,7 @@ export default function SkuDetail() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-32">
-        <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#6D4AFF] border-t-transparent" />
+        <div className="h-7 w-7 animate-spin rounded-full border-2 border-accent border-t-transparent" />
       </div>
     );
   }
@@ -94,11 +94,11 @@ export default function SkuDetail() {
       <div className="space-y-4">
         <Link
           to={id ? `/products/${encodeURIComponent(id)}` : "/products"}
-          className="text-sm text-[#6D4AFF] hover:underline"
+          className="text-sm text-accent hover:underline"
         >
           {t("skuDetail.backToProduct")}
         </Link>
-        <div className="rounded-2xl border border-[#E5E3EE] bg-white p-10 text-center text-[#6B6480]">
+        <div className="rounded-2xl border border-edge bg-surface p-10 text-center text-muted">
           {error ?? t("skuDetail.skuNotFound")}
         </div>
       </div>
@@ -118,29 +118,29 @@ export default function SkuDetail() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <Link to="/products" className="text-[#6D4AFF] hover:underline">
+        <Link to="/products" className="text-accent hover:underline">
           {t("nav.products")}
         </Link>
-        <span className="text-[#9D98B3]">/</span>
+        <span className="text-faint">/</span>
         <Link
           to={`/products/${encodeURIComponent(product.id)}`}
-          className="text-[#6D4AFF] hover:underline"
+          className="text-accent hover:underline"
         >
           {product.name}
         </Link>
-        <span className="text-[#9D98B3]">/</span>
-        <span className="font-mono text-xs text-[#1C1B1F]">{variant.sku}</span>
+        <span className="text-faint">/</span>
+        <span className="font-mono text-xs text-ink">{variant.sku}</span>
       </div>
 
-      <div className="space-y-8 rounded-2xl border border-[#E5E3EE] bg-white p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)] sm:p-8">
+      <div className="space-y-8 rounded-2xl border border-edge bg-surface p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)] sm:p-8">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+          <p className="text-xs font-semibold uppercase tracking-wide text-faint">
             {t("skuDetail.heading")}
           </p>
-          <h1 className="mt-1 font-mono text-xl font-bold text-[#1C1B1F] sm:text-2xl">
+          <h1 className="mt-1 font-mono text-xl font-bold text-ink sm:text-2xl">
             {variant.sku}
           </h1>
-          <p className="mt-1 text-sm text-[#6B6480]">
+          <p className="mt-1 text-sm text-muted">
             {formatVariantOption(variant)} · {product.name}
           </p>
         </div>
@@ -169,10 +169,10 @@ export default function SkuDetail() {
             [t("productDetail.colStock"), stockLabel],
           ].map(([label, value]) => (
             <div key={label}>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-faint">
                 {label}
               </dt>
-              <dd className="mt-1 break-all text-sm text-[#1C1B1F]">{value}</dd>
+              <dd className="mt-1 break-all text-sm text-ink">{value}</dd>
             </div>
           ))}
         </dl>
@@ -205,10 +205,10 @@ export default function SkuDetail() {
           }}
         />
 
-        <div className="border-t border-[#F0EEF8] pt-6">
+        <div className="border-t border-edge-soft pt-6">
           <button
             type="button"
-            className="text-sm font-semibold text-red-600 hover:underline"
+            className="text-sm font-semibold text-danger-fg hover:underline"
             onClick={async () => {
               if (
                 !window.confirm(
@@ -251,21 +251,21 @@ function PriceSection({ product }: { product: Product }) {
       : t("common.emptyValue");
 
   return (
-    <section className="space-y-3 border-t border-[#F0EEF8] pt-6">
-      <h2 className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+    <section className="space-y-3 border-t border-edge-soft pt-6">
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-faint">
         {t("skuDetail.price")}
       </h2>
-      <p className="text-sm text-[#6B6480]">
+      <p className="text-sm text-muted">
         {t("skuDetail.currentOfficialPrice", { price: officialLabel })}
         {" · "}
         {t("skuDetail.currentPrice", { price: priceLabel })}
       </p>
-      <p className="text-xs text-[#9D98B3]">
+      <p className="text-xs text-faint">
         {t("productDetail.priceOnParentHint")}
       </p>
       <Link
         to={`/products/${encodeURIComponent(product.id)}`}
-        className="inline-flex text-sm font-semibold text-[#6D4AFF] hover:underline"
+        className="inline-flex text-sm font-semibold text-accent hover:underline"
       >
         {t("skuDetail.editPriceOnParent")}
       </Link>
@@ -313,13 +313,13 @@ function StockSection({
   }
 
   return (
-    <section className="space-y-3 border-t border-[#F0EEF8] pt-6">
-      <h2 className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+    <section className="space-y-3 border-t border-edge-soft pt-6">
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-faint">
         {t("skuDetail.inventory")}
       </h2>
       <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-3">
         <label className="space-y-1.5">
-          <span className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted">
             {t("skuDetail.quantity")}
           </span>
           <input
@@ -333,7 +333,7 @@ function StockSection({
         <button
           type="submit"
           disabled={saving}
-          className="rounded-xl bg-[#6D4AFF] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+          className="rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
         >
           {saving ? t("common.saving") : t("skuDetail.updateStock")}
         </button>
@@ -413,8 +413,8 @@ function ImagesSection({
   }
 
   return (
-    <section className="space-y-3 border-t border-[#F0EEF8] pt-6">
-      <h2 className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+    <section className="space-y-3 border-t border-edge-soft pt-6">
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-faint">
         {t("productDetail.images")}
       </h2>
       {variant.imageUrls.length > 0 ? (
@@ -424,7 +424,7 @@ function ImagesSection({
               <img
                 src={productImageSrc(url)}
                 alt=""
-                className="h-28 w-28 rounded-xl border border-[#E5E3EE] object-cover"
+                className="h-28 w-28 rounded-xl border border-edge object-cover"
               />
               <button
                 type="button"
@@ -438,7 +438,7 @@ function ImagesSection({
           ))}
         </div>
       ) : (
-        <p className="text-sm text-[#6B6480]">{t("productDetail.noImagesYet")}</p>
+        <p className="text-sm text-muted">{t("productDetail.noImagesYet")}</p>
       )}
       <input
         ref={inputRef}
@@ -452,7 +452,7 @@ function ImagesSection({
         type="button"
         disabled={uploading}
         onClick={() => inputRef.current?.click()}
-        className="rounded-xl border border-dashed border-[#E5E3EE] px-4 py-2.5 text-sm font-semibold text-[#6D4AFF] hover:border-[#6D4AFF]/40 disabled:opacity-60"
+        className="rounded-xl border border-dashed border-edge px-4 py-2.5 text-sm font-semibold text-accent hover:border-accent/40 disabled:opacity-60"
       >
         {uploading ? t("common.uploading") : t("productDetail.uploadImage")}
       </button>
@@ -531,13 +531,13 @@ function EditSection({
   }
 
   return (
-    <section className="space-y-4 border-t border-[#F0EEF8] pt-6">
-      <h2 className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+    <section className="space-y-4 border-t border-edge-soft pt-6">
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-faint">
         {t("skuDetail.editSku")}
       </h2>
       <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
         <label className="space-y-1.5">
-          <span className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted">
             {t("productDetail.color")}
           </span>
           <input
@@ -547,7 +547,7 @@ function EditSection({
           />
         </label>
         <label className="space-y-1.5">
-          <span className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted">
             {t("productDetail.size")}
           </span>
           <input
@@ -557,7 +557,7 @@ function EditSection({
           />
         </label>
         <label className="space-y-1.5 sm:col-span-2">
-          <span className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted">
             {t("productDetail.status")}
           </span>
           <select
@@ -571,13 +571,13 @@ function EditSection({
           </select>
         </label>
         <div className="sm:col-span-2 space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted">
             {t("skuDetail.dimensions")}
           </p>
-          <p className="text-xs text-[#9D98B3]">{t("skuDetail.dimensionsHint")}</p>
+          <p className="text-xs text-faint">{t("skuDetail.dimensionsHint")}</p>
           <div className="grid gap-3 sm:grid-cols-3">
             <label className="space-y-1.5">
-              <span className="text-xs text-[#6B6480]">
+              <span className="text-xs text-muted">
                 {t("skuDetail.widthMm")}
               </span>
               <input
@@ -592,7 +592,7 @@ function EditSection({
               />
             </label>
             <label className="space-y-1.5">
-              <span className="text-xs text-[#6B6480]">
+              <span className="text-xs text-muted">
                 {t("skuDetail.heightMm")}
               </span>
               <input
@@ -607,7 +607,7 @@ function EditSection({
               />
             </label>
             <label className="space-y-1.5">
-              <span className="text-xs text-[#6B6480]">
+              <span className="text-xs text-muted">
                 {t("skuDetail.depthMm")}
               </span>
               <input
@@ -627,7 +627,7 @@ function EditSection({
           <button
             type="submit"
             disabled={saving}
-            className="rounded-xl bg-[#6D4AFF] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+            className="rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
           >
             {saving ? t("common.saving") : t("common.saveChanges")}
           </button>

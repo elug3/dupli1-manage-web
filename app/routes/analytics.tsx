@@ -29,7 +29,7 @@ export default function Analytics() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-32">
-        <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#6D4AFF] border-t-transparent" />
+        <div className="h-7 w-7 animate-spin rounded-full border-2 border-accent border-t-transparent" />
       </div>
     );
   }
@@ -38,14 +38,14 @@ export default function Analytics() {
     return (
       <div className="space-y-4">
         <div>
-          <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">
+          <h1 className="text-xl font-bold text-ink sm:text-2xl">
             {t("analytics.title")}
           </h1>
-          <p className="mt-0.5 text-sm text-[#6B6480]">
+          <p className="mt-0.5 text-sm text-muted">
             {t("analytics.subtitleFromOrders")}
           </p>
         </div>
-        <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+        <div className="rounded-xl bg-danger-bg px-4 py-3 text-sm text-danger-fg">
           {error}
         </div>
       </div>
@@ -56,18 +56,18 @@ export default function Analytics() {
     return (
       <div className="space-y-4">
         <div>
-          <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">
+          <h1 className="text-xl font-bold text-ink sm:text-2xl">
             {t("analytics.title")}
           </h1>
-          <p className="mt-0.5 text-sm text-[#6B6480]">
+          <p className="mt-0.5 text-sm text-muted">
             {t("analytics.subtitleFromOrders")}
           </p>
         </div>
-        <div className="rounded-2xl border border-[#E5E3EE] bg-white p-12 text-center shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
-          <p className="font-semibold text-[#1C1B1F]">
+        <div className="rounded-2xl border border-edge bg-surface p-12 text-center shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
+          <p className="font-semibold text-ink">
             {t("analytics.noOrderDataYet")}
           </p>
-          <p className="mt-1 text-sm text-[#9D98B3]">
+          <p className="mt-1 text-sm text-faint">
             {t("analytics.noOrderDataHint")}
           </p>
         </div>
@@ -83,15 +83,15 @@ export default function Analytics() {
     <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">
+          <h1 className="text-xl font-bold text-ink sm:text-2xl">
             {t("analytics.title")}
           </h1>
-          <p className="mt-0.5 text-sm text-[#6B6480]">
+          <p className="mt-0.5 text-sm text-muted">
             {t("analytics.subtitleFromTotals")}
           </p>
         </div>
 
-        <div className="flex gap-1 rounded-xl border border-[#E5E3EE] bg-white p-1 shadow-[0_1px_3px_rgba(28,27,31,0.04)]">
+        <div className="flex gap-1 rounded-xl border border-edge bg-surface p-1 shadow-[0_1px_3px_rgba(28,27,31,0.04)]">
           {(["7d", "30d"] as const).map((p) => (
             <button
               key={p}
@@ -99,8 +99,8 @@ export default function Analytics() {
               className={[
                 "rounded-lg px-4 py-1.5 text-xs font-semibold transition",
                 period === p
-                  ? "bg-[#6D4AFF] text-white shadow-sm"
-                  : "text-[#6B6480] hover:bg-[#F4F3F8]",
+                  ? "bg-accent text-white shadow-sm"
+                  : "text-muted hover:bg-page",
               ].join(" ")}
             >
               {p === "7d"
@@ -128,9 +128,9 @@ export default function Analytics() {
 
 function KpiCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-[#E5E3EE] bg-white p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
-      <div className="text-2xl font-bold text-[#1C1B1F]">{value}</div>
-      <div className="mt-0.5 text-sm text-[#6B6480]">{label}</div>
+    <div className="rounded-2xl border border-edge bg-surface p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
+      <div className="text-2xl font-bold text-ink">{value}</div>
+      <div className="mt-0.5 text-sm text-muted">{label}</div>
     </div>
   );
 }

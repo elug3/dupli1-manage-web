@@ -17,6 +17,7 @@ import {
   type Locale,
 } from "~/lib/i18n";
 import { NotificationProvider } from "~/lib/notifications";
+import { THEME_BOOT_SCRIPT, ThemeProvider } from "~/lib/theme";
 
 export const links = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -48,6 +49,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
         <Meta />
         <Links />
       </head>
@@ -63,11 +65,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
 export default function App() {
   const { locale } = useLoaderData<typeof loader>();
   return (
-    <I18nProvider initialLocale={locale}>
-      <NotificationProvider>
-        <Outlet />
-      </NotificationProvider>
-    </I18nProvider>
+    <ThemeProvider>
+      <I18nProvider initialLocale={locale}>
+        <NotificationProvider>
+          <Outlet />
+        </NotificationProvider>
+      </I18nProvider>
+    </ThemeProvider>
   );
 }
 
@@ -93,10 +97,10 @@ export function ErrorBoundary({ error }: { error: unknown }) {
   }
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-[#F4F3F8] px-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 text-center shadow-sm sm:p-10">
-        <h1 className="text-2xl font-bold text-[#1C1B1F]">{message}</h1>
-        <p className="mt-2 text-sm text-[#6B6480]">{details}</p>
+    <main className="flex min-h-dvh items-center justify-center bg-page px-4">
+      <div className="w-full max-w-md rounded-2xl bg-surface p-6 text-center shadow-sm sm:p-10">
+        <h1 className="text-2xl font-bold text-ink">{message}</h1>
+        <p className="mt-2 text-sm text-muted">{details}</p>
       </div>
     </main>
   );
