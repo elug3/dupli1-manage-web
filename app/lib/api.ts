@@ -1301,7 +1301,7 @@ async function fetchCustomerOrders(customerId: string): Promise<Order[]> {
 }
 
 async function fetchAllOrders(): Promise<Order[]> {
-  const res = await authedFetch(orderPath("/api/v1/orders/all"));
+  const res = await authedFetch(orderPath("/api/v1/orders"));
   if (!res.ok) throw new Error(await readError(res, "Failed to fetch orders"));
   const data = (await res.json()) as OrdersResponse;
   return data.orders ?? [];
