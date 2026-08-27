@@ -1230,9 +1230,15 @@ export type OrderStatus =
   | "canceled";
 
 export interface OrderItem {
+  sku_id?: string;
   sku: string;
   quantity: number;
   unit_price_cents: number;
+  /** Captured at order creation from the product catalog. */
+  product_name?: string;
+  image_url?: string;
+  /** False when the variant is no longer sellable (checkout session reads). */
+  available?: boolean;
 }
 
 /** Immutable shipping location snapshot captured at checkout complete. */
@@ -1264,6 +1270,8 @@ export interface Order {
   payment_id?: string;
   paid_at?: string;
   payment_due_at?: string;
+  shipped_at?: string;
+  shipped_by?: string;
   created_at: string;
   updated_at: string;
 }
@@ -1292,9 +1300,29 @@ async function fetchCustomerOrders(customerId: string): Promise<Order[]> {
   return data.orders ?? [];
 }
 
+async function fetchAllOrders(): Promise<Order[]> {
+  const res = await authedFetch(orderPath("/api/v1/orders/all"));
+  if (!res.ok) throw new Error(await readError(res, "Failed to fetch orders"));
+  const data = (await res.json()) as OrdersResponse;
+  return data.orders ?? [];
+}
+
 export async function getOrders(customerId?: string): Promise<Order[]> {
   if (customerId) {
     return fetchCustomerOrders(customerId);
+  }
+
+  // Prefer the admin all-orders endpoint (requires order.read.all).
+  // Fall back to per-user aggregation when the caller lacks that permission.
+  try {
+    const orders = await fetchAllOrders();
+    orders.sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+    return orders;
+  } catch {
+    // fall through
   }
 
   const users = await listUsers().catch(() => [] as AuthUser[]);

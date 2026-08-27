@@ -14,11 +14,21 @@ export function meta() {
   return [{ title: "Dashboard | Dupli1 Admin" }];
 }
 
+function isToday(dateStr: string): boolean {
+  const d = new Date(dateStr);
+  const now = new Date();
+  return (
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  );
+}
+
 export default function Dashboard() {
   const { t } = useI18n();
   const [products, setProducts] = useState<Product[]>([]);
   const [stockAlerts, setStockAlerts] = useState<VariantStockAlert[]>([]);
-  const [recentOrders, setRecentOrders] = useState<Order[]>([]);
+  const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [errors, setErrors] = useState<string[]>([]);
 
@@ -41,17 +51,18 @@ export default function Dashboard() {
       getCatalogStockAlerts().catch(
         capture(t("dashboard.errorLabelStockAlerts"), [] as VariantStockAlert[])
       ),
-      getOrders()
-        .catch(capture(t("dashboard.errorLabelOrders"), [] as Order[]))
-        .then((o) => o.slice(0, 5)),
+      getOrders().catch(capture(t("dashboard.errorLabelOrders"), [] as Order[])),
     ]).then(([prods, alerts, orders]) => {
       setProducts(prods);
       setStockAlerts(alerts);
-      setRecentOrders(orders);
+      setAllOrders(orders);
       setErrors(failures);
       setLoading(false);
     });
   }, [t]);
+
+  const ordersToday = allOrders.filter((o) => isToday(o.created_at)).length;
+  const pendingCount = allOrders.filter((o) => o.status === "pending").length;
 
   return (
     <div className="space-y-8">
@@ -63,10 +74,15 @@ export default function Dashboard() {
           ))}
         </div>
       )}
-      <StatsGrid products={products} loading={loading} />
+      <StatsGrid
+        products={products}
+        ordersToday={ordersToday}
+        pendingOrders={pendingCount}
+        loading={loading}
+      />
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <RecentOrdersTable orders={recentOrders} />
+          <RecentOrdersTable orders={allOrders.slice(0, 5)} />
         </div>
         <QuickPanel stockAlerts={stockAlerts} />
       </div>
@@ -103,9 +119,13 @@ function PageHeader() {
 
 function StatsGrid({
   products,
+  ordersToday,
+  pendingOrders,
   loading,
 }: {
   products: Product[];
+  ordersToday: number;
+  pendingOrders: number;
   loading: boolean;
 }) {
   const { t } = useI18n();
@@ -128,10 +148,11 @@ function StatsGrid({
     },
     {
       label: t("dashboard.ordersToday"),
-      value: t("common.emptyValue"),
-      sub: t("dashboard.analyticsNotYetAvailable"),
+      value: loading ? t("common.loadingEllipsis") : String(ordersToday),
+      sub: loading ? null : t("dashboard.ordersPlacedToday"),
       icon: <OrderIcon />,
       color: "bg-blue-50 text-blue-600",
+      to: "/orders",
     },
     {
       label: t("dashboard.catalogItems"),
@@ -143,10 +164,11 @@ function StatsGrid({
     },
     {
       label: t("dashboard.pendingOrders"),
-      value: t("common.emptyValue"),
-      sub: t("dashboard.analyticsNotYetAvailable"),
+      value: loading ? t("common.loadingEllipsis") : String(pendingOrders),
+      sub: loading ? null : t("dashboard.pendingAwaitingPayment"),
       icon: <ClockIcon />,
       color: "bg-warn-bg text-warn-fg",
+      to: "/orders",
     },
   ];
 

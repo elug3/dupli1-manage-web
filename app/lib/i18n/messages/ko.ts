@@ -89,8 +89,10 @@ export const ko: Messages = {
     viewAllArrow: "모두 보기 →",
     revenueToday: "오늘 매출",
     ordersToday: "오늘 주문",
+    ordersPlacedToday: "오늘 접수",
     catalogItems: "카탈로그 항목",
     pendingOrders: "대기 중 주문",
+    pendingAwaitingPayment: "결제 대기 중",
     analyticsNotYetAvailable: "분석 기능을 아직 사용할 수 없습니다",
     parentProductsStyles: "상위 상품 (스타일)",
     recentOrders: "최근 주문",
@@ -394,6 +396,22 @@ export const ko: Messages = {
     placeholderEditionCode: "V",
   },
 
+  orderDetail: {
+    metaTitle: "주문 | Dupli1 Admin",
+    backToOrders: "← 주문 목록",
+    failedToLoad: "주문을 불러오지 못했습니다",
+    notFound: "주문을 찾을 수 없습니다",
+    failedToUpdateStatus: "주문 상태를 업데이트하지 못했습니다",
+    orderId: "주문 ID",
+    customer: "고객",
+    timeline: "타임라인",
+    meta: "세부 정보",
+    createdAt: "생성일",
+    updatedAt: "수정일",
+    paymentId: "결제 ID",
+    reservationId: "예약 ID",
+  },
+
   orders: {
     metaTitle: "주문 | Dupli1 Admin",
     title: "주문",
@@ -428,6 +446,16 @@ export const ko: Messages = {
     postalCodeValue: "우편번호 {code}",
     noFulfillment:
       "이 주문에는 배송 스냅샷이 없습니다 (직접 생성 또는 이전 체크아웃).",
+    subtotal: "소계",
+    discount: "할인",
+    discountWithCode: "할인 ({code})",
+    paymentDue: "결제 기한",
+    itemUnavailable: "판매 불가",
+    paidAt: "결제일",
+    shippedAt: "발송일",
+    shippedBy: "{name} 발송",
+    searchPlaceholder: "주문 ID 또는 고객으로 검색…",
+    noMatchingOrders: "검색 결과가 없습니다",
   },
 
   coupons: {
