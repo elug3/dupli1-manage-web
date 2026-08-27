@@ -6,7 +6,7 @@ import {
 } from "~/lib/i18n";
 
 const selectCls =
-  "rounded-lg border border-[#E5E3EE] bg-white px-2.5 py-1.5 text-xs font-medium text-[#1C1B1F] outline-none transition hover:border-[#6D4AFF]/40 focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/20";
+  "rounded-lg border border-edge bg-surface px-2.5 py-1.5 text-xs font-medium text-ink outline-none transition hover:border-accent/40 focus:border-accent focus:ring-2 focus:ring-accent/20";
 
 export function LanguageSwitcher({
   className,
@@ -24,7 +24,7 @@ export function LanguageSwitcher({
         .join(" ")}
     >
       {!compact && (
-        <span className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
+        <span className="text-xs font-semibold uppercase tracking-wide text-muted">
           {t("nav.language")}
         </span>
       )}

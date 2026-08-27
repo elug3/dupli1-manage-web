@@ -39,9 +39,9 @@ import { useNotify } from "~/lib/notifications";
 const MAX_IMAGE_BYTES = 50 * 1024 * 1024;
 const LOW_STOCK_THRESHOLD = 5;
 const inputCls =
-  "rounded-lg border border-[#E5E3EE] px-2 py-1.5 text-sm outline-none focus:border-[#6D4AFF]";
+  "rounded-lg border border-edge px-2 py-1.5 text-sm outline-none focus:border-accent";
 const fieldCls =
-  "w-full rounded-xl border border-[#E5E3EE] bg-[#F8F7FC] px-4 py-2.5 text-sm text-[#1C1B1F] outline-none transition focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/20";
+  "w-full rounded-xl border border-edge bg-panel px-4 py-2.5 text-sm text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20";
 
 export function meta() {
   return [{ title: "Product | Dupli1 Admin" }];
@@ -123,7 +123,7 @@ export default function ProductDetail() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-32">
-        <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#6D4AFF] border-t-transparent" />
+        <div className="h-7 w-7 animate-spin rounded-full border-2 border-accent border-t-transparent" />
       </div>
     );
   }
@@ -131,10 +131,10 @@ export default function ProductDetail() {
   if (error || !product) {
     return (
       <div className="space-y-4">
-        <Link to="/products" className="text-sm text-[#6D4AFF] hover:underline">
+        <Link to="/products" className="text-sm text-accent hover:underline">
           {t("productDetail.backToProducts")}
         </Link>
-        <div className="rounded-2xl border border-[#E5E3EE] bg-white p-10 text-center text-[#6B6480]">
+        <div className="rounded-2xl border border-edge bg-surface p-10 text-center text-muted">
           {error ?? t("productDetail.productNotFound")}
         </div>
       </div>
@@ -148,11 +148,11 @@ export default function ProductDetail() {
 
   return (
     <div className="space-y-6">
-      <Link to="/products" className="text-sm text-[#6D4AFF] hover:underline">
+      <Link to="/products" className="text-sm text-accent hover:underline">
         {t("productDetail.backToProducts")}
       </Link>
 
-      <div className="rounded-2xl border border-[#E5E3EE] bg-white p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)] sm:p-8">
+      <div className="rounded-2xl border border-edge bg-surface p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)] sm:p-8">
         <ParentSummarySection product={product} onUpdated={setProduct} />
 
         <VariantsSection
@@ -391,8 +391,8 @@ function ParentSummarySection({
     <div>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#1C1B1F]">{product.name}</h1>
-          <p className="mt-1 text-sm capitalize text-[#6B6480]">
+          <h1 className="text-2xl font-bold text-ink">{product.name}</h1>
+          <p className="mt-1 text-sm capitalize text-muted">
             {product.category}
           </p>
         </div>
@@ -400,7 +400,7 @@ function ParentSummarySection({
           <button
             type="button"
             onClick={() => setEditing(true)}
-            className="rounded-xl border border-[#E5E3EE] px-4 py-2 text-sm font-semibold text-[#6D4AFF] transition hover:border-[#6D4AFF]/40 hover:bg-[#FAFAFA]"
+            className="rounded-xl border border-edge px-4 py-2 text-sm font-semibold text-accent transition hover:border-accent/40 hover:bg-subtle"
           >
             {t("productDetail.editStyle")}
           </button>
@@ -409,17 +409,17 @@ function ParentSummarySection({
 
       {editing ? (
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+          <p className="text-xs font-semibold uppercase tracking-wide text-faint">
             {t("productDetail.editParentProduct")}
           </p>
           {mastersLoading && (
-            <p className="text-sm text-[#6B6480]">
+            <p className="text-sm text-muted">
               {t("productDetail.loadingCatalogMasters")}
             </p>
           )}
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="space-y-1.5 sm:col-span-2">
-              <span className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted">
                 {t("productDetail.name")}
               </span>
               <input
@@ -430,7 +430,7 @@ function ParentSummarySection({
               />
             </label>
             <label className="space-y-1.5">
-              <span className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted">
                 {t("productDetail.brand")}
               </span>
               <select
@@ -449,7 +449,7 @@ function ParentSummarySection({
               </select>
             </label>
             <label className="space-y-1.5">
-              <span className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted">
                 {t("productDetail.subCategory")}
               </span>
               <select
@@ -466,7 +466,7 @@ function ParentSummarySection({
               </select>
             </label>
             <label className="space-y-1.5">
-              <span className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted">
                 {t("productDetail.style")}
               </span>
               <select
@@ -483,7 +483,7 @@ function ParentSummarySection({
               </select>
             </label>
             <label className="space-y-1.5">
-              <span className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted">
                 {t("productDetail.target")}
               </span>
               <select
@@ -500,7 +500,7 @@ function ParentSummarySection({
               </select>
             </label>
             <label className="space-y-1.5">
-              <span className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted">
                 {t("productDetail.material")}
               </span>
               <input
@@ -511,7 +511,7 @@ function ParentSummarySection({
               />
             </label>
             <label className="space-y-1.5">
-              <span className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted">
                 {t("productDetail.officialPrice")}
               </span>
               <input
@@ -526,7 +526,7 @@ function ParentSummarySection({
               />
             </label>
             <label className="space-y-1.5">
-              <span className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted">
                 {t("productDetail.price")}
               </span>
               <input
@@ -541,7 +541,7 @@ function ParentSummarySection({
               />
             </label>
             <label className="space-y-1.5">
-              <span className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted">
                 {t("productDetail.status")}
               </span>
               <select
@@ -555,7 +555,7 @@ function ParentSummarySection({
               </select>
             </label>
             <label className="space-y-1.5 sm:col-span-2">
-              <span className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted">
                 {t("productDetail.description")}
               </span>
               <textarea
@@ -568,10 +568,10 @@ function ParentSummarySection({
             <div className="space-y-2 sm:col-span-2">
               <div className="flex flex-wrap items-end justify-between gap-2">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted">
                     {t("productDetail.attributes")}
                   </p>
-                  <p className="mt-0.5 text-xs text-[#9D98B3]">
+                  <p className="mt-0.5 text-xs text-faint">
                     {t("productDetail.attributesHint")}
                   </p>
                 </div>
@@ -581,13 +581,13 @@ function ParentSummarySection({
                   onClick={() =>
                     setAttributeRows((rows) => [...rows, { key: "", value: "" }])
                   }
-                  className="rounded-lg border border-[#E5E3EE] px-3 py-1.5 text-xs font-semibold text-[#6D4AFF] hover:border-[#6D4AFF]/40 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="rounded-lg border border-edge px-3 py-1.5 text-xs font-semibold text-accent hover:border-accent/40 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {t("productDetail.addAttribute")}
                 </button>
               </div>
               {attributeRows.length === 0 ? (
-                <p className="text-sm text-[#6B6480]">
+                <p className="text-sm text-muted">
                   {t("productDetail.noAttributes")}
                 </p>
               ) : (
@@ -634,7 +634,7 @@ function ParentSummarySection({
                             rows.filter((_, i) => i !== index)
                           )
                         }
-                        className="rounded-xl border border-[#E5E3EE] px-3 py-2.5 text-xs font-semibold text-red-600 hover:border-red-200"
+                        className="rounded-xl border border-edge px-3 py-2.5 text-xs font-semibold text-danger-fg hover:border-red-200"
                       >
                         {t("common.delete")}
                       </button>
@@ -648,14 +648,14 @@ function ParentSummarySection({
             <button
               type="submit"
               disabled={saving}
-              className="rounded-xl bg-[#6D4AFF] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+              className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
             >
               {saving ? t("common.saving") : t("common.saveChanges")}
             </button>
             <button
               type="button"
               onClick={() => setEditing(false)}
-              className="rounded-xl border border-[#E5E3EE] px-4 py-2 text-sm font-semibold text-[#6B6480]"
+              className="rounded-xl border border-edge px-4 py-2 text-sm font-semibold text-muted"
             >
               {t("common.cancel")}
             </button>
@@ -695,26 +695,26 @@ function ParentSummarySection({
             [t("productDetail.price"), priceLabel],
           ].map(([label, value]) => (
             <div key={label}>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-faint">
                 {label}
               </dt>
-              <dd className="mt-1 text-sm text-[#1C1B1F]">
+              <dd className="mt-1 text-sm text-ink">
                 {value ?? t("common.emptyValue")}
               </dd>
             </div>
           ))}
           {product.description && (
             <div className="sm:col-span-2">
-              <dt className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-faint">
                 {t("productDetail.description")}
               </dt>
-              <dd className="mt-1 text-sm text-[#1C1B1F]">
+              <dd className="mt-1 text-sm text-ink">
                 {product.description}
               </dd>
             </div>
           )}
           <div className="sm:col-span-2">
-            <dt className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-faint">
               {t("productDetail.attributes")}
             </dt>
             <dd className="mt-2">
@@ -724,17 +724,17 @@ function ParentSummarySection({
                   {Object.entries(product.attributes).map(([key, value]) => (
                     <div
                       key={key}
-                      className="rounded-xl border border-[#F0EEF8] bg-[#FAFAFA] px-3 py-2"
+                      className="rounded-xl border border-edge-soft bg-subtle px-3 py-2"
                     >
-                      <dt className="font-mono text-[11px] text-[#9D98B3]">
+                      <dt className="font-mono text-[11px] text-faint">
                         {key}
                       </dt>
-                      <dd className="mt-0.5 text-sm text-[#1C1B1F]">{value}</dd>
+                      <dd className="mt-0.5 text-sm text-ink">{value}</dd>
                     </div>
                   ))}
                 </dl>
               ) : (
-                <p className="text-sm text-[#6B6480]">
+                <p className="text-sm text-muted">
                   {t("productDetail.noAttributes")}
                 </p>
               )}
@@ -791,24 +791,24 @@ function VariantsSection({
   ];
 
   return (
-    <div className="mt-8 border-t border-[#F0EEF8] pt-6">
+    <div className="mt-8 border-t border-edge-soft pt-6">
       <div className="mb-4">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-faint">
           {t("productDetail.variants")}
         </h2>
-        <p className="mt-1 text-sm text-[#6B6480]">
+        <p className="mt-1 text-sm text-muted">
           {t("productDetail.variantsHint")}
         </p>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-[#E5E3EE]">
+      <div className="overflow-x-auto rounded-xl border border-edge">
         <table className="w-full min-w-[720px] text-sm">
           <thead>
-            <tr className="border-b border-[#F0EEF8] bg-[#FAFAFA] text-left">
+            <tr className="border-b border-edge-soft bg-subtle text-left">
               {headings.map((heading, index) => (
                 <th
                   key={heading || `spacer-${index}`}
-                  className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#9D98B3]"
+                  className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-faint"
                 >
                   {heading}
                 </th>
@@ -818,20 +818,20 @@ function VariantsSection({
           <tbody>
             {rows.map((row) => (
               <Fragment key={row.sku}>
-                <tr className="border-b border-[#F0EEF8] last:border-0 align-top">
-                  <td className="px-4 py-3 font-mono text-xs text-[#1C1B1F]">
+                <tr className="border-b border-edge-soft last:border-0 align-top">
+                  <td className="px-4 py-3 font-mono text-xs text-ink">
                     <Link
                       to={productSkuPath(product.id, row.skuId ?? row.sku)}
-                      className="text-[#6D4AFF] hover:underline"
+                      className="text-accent hover:underline"
                     >
                       {row.sku}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 font-mono text-[10px] text-[#9D98B3]">
+                  <td className="px-4 py-3 font-mono text-[10px] text-faint">
                     {row.skuId ? (
                       <Link
                         to={productSkuPath(product.id, row.skuId)}
-                        className="hover:text-[#6D4AFF] hover:underline"
+                        className="hover:text-accent hover:underline"
                       >
                         {row.skuId}
                       </Link>
@@ -839,10 +839,10 @@ function VariantsSection({
                       t("common.emptyValue")
                     )}
                   </td>
-                  <td className="px-4 py-3 text-[#6B6480]">
+                  <td className="px-4 py-3 text-muted">
                     {formatVariantOption(row)}
                     {(row.colorCode || row.sizeCode || row.editionCode) && (
-                      <div className="mt-0.5 font-mono text-[10px] text-[#9D98B3]">
+                      <div className="mt-0.5 font-mono text-[10px] text-faint">
                         {[row.colorCode, row.editionCode, row.sizeCode]
                           .filter(Boolean)
                           .join(" · ")}
@@ -851,13 +851,13 @@ function VariantsSection({
                     {(() => {
                       const dims = formatDimensionsMm(row.dimensions);
                       return dims ? (
-                        <div className="mt-0.5 text-[10px] text-[#9D98B3]">
+                        <div className="mt-0.5 text-[10px] text-faint">
                           {dims}
                         </div>
                       ) : null;
                     })()}
                   </td>
-                  <td className="px-4 py-3 capitalize text-[#6B6480]">
+                  <td className="px-4 py-3 capitalize text-muted">
                     {row.status}
                   </td>
                   <td className="px-4 py-3">
@@ -884,14 +884,14 @@ function VariantsSection({
                   </td>
                   <td className="px-4 py-3">
                     {row.quantity === 0 && (
-                      <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-600">
+                      <span className="rounded-full bg-danger-bg px-2 py-0.5 text-xs font-medium text-danger-fg">
                         {t("productDetail.stockOut")}
                       </span>
                     )}
                     {row.quantity != null &&
                       row.quantity > 0 &&
                       row.quantity <= LOW_STOCK_THRESHOLD && (
-                        <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                        <span className="rounded-full bg-warn-bg px-2 py-0.5 text-xs font-medium text-warn-fg">
                           {t("productDetail.stockLow")}
                         </span>
                       )}
@@ -905,7 +905,7 @@ function VariantsSection({
                             current === row.sku ? null : row.sku
                           )
                         }
-                        className="text-xs font-semibold text-[#6D4AFF] hover:underline"
+                        className="text-xs font-semibold text-accent hover:underline"
                       >
                         {editingSku === row.sku
                           ? t("common.cancel")
@@ -913,7 +913,7 @@ function VariantsSection({
                       </button>
                       <Link
                         to={productSkuPath(product.id, row.skuId ?? row.sku)}
-                        className="text-xs font-semibold text-[#6D4AFF] hover:underline"
+                        className="text-xs font-semibold text-accent hover:underline"
                       >
                         {t("skuDetail.open")}
                       </Link>
@@ -949,7 +949,7 @@ function VariantsSection({
                             );
                           }
                         }}
-                        className="text-xs font-semibold text-red-600 hover:underline disabled:cursor-not-allowed disabled:opacity-40"
+                        className="text-xs font-semibold text-danger-fg hover:underline disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         {t("common.delete")}
                       </button>
@@ -957,7 +957,7 @@ function VariantsSection({
                   </td>
                 </tr>
                 {editingSku === row.sku && (
-                  <tr className="bg-[#FAFAFA]">
+                  <tr className="bg-subtle">
                     <td colSpan={8} className="px-4 py-4">
                       <VariantEditForm
                         productId={product.id}
@@ -993,7 +993,7 @@ function VariantsSection({
           <button
             type="button"
             onClick={() => setShowAddForm(true)}
-            className="rounded-xl border border-dashed border-[#E5E3EE] px-4 py-2.5 text-sm font-semibold text-[#6D4AFF] transition hover:border-[#6D4AFF]/40 hover:bg-[#FAFAFA]"
+            className="rounded-xl border border-dashed border-edge px-4 py-2.5 text-sm font-semibold text-accent transition hover:border-accent/40 hover:bg-subtle"
           >
             {t("productDetail.addVariant")}
           </button>
@@ -1068,14 +1068,14 @@ function VariantEditForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
-      <p className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+      <p className="text-xs font-semibold uppercase tracking-wide text-faint">
         {t("productDetail.editVariantHeading", { sku: variant.sku })}
       </p>
-      <p className="text-xs text-[#9D98B3]">
+      <p className="text-xs text-faint">
         {t("productDetail.priceOnParentHint")}
       </p>
       <div className="flex flex-wrap gap-3">
-        <label className="space-y-1 text-xs text-[#6B6480]">
+        <label className="space-y-1 text-xs text-muted">
           {t("productDetail.color")}
           <input
             required
@@ -1084,7 +1084,7 @@ function VariantEditForm({
             className={`block ${inputCls}`}
           />
         </label>
-        <label className="space-y-1 text-xs text-[#6B6480]">
+        <label className="space-y-1 text-xs text-muted">
           {t("productDetail.size")}
           <input
             value={size}
@@ -1092,7 +1092,7 @@ function VariantEditForm({
             className={`block ${inputCls}`}
           />
         </label>
-        <label className="space-y-1 text-xs text-[#6B6480]">
+        <label className="space-y-1 text-xs text-muted">
           {t("productDetail.status")}
           <select
             value={status}
@@ -1106,10 +1106,10 @@ function VariantEditForm({
         </label>
       </div>
       <div className="space-y-1">
-        <p className="text-xs text-[#6B6480]">{t("skuDetail.dimensions")}</p>
-        <p className="text-xs text-[#9D98B3]">{t("skuDetail.dimensionsHint")}</p>
+        <p className="text-xs text-muted">{t("skuDetail.dimensions")}</p>
+        <p className="text-xs text-faint">{t("skuDetail.dimensionsHint")}</p>
         <div className="flex flex-wrap gap-3">
-          <label className="space-y-1 text-xs text-[#6B6480]">
+          <label className="space-y-1 text-xs text-muted">
             {t("skuDetail.widthMm")}
             <input
               type="number"
@@ -1122,7 +1122,7 @@ function VariantEditForm({
               className={`block w-24 ${inputCls}`}
             />
           </label>
-          <label className="space-y-1 text-xs text-[#6B6480]">
+          <label className="space-y-1 text-xs text-muted">
             {t("skuDetail.heightMm")}
             <input
               type="number"
@@ -1135,7 +1135,7 @@ function VariantEditForm({
               className={`block w-24 ${inputCls}`}
             />
           </label>
-          <label className="space-y-1 text-xs text-[#6B6480]">
+          <label className="space-y-1 text-xs text-muted">
             {t("skuDetail.depthMm")}
             <input
               type="number"
@@ -1154,14 +1154,14 @@ function VariantEditForm({
         <button
           type="submit"
           disabled={saving}
-          className="rounded-lg bg-[#6D4AFF] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+          className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
         >
           {saving ? t("common.saving") : t("common.saveChanges")}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-lg bg-[#F4F3F8] px-3 py-1.5 text-xs font-semibold text-[#6B6480]"
+          className="rounded-lg bg-page px-3 py-1.5 text-xs font-semibold text-muted"
         >
           {t("common.cancel")}
         </button>
@@ -1276,7 +1276,7 @@ function AddVariantForm({
 
   if (loadingMasters) {
     return (
-      <div className="rounded-xl border border-[#E5E3EE] bg-[#FAFAFA] p-4 text-sm text-[#6B6480]">
+      <div className="rounded-xl border border-edge bg-subtle p-4 text-sm text-muted">
         {t("productDetail.loadingCatalogMasters")}
       </div>
     );
@@ -1285,17 +1285,17 @@ function AddVariantForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-xl border border-[#E5E3EE] bg-[#FAFAFA] p-4 space-y-3"
+      className="rounded-xl border border-edge bg-subtle p-4 space-y-3"
     >
-      <p className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+      <p className="text-xs font-semibold uppercase tracking-wide text-faint">
         {t("productDetail.newVariant")}
       </p>
-      <p className="text-xs text-[#6B6480]">{t("productDetail.newVariantHint")}</p>
-      <p className="text-xs text-[#9D98B3]">
+      <p className="text-xs text-muted">{t("productDetail.newVariantHint")}</p>
+      <p className="text-xs text-faint">
         {t("productDetail.priceOnParentHint")}
       </p>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <label className="space-y-1 text-xs text-[#6B6480]">
+        <label className="space-y-1 text-xs text-muted">
           {t("productDetail.colorCodeRequired")}
           <select
             required
@@ -1310,7 +1310,7 @@ function AddVariantForm({
             ))}
           </select>
         </label>
-        <label className="space-y-1 text-xs text-[#6B6480]">
+        <label className="space-y-1 text-xs text-muted">
           {t("productDetail.sizeCodeRequired")}
           <select
             required
@@ -1325,7 +1325,7 @@ function AddVariantForm({
             ))}
           </select>
         </label>
-        <label className="space-y-1 text-xs text-[#6B6480]">
+        <label className="space-y-1 text-xs text-muted">
           {t("productDetail.editionCode")}
           <select
             value={editionCode}
@@ -1340,7 +1340,7 @@ function AddVariantForm({
             ))}
           </select>
         </label>
-        <label className="space-y-1 text-xs text-[#6B6480]">
+        <label className="space-y-1 text-xs text-muted">
           {t("productDetail.status")}
           <select
             value={status}
@@ -1352,7 +1352,7 @@ function AddVariantForm({
             <option value="archived">{t("common.statusArchived")}</option>
           </select>
         </label>
-        <label className="space-y-1 text-xs text-[#6B6480]">
+        <label className="space-y-1 text-xs text-muted">
           {t("productDetail.initialStock")}
           <input
             type="number"
@@ -1364,10 +1364,10 @@ function AddVariantForm({
           />
         </label>
         <div className="space-y-1 sm:col-span-2 lg:col-span-3">
-          <p className="text-xs text-[#6B6480]">{t("skuDetail.dimensions")}</p>
-          <p className="text-xs text-[#9D98B3]">{t("skuDetail.dimensionsHint")}</p>
+          <p className="text-xs text-muted">{t("skuDetail.dimensions")}</p>
+          <p className="text-xs text-faint">{t("skuDetail.dimensionsHint")}</p>
           <div className="grid gap-3 sm:grid-cols-3">
-            <label className="space-y-1 text-xs text-[#6B6480]">
+            <label className="space-y-1 text-xs text-muted">
               {t("skuDetail.widthMm")}
               <input
                 type="number"
@@ -1380,7 +1380,7 @@ function AddVariantForm({
                 className={`block w-full ${inputCls}`}
               />
             </label>
-            <label className="space-y-1 text-xs text-[#6B6480]">
+            <label className="space-y-1 text-xs text-muted">
               {t("skuDetail.heightMm")}
               <input
                 type="number"
@@ -1393,7 +1393,7 @@ function AddVariantForm({
                 className={`block w-full ${inputCls}`}
               />
             </label>
-            <label className="space-y-1 text-xs text-[#6B6480]">
+            <label className="space-y-1 text-xs text-muted">
               {t("skuDetail.depthMm")}
               <input
                 type="number"
@@ -1413,14 +1413,14 @@ function AddVariantForm({
         <button
           type="submit"
           disabled={saving}
-          className="rounded-lg bg-[#6D4AFF] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+          className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
         >
           {saving ? t("common.adding") : t("productDetail.addVariant")}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-[#6B6480] border border-[#E5E3EE]"
+          className="rounded-lg bg-surface px-3 py-1.5 text-xs font-semibold text-muted border border-edge"
         >
           {t("common.cancel")}
         </button>
@@ -1470,17 +1470,17 @@ function StockEditor({
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder={t("common.emptyValue")}
-        className="w-20 rounded-lg border border-[#E5E3EE] px-2 py-1 text-sm outline-none focus:border-[#6D4AFF]"
+        className="w-20 rounded-lg border border-edge px-2 py-1 text-sm outline-none focus:border-accent"
       />
       <button
         type="submit"
         disabled={saving}
-        className="rounded-lg bg-[#F4F3F8] px-2 py-1 text-xs font-semibold text-[#6D4AFF] hover:bg-[#E5E3EE] disabled:opacity-60"
+        className="rounded-lg bg-page px-2 py-1 text-xs font-semibold text-accent hover:bg-edge disabled:opacity-60"
       >
         {saving ? t("common.loadingEllipsis") : t("productDetail.setStock")}
       </button>
       {reserved != null && reserved > 0 && (
-        <span className="text-xs text-[#9D98B3]">
+        <span className="text-xs text-faint">
           {t("common.reservedCount", { count: reserved })}
         </span>
       )}
@@ -1583,7 +1583,7 @@ function VariantImageUpload({
         type="button"
         onClick={() => inputRef.current?.click()}
         disabled={uploading}
-        className="text-xs font-semibold text-[#6D4AFF] hover:underline disabled:opacity-60"
+        className="text-xs font-semibold text-accent hover:underline disabled:opacity-60"
       >
         {uploading
           ? t("common.uploading")
@@ -1672,13 +1672,13 @@ function LegacyProductImages({
   const imageUrls = variant.imageUrls;
 
   return (
-    <div className="mt-6 border-t border-[#F0EEF8] pt-6">
+    <div className="mt-6 border-t border-edge-soft pt-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-faint">
             {t("productDetail.images")}
           </h2>
-          <p className="mt-1 text-sm text-[#6B6480]">
+          <p className="mt-1 text-sm text-muted">
             {t("productDetail.imagesHint")}
           </p>
         </div>
@@ -1695,7 +1695,7 @@ function LegacyProductImages({
             type="button"
             onClick={() => inputRef.current?.click()}
             disabled={uploading}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#6D4AFF] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#5A38E8] disabled:opacity-60 sm:w-auto"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-accent-hover disabled:opacity-60 sm:w-auto"
           >
             {uploading
               ? t("common.uploading")
@@ -1713,7 +1713,7 @@ function LegacyProductImages({
           />
         </div>
       ) : (
-        <div className="mt-4 rounded-xl border border-dashed border-[#E5E3EE] bg-[#FAFAFA] px-4 py-10 text-center text-sm text-[#9D98B3]">
+        <div className="mt-4 rounded-xl border border-dashed border-edge bg-subtle px-4 py-10 text-center text-sm text-faint">
           {t("productDetail.noImagesYet")}
         </div>
       )}
@@ -1746,7 +1746,7 @@ function ProductImageGrid({
         <div
           key={url}
           className={[
-            "group relative aspect-square overflow-hidden border border-[#E5E3EE] bg-[#FAFAFA]",
+            "group relative aspect-square overflow-hidden border border-edge bg-subtle",
             compact ? "rounded-lg" : "rounded-xl",
           ].join(" ")}
         >

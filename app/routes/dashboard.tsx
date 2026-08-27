@@ -68,7 +68,7 @@ export default function Dashboard() {
     <div className="space-y-8">
       <PageHeader />
       {errors.length > 0 && (
-        <div className="space-y-1 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+        <div className="space-y-1 rounded-xl bg-danger-bg px-4 py-3 text-sm text-danger-fg">
           {errors.map((message) => (
             <p key={message}>{message}</p>
           ))}
@@ -102,14 +102,14 @@ function PageHeader() {
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div>
-        <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">
+        <h1 className="text-xl font-bold text-ink sm:text-2xl">
           {t("dashboard.title")}
         </h1>
-        <p className="mt-0.5 text-sm text-[#6B6480]">{formatted}</p>
+        <p className="mt-0.5 text-sm text-muted">{formatted}</p>
       </div>
       <Link
         to="/orders"
-        className="w-full rounded-xl bg-[#6D4AFF] px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-[#5A38E8] active:scale-[0.98] sm:w-auto"
+        className="w-full rounded-xl bg-accent px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-accent-hover active:scale-[0.98] sm:w-auto"
       >
         {t("dashboard.viewAllOrders")}
       </Link>
@@ -159,7 +159,7 @@ function StatsGrid({
       value: loading ? t("common.loadingEllipsis") : String(active),
       sub: loading ? null : t("dashboard.parentProductsStyles"),
       icon: <BoxIcon />,
-      color: "bg-emerald-50 text-emerald-600",
+      color: "bg-success-bg text-success-fg",
       to: "/products",
     },
     {
@@ -167,13 +167,13 @@ function StatsGrid({
       value: loading ? t("common.loadingEllipsis") : String(pendingOrders),
       sub: loading ? null : t("dashboard.pendingAwaitingPayment"),
       icon: <ClockIcon />,
-      color: "bg-amber-50 text-amber-600",
+      color: "bg-warn-bg text-warn-fg",
       to: "/orders",
     },
   ];
 
   const cardClass =
-    "rounded-2xl border border-[#E5E3EE] bg-white p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)]";
+    "rounded-2xl border border-edge bg-surface p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)]";
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -184,12 +184,12 @@ function StatsGrid({
               <div className={`rounded-xl p-2.5 ${card.color}`}>{card.icon}</div>
             </div>
             <div className="mt-4">
-              <div className="text-2xl font-bold text-[#1C1B1F]">{card.value}</div>
-              <div className="mt-0.5 text-sm font-medium text-[#6B6480]">
+              <div className="text-2xl font-bold text-ink">{card.value}</div>
+              <div className="mt-0.5 text-sm font-medium text-muted">
                 {card.label}
               </div>
               {card.sub && (
-                <div className="mt-1 text-xs text-[#9D98B3]">{card.sub}</div>
+                <div className="mt-1 text-xs text-faint">{card.sub}</div>
               )}
             </div>
           </>
@@ -200,7 +200,7 @@ function StatsGrid({
             <Link
               key={card.label}
               to={card.to}
-              className={`${cardClass} block transition hover:border-[#6D4AFF]/40 hover:bg-[#FAFAFA] active:scale-[0.99]`}
+              className={`${cardClass} block transition hover:border-accent/40 hover:bg-subtle active:scale-[0.99]`}
             >
               {inner}
             </Link>
@@ -228,14 +228,14 @@ function RecentOrdersTable({ orders }: { orders: Order[] }) {
   ];
 
   return (
-    <div className="rounded-2xl border border-[#E5E3EE] bg-white shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
-      <div className="flex items-center justify-between border-b border-[#E5E3EE] px-5 py-4">
-        <h2 className="font-semibold text-[#1C1B1F]">
+    <div className="rounded-2xl border border-edge bg-surface shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
+      <div className="flex items-center justify-between border-b border-edge px-5 py-4">
+        <h2 className="font-semibold text-ink">
           {t("dashboard.recentOrders")}
         </h2>
         <Link
           to="/orders"
-          className="text-xs font-medium text-[#6D4AFF] hover:underline"
+          className="text-xs font-medium text-accent hover:underline"
         >
           {t("dashboard.viewAllArrow")}
         </Link>
@@ -243,11 +243,11 @@ function RecentOrdersTable({ orders }: { orders: Order[] }) {
       <div className="overflow-x-auto md:overflow-visible">
         <table className="hidden w-full text-sm md:table">
           <thead>
-            <tr className="border-b border-[#F0EEF8] text-left">
+            <tr className="border-b border-edge-soft text-left">
               {headers.map((h) => (
                 <th
                   key={h}
-                  className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-[#9D98B3]"
+                  className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-faint"
                 >
                   {h}
                 </th>
@@ -257,7 +257,7 @@ function RecentOrdersTable({ orders }: { orders: Order[] }) {
           <tbody>
             {orders.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-5 py-10 text-center text-[#9D98B3]">
+                <td colSpan={5} className="px-5 py-10 text-center text-faint">
                   {t("dashboard.noOrdersYet")}
                 </td>
               </tr>
@@ -265,21 +265,21 @@ function RecentOrdersTable({ orders }: { orders: Order[] }) {
               orders.map((order) => (
                 <tr
                   key={order.id}
-                  className="border-b border-[#F0EEF8] last:border-0 hover:bg-[#FAFAFA]"
+                  className="border-b border-edge-soft last:border-0 hover:bg-subtle"
                 >
-                  <td className="px-5 py-3.5 font-mono text-xs font-medium text-[#1C1B1F]">
+                  <td className="px-5 py-3.5 font-mono text-xs font-medium text-ink">
                     {order.id}
                   </td>
-                  <td className="px-5 py-3.5 text-[#1C1B1F]">
+                  <td className="px-5 py-3.5 text-ink">
                     {order.customer_id}
                   </td>
-                  <td className="px-5 py-3.5 font-semibold text-[#1C1B1F]">
+                  <td className="px-5 py-3.5 font-semibold text-ink">
                     {formatCents(order.total_cents)}
                   </td>
                   <td className="px-5 py-3.5">
                     <OrderStatusBadge status={order.status} />
                   </td>
-                  <td className="px-5 py-3.5 text-[#9D98B3]">
+                  <td className="px-5 py-3.5 text-faint">
                     {formatDate(order.created_at, {
                       month: "short",
                       day: "numeric",
@@ -292,9 +292,9 @@ function RecentOrdersTable({ orders }: { orders: Order[] }) {
         </table>
       </div>
 
-      <div className="divide-y divide-[#F0EEF8] md:hidden">
+      <div className="divide-y divide-edge-soft md:hidden">
         {orders.length === 0 ? (
-          <div className="px-4 py-10 text-center text-[#9D98B3]">
+          <div className="px-4 py-10 text-center text-faint">
             {t("dashboard.noOrdersYet")}
           </div>
         ) : (
@@ -302,18 +302,18 @@ function RecentOrdersTable({ orders }: { orders: Order[] }) {
             <div key={order.id} className="space-y-2 px-4 py-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="truncate font-mono text-xs font-medium text-[#1C1B1F]">
+                  <p className="truncate font-mono text-xs font-medium text-ink">
                     {order.id}
                   </p>
-                  <p className="mt-1 text-sm text-[#6B6480]">{order.customer_id}</p>
+                  <p className="mt-1 text-sm text-muted">{order.customer_id}</p>
                 </div>
                 <OrderStatusBadge status={order.status} />
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="font-semibold text-[#1C1B1F]">
+                <span className="font-semibold text-ink">
                   {formatCents(order.total_cents)}
                 </span>
-                <span className="text-[#9D98B3]">
+                <span className="text-faint">
                   {formatDate(order.created_at, {
                     month: "short",
                     day: "numeric",
@@ -342,14 +342,14 @@ function QuickPanel({ stockAlerts }: { stockAlerts: VariantStockAlert[] }) {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-[#E5E3EE] bg-white p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
-        <h2 className="mb-3 font-semibold text-[#1C1B1F]">
+      <div className="rounded-2xl border border-edge bg-surface p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
+        <h2 className="mb-3 font-semibold text-ink">
           {t("dashboard.quickActions")}
         </h2>
         <div className="space-y-2">
           <Link
             to="/products"
-            className="flex items-center gap-3 rounded-xl border border-[#E5E3EE] px-4 py-3 text-sm font-medium text-[#1C1B1F] transition hover:border-[#6D4AFF]/40 hover:bg-[#F8F7FC]"
+            className="flex items-center gap-3 rounded-xl border border-edge px-4 py-3 text-sm font-medium text-ink transition hover:border-accent/40 hover:bg-panel"
           >
             <span className="rounded-lg bg-violet-50 p-1.5 text-violet-600">
               <PlusIcon />
@@ -358,7 +358,7 @@ function QuickPanel({ stockAlerts }: { stockAlerts: VariantStockAlert[] }) {
           </Link>
           <Link
             to="/orders"
-            className="flex items-center gap-3 rounded-xl border border-[#E5E3EE] px-4 py-3 text-sm font-medium text-[#1C1B1F] transition hover:border-[#6D4AFF]/40 hover:bg-[#F8F7FC]"
+            className="flex items-center gap-3 rounded-xl border border-edge px-4 py-3 text-sm font-medium text-ink transition hover:border-accent/40 hover:bg-panel"
           >
             <span className="rounded-lg bg-blue-50 p-1.5 text-blue-600">
               <FulfillIcon />
@@ -367,9 +367,9 @@ function QuickPanel({ stockAlerts }: { stockAlerts: VariantStockAlert[] }) {
           </Link>
           <Link
             to="/analytics"
-            className="flex items-center gap-3 rounded-xl border border-[#E5E3EE] px-4 py-3 text-sm font-medium text-[#1C1B1F] transition hover:border-[#6D4AFF]/40 hover:bg-[#F8F7FC]"
+            className="flex items-center gap-3 rounded-xl border border-edge px-4 py-3 text-sm font-medium text-ink transition hover:border-accent/40 hover:bg-panel"
           >
-            <span className="rounded-lg bg-emerald-50 p-1.5 text-emerald-600">
+            <span className="rounded-lg bg-success-bg p-1.5 text-success-fg">
               <ChartIcon />
             </span>
             {t("dashboard.viewAnalytics")}
@@ -378,7 +378,7 @@ function QuickPanel({ stockAlerts }: { stockAlerts: VariantStockAlert[] }) {
       </div>
 
       {(outOfStock.length > 0 || lowStock.length > 0) && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+        <div className="rounded-2xl border border-amber-200 bg-warn-bg p-5">
           <h2 className="mb-3 flex items-center gap-2 font-semibold text-amber-900">
             <span className="text-amber-500">⚠</span> {t("dashboard.stockAlerts")}
           </h2>

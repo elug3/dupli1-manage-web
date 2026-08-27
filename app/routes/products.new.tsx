@@ -25,7 +25,7 @@ export function meta() {
 const MAX_IMAGE_BYTES = 50 * 1024 * 1024;
 
 const inputCls =
-  "w-full rounded-xl border border-[#E5E3EE] bg-[#F8F7FC] px-4 py-2.5 text-sm text-[#1C1B1F] outline-none transition placeholder:text-[#B4B0C8] focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/20";
+  "w-full rounded-xl border border-edge bg-panel px-4 py-2.5 text-sm text-ink outline-none transition placeholder:text-soft focus:border-accent focus:ring-2 focus:ring-accent/20";
 
 export default function NewProduct() {
   const navigate = useNavigate();
@@ -300,24 +300,24 @@ export default function NewProduct() {
   if (mastersLoading) {
     return (
       <div className="flex items-center justify-center py-32">
-        <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#6D4AFF] border-t-transparent" />
+        <div className="h-7 w-7 animate-spin rounded-full border-2 border-accent border-t-transparent" />
       </div>
     );
   }
 
   return (
     <div className="mx-auto max-w-lg space-y-6">
-      <Link to="/products" className="text-sm text-[#6D4AFF] hover:underline">
+      <Link to="/products" className="text-sm text-accent hover:underline">
         {t("productNew.backToProducts")}
       </Link>
 
       <div>
-        <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">
+        <h1 className="text-xl font-bold text-ink sm:text-2xl">
           {t("productNew.title")}
         </h1>
-        <p className="mt-0.5 text-sm text-[#6B6480]">
+        <p className="mt-0.5 text-sm text-muted">
           {t("productNew.subtitlePrefix")}{" "}
-          <Link to="/catalog" className="text-[#6D4AFF] hover:underline">
+          <Link to="/catalog" className="text-accent hover:underline">
             {t("productNew.subtitleCatalogLink")}
           </Link>
           .
@@ -325,17 +325,17 @@ export default function NewProduct() {
       </div>
 
       {brands.length === 0 && (
-        <div className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <div className="rounded-xl bg-warn-bg px-4 py-3 text-sm text-amber-900">
           {t("productNew.noBrandsWarning")}
         </div>
       )}
 
       <form
         onSubmit={handleSubmit}
-        className="space-y-6 rounded-2xl border border-[#E5E3EE] bg-white p-6 shadow-[0_1px_4px_rgba(28,27,31,0.04)]"
+        className="space-y-6 rounded-2xl border border-edge bg-surface p-6 shadow-[0_1px_4px_rgba(28,27,31,0.04)]"
       >
         <section className="space-y-4">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-faint">
             {t("productNew.sectionStyleParent")}
           </h2>
           <Field label={t("productNew.name")} id="name" required>
@@ -390,8 +390,8 @@ export default function NewProduct() {
             </select>
           </Field>
 
-          <div className="rounded-xl border border-dashed border-[#E5E3EE] bg-[#FAFAFA] p-4 space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+          <div className="rounded-xl border border-dashed border-edge bg-subtle p-4 space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-faint">
               {t("productNew.orCreateStyleUnder", {
                 brand: brandCode || "brand",
               })}
@@ -418,7 +418,7 @@ export default function NewProduct() {
               type="button"
               onClick={handleCreateStyle}
               disabled={!brandCode || creatingStyle}
-              className="rounded-xl border border-[#E5E3EE] px-3 py-2 text-xs font-semibold text-[#6D4AFF] hover:border-[#6D4AFF]/40 disabled:opacity-60"
+              className="rounded-xl border border-edge px-3 py-2 text-xs font-semibold text-accent hover:border-accent/40 disabled:opacity-60"
             >
               {creatingStyle ? t("common.creating") : t("productNew.createStyle")}
             </button>
@@ -446,8 +446,8 @@ export default function NewProduct() {
           </Field>
         </section>
 
-        <section className="space-y-4 border-t border-[#F0EEF8] pt-6">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+        <section className="space-y-4 border-t border-edge-soft pt-6">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-faint">
             {t("productNew.sectionFirstVariant")}
           </h2>
           <Field label={t("productNew.colorCode")} id="colorCode" required>
@@ -545,10 +545,10 @@ export default function NewProduct() {
             />
           </Field>
           <div className="space-y-1.5">
-            <span className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted">
               {t("productNew.image")}
             </span>
-            <p className="text-sm text-[#6B6480]">{t("productNew.imageHint")}</p>
+            <p className="text-sm text-muted">{t("productNew.imageHint")}</p>
             <input
               ref={imageInputRef}
               id="image"
@@ -559,17 +559,17 @@ export default function NewProduct() {
               disabled={loading}
             />
             {imageFile && imagePreviewUrl ? (
-              <div className="flex items-start gap-3 rounded-xl border border-[#E5E3EE] bg-[#FAFAFA] p-3">
+              <div className="flex items-start gap-3 rounded-xl border border-edge bg-subtle p-3">
                 <img
                   src={imagePreviewUrl}
                   alt=""
                   className="h-20 w-20 shrink-0 rounded-lg object-cover"
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-[#1C1B1F]">
+                  <p className="truncate text-sm font-medium text-ink">
                     {imageFile.name}
                   </p>
-                  <p className="mt-0.5 text-xs text-[#9D98B3]">
+                  <p className="mt-0.5 text-xs text-faint">
                     {(imageFile.size / 1024).toFixed(1)} KB
                   </p>
                   <div className="mt-2 flex flex-wrap gap-3">
@@ -577,7 +577,7 @@ export default function NewProduct() {
                       type="button"
                       onClick={() => imageInputRef.current?.click()}
                       disabled={loading}
-                      className="text-xs font-semibold text-[#6D4AFF] hover:underline disabled:opacity-60"
+                      className="text-xs font-semibold text-accent hover:underline disabled:opacity-60"
                     >
                       {t("common.replace")}
                     </button>
@@ -585,7 +585,7 @@ export default function NewProduct() {
                       type="button"
                       onClick={clearImage}
                       disabled={loading}
-                      className="text-xs font-semibold text-[#9D98B3] hover:underline disabled:opacity-60"
+                      className="text-xs font-semibold text-faint hover:underline disabled:opacity-60"
                     >
                       {t("common.remove")}
                     </button>
@@ -597,7 +597,7 @@ export default function NewProduct() {
                 type="button"
                 onClick={() => imageInputRef.current?.click()}
                 disabled={loading}
-                className="inline-flex w-full items-center justify-center rounded-xl border border-dashed border-[#E5E3EE] bg-[#FAFAFA] px-4 py-8 text-sm font-semibold text-[#6D4AFF] transition hover:border-[#6D4AFF]/40 hover:bg-[#F8F7FC] disabled:opacity-60"
+                className="inline-flex w-full items-center justify-center rounded-xl border border-dashed border-edge bg-subtle px-4 py-8 text-sm font-semibold text-accent transition hover:border-accent/40 hover:bg-panel disabled:opacity-60"
               >
                 {t("productNew.chooseImage")}
               </button>
@@ -608,7 +608,7 @@ export default function NewProduct() {
         <button
           type="submit"
           disabled={loading || brands.length === 0 || !styleCode}
-          className="w-full rounded-xl bg-[#6D4AFF] py-3 text-sm font-semibold text-white transition hover:bg-[#5A38E8] disabled:opacity-60"
+          className="w-full rounded-xl bg-accent py-3 text-sm font-semibold text-white transition hover:bg-accent-hover disabled:opacity-60"
         >
           {loading
             ? imageFile
@@ -653,10 +653,10 @@ function Field({
     <div className="space-y-1.5">
       <label
         htmlFor={id}
-        className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]"
+        className="text-xs font-semibold uppercase tracking-wide text-muted"
       >
         {label}
-        {required && <span className="text-red-500"> *</span>}
+        {required && <span className="text-danger-fg"> *</span>}
       </label>
       {children}
     </div>

@@ -31,7 +31,7 @@ const STATUS_OPTIONS = ["", "active", "draft", "archived"] as const;
 const KNOWN_CATEGORIES = ["bags"] as const;
 
 const filterSelectCls =
-  "rounded-xl border border-[#E5E3EE] bg-white px-3 py-2.5 text-sm text-[#1C1B1F] outline-none transition focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/20";
+  "rounded-xl border border-edge bg-surface px-3 py-2.5 text-sm text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20";
 
 function productStatusLabel(
   status: string | undefined,
@@ -204,16 +204,16 @@ export default function Products() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">
+          <h1 className="text-xl font-bold text-ink sm:text-2xl">
             {t("products.title")}
           </h1>
-          <p className="mt-0.5 text-sm text-[#6B6480]">
+          <p className="mt-0.5 text-sm text-muted">
             {t("products.subtitle")}
           </p>
         </div>
         <Link
           to="/products/new"
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#6D4AFF] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#5A38E8] active:scale-[0.98] sm:w-auto"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-accent-hover active:scale-[0.98] sm:w-auto"
         >
           <PlusIcon />
           {t("products.newProduct")}
@@ -231,8 +231,8 @@ export default function Products() {
             className={[
               "rounded-full px-4 py-1.5 text-sm font-medium capitalize transition",
               activeCategory === cat
-                ? "bg-[#6D4AFF] text-white"
-                : "bg-white text-[#6B6480] border border-[#E5E3EE] hover:border-[#6D4AFF]/40",
+                ? "bg-accent text-white"
+                : "bg-surface text-muted border border-edge hover:border-accent/40",
             ].join(" ")}
           >
             {cat === "all" ? t("products.categoryAll") : cat}
@@ -240,10 +240,10 @@ export default function Products() {
         ))}
       </div>
 
-      <div className="flex flex-col gap-3 rounded-2xl border border-[#E5E3EE] bg-white p-4 shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
+      <div className="flex flex-col gap-3 rounded-2xl border border-edge bg-surface p-4 shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <label className="space-y-1.5 sm:col-span-2 lg:col-span-2">
-            <span className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+            <span className="text-xs font-semibold uppercase tracking-wide text-faint">
               {t("products.filterSearch")}
             </span>
             <input
@@ -251,12 +251,12 @@ export default function Products() {
               placeholder={t("products.filterPlaceholder")}
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              className="w-full rounded-xl border border-[#E5E3EE] bg-white px-4 py-2.5 text-sm outline-none focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/20"
+              className="w-full rounded-xl border border-edge bg-surface px-4 py-2.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
             />
           </label>
 
           <label className="space-y-1.5">
-            <span className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+            <span className="text-xs font-semibold uppercase tracking-wide text-faint">
               {t("products.filterStatus")}
             </span>
             <select
@@ -275,7 +275,7 @@ export default function Products() {
           </label>
 
           <label className="space-y-1.5">
-            <span className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+            <span className="text-xs font-semibold uppercase tracking-wide text-faint">
               {t("products.filterBrand")}
             </span>
             <select
@@ -293,7 +293,7 @@ export default function Products() {
           </label>
 
           <label className="space-y-1.5 sm:col-span-2 lg:col-span-2">
-            <span className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+            <span className="text-xs font-semibold uppercase tracking-wide text-faint">
               {t("products.filterSort")}
             </span>
             <select
@@ -328,7 +328,7 @@ export default function Products() {
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm text-[#6B6480]">
+          <p className="text-sm text-muted">
             {loading
               ? t("common.loadingEllipsis")
               : t("products.resultCount", {
@@ -341,7 +341,7 @@ export default function Products() {
             <button
               type="button"
               onClick={clearFilters}
-              className="text-sm font-semibold text-[#6D4AFF] hover:underline"
+              className="text-sm font-semibold text-accent hover:underline"
             >
               {t("products.clearFilters")}
             </button>
@@ -350,23 +350,23 @@ export default function Products() {
       </div>
 
       {error && (
-        <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+        <div className="rounded-xl bg-danger-bg px-4 py-3 text-sm text-danger-fg">
           {error}
         </div>
       )}
 
-      <div className="overflow-hidden rounded-2xl border border-[#E5E3EE] bg-white shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
+      <div className="overflow-hidden rounded-2xl border border-edge bg-surface shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#6D4AFF] border-t-transparent" />
+            <div className="h-7 w-7 animate-spin rounded-full border-2 border-accent border-t-transparent" />
           </div>
         ) : products.length === 0 ? (
-          <div className="px-5 py-16 text-center text-[#9D98B3]">
+          <div className="px-5 py-16 text-center text-faint">
             {t("products.noProductsFound")}
           </div>
         ) : (
           <>
-            <div className="divide-y divide-[#F0EEF8] md:hidden">
+            <div className="divide-y divide-edge-soft md:hidden">
               {products.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}
@@ -375,7 +375,7 @@ export default function Products() {
             <div className="hidden overflow-x-auto md:block">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-[#F0EEF8] bg-[#FAFAFA] text-left">
+                  <tr className="border-b border-edge-soft bg-subtle text-left">
                     {(
                       [
                         ["name", t("products.colName")],
@@ -389,7 +389,7 @@ export default function Products() {
                     ).map(([key, label]) => (
                       <th
                         key={key}
-                        className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-[#9D98B3]"
+                        className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-faint"
                       >
                         {label}
                       </th>
@@ -415,27 +415,27 @@ export default function Products() {
                           );
                         }
                       }}
-                      className="cursor-pointer border-b border-[#F0EEF8] last:border-0 hover:bg-[#FAFAFA]"
+                      className="cursor-pointer border-b border-edge-soft last:border-0 hover:bg-subtle"
                     >
-                      <td className="px-5 py-3.5 font-medium text-[#1C1B1F]">
+                      <td className="px-5 py-3.5 font-medium text-ink">
                         {product.name}
                       </td>
-                      <td className="px-5 py-3.5 font-mono text-xs text-[#6B6480]">
+                      <td className="px-5 py-3.5 font-mono text-xs text-muted">
                         {product.id}
                       </td>
-                      <td className="px-5 py-3.5 text-[#6B6480]">
+                      <td className="px-5 py-3.5 text-muted">
                         {product.brand ?? t("common.emptyValue")}
                       </td>
-                      <td className="px-5 py-3.5 text-[#6B6480]">
+                      <td className="px-5 py-3.5 text-muted">
                         {formatProductColors(product)}
                       </td>
-                      <td className="px-5 py-3.5 text-[#6B6480]">
+                      <td className="px-5 py-3.5 text-muted">
                         {productVariantCount(product)}
                       </td>
-                      <td className="px-5 py-3.5 text-[#6B6480]">
+                      <td className="px-5 py-3.5 text-muted">
                         {formatListPrice(product) ?? t("common.emptyValue")}
                       </td>
-                      <td className="px-5 py-3.5 capitalize text-[#6B6480]">
+                      <td className="px-5 py-3.5 capitalize text-muted">
                         {productStatusLabel(product.status, t)}
                       </td>
                     </tr>
@@ -453,11 +453,11 @@ export default function Products() {
             type="button"
             disabled={!canPrev}
             onClick={() => goPage(Math.max(0, offset - PAGE_SIZE))}
-            className="rounded-xl border border-[#E5E3EE] px-4 py-2 text-sm font-semibold text-[#6D4AFF] transition hover:border-[#6D4AFF]/40 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-xl border border-edge px-4 py-2 text-sm font-semibold text-accent transition hover:border-accent/40 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {t("products.prevPage")}
           </button>
-          <p className="text-sm text-[#6B6480]">
+          <p className="text-sm text-muted">
             {t("products.pageLabel", {
               page: String(Math.floor(offset / PAGE_SIZE) + 1),
               pages: String(Math.max(1, Math.ceil(total / PAGE_SIZE))),
@@ -467,7 +467,7 @@ export default function Products() {
             type="button"
             disabled={!canNext}
             onClick={() => goPage(offset + PAGE_SIZE)}
-            className="rounded-xl border border-[#E5E3EE] px-4 py-2 text-sm font-semibold text-[#6D4AFF] transition hover:border-[#6D4AFF]/40 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-xl border border-edge px-4 py-2 text-sm font-semibold text-accent transition hover:border-accent/40 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {t("products.nextPage")}
           </button>
@@ -487,29 +487,29 @@ function ProductCard({ product }: { product: Product }) {
   return (
     <Link
       to={`/products/${encodeURIComponent(product.id)}?category=${encodeURIComponent(product.category)}`}
-      className="flex gap-3 p-4 transition hover:bg-[#FAFAFA] active:bg-[#F4F3F8]"
+      className="flex gap-3 p-4 transition hover:bg-subtle active:bg-page"
     >
       <ProductPreviewThumb imageUrl={imageUrl} name={product.name} />
       <div className="min-w-0 flex-1 space-y-3">
         <div>
-          <p className="font-medium text-[#1C1B1F]">{product.name}</p>
-          <p className="mt-1 font-mono text-xs text-[#6B6480]">{product.id}</p>
+          <p className="font-medium text-ink">{product.name}</p>
+          <p className="mt-1 font-mono text-xs text-muted">{product.id}</p>
         </div>
-        <div className="flex flex-wrap gap-2 text-xs text-[#6B6480]">
-          <span className="rounded-full bg-[#F4F3F8] px-2.5 py-1">
+        <div className="flex flex-wrap gap-2 text-xs text-muted">
+          <span className="rounded-full bg-page px-2.5 py-1">
             {product.brand ?? t("products.noBrand")}
           </span>
-          <span className="rounded-full bg-[#F4F3F8] px-2.5 py-1">
+          <span className="rounded-full bg-page px-2.5 py-1">
             {formatProductColors(product)}
           </span>
-          <span className="rounded-full bg-[#F4F3F8] px-2.5 py-1">
+          <span className="rounded-full bg-page px-2.5 py-1">
             {t("products.variantCount", { count: variantCount })}
           </span>
           {price && (
-            <span className="rounded-full bg-[#F4F3F8] px-2.5 py-1">{price}</span>
+            <span className="rounded-full bg-page px-2.5 py-1">{price}</span>
           )}
           {product.status && (
-            <span className="rounded-full bg-[#F4F3F8] px-2.5 py-1 capitalize">
+            <span className="rounded-full bg-page px-2.5 py-1 capitalize">
               {productStatusLabel(product.status, t)}
             </span>
           )}
@@ -527,7 +527,7 @@ function ProductPreviewThumb({
   name: string;
 }) {
   return (
-    <div className="size-16 shrink-0 overflow-hidden rounded-xl border border-[#E5E3EE] bg-[#FAFAFA]">
+    <div className="size-16 shrink-0 overflow-hidden rounded-xl border border-edge bg-subtle">
       {imageUrl ? (
         <img
           src={imageUrl}
@@ -537,7 +537,7 @@ function ProductPreviewThumb({
         />
       ) : (
         <div
-          className="flex size-full items-center justify-center text-[#9D98B3]"
+          className="flex size-full items-center justify-center text-faint"
           aria-hidden="true"
         >
           <ProductPlaceholderIcon />

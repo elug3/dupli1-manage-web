@@ -134,7 +134,7 @@ export default function OrderDetail() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-32">
-        <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#6D4AFF] border-t-transparent" />
+        <div className="h-7 w-7 animate-spin rounded-full border-2 border-accent border-t-transparent" />
       </div>
     );
   }
@@ -142,10 +142,10 @@ export default function OrderDetail() {
   if (error || !order) {
     return (
       <div className="space-y-4">
-        <Link to="/orders" className="text-sm text-[#6D4AFF] hover:underline">
+        <Link to="/orders" className="text-sm text-accent hover:underline">
           {t("orderDetail.backToOrders")}
         </Link>
-        <div className="rounded-2xl border border-[#E5E3EE] bg-white p-10 text-center text-[#6B6480]">
+        <div className="rounded-2xl border border-edge bg-surface p-10 text-center text-muted">
           {error ?? t("orderDetail.notFound")}
         </div>
       </div>
@@ -156,21 +156,21 @@ export default function OrderDetail() {
 
   return (
     <div className="space-y-6">
-      <Link to="/orders" className="text-sm text-[#6D4AFF] hover:underline">
+      <Link to="/orders" className="text-sm text-accent hover:underline">
         {t("orderDetail.backToOrders")}
       </Link>
 
       {/* Header */}
-      <div className="rounded-2xl border border-[#E5E3EE] bg-white p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)] sm:p-8">
+      <div className="rounded-2xl border border-edge bg-surface p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)] sm:p-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+            <p className="text-xs font-semibold uppercase tracking-wide text-faint">
               {t("orderDetail.orderId")}
             </p>
-            <h1 className="mt-1 break-all font-mono text-lg font-bold text-[#1C1B1F]">
+            <h1 className="mt-1 break-all font-mono text-lg font-bold text-ink">
               {order.id}
             </h1>
-            <p className="mt-2 text-sm text-[#6B6480]">
+            <p className="mt-2 text-sm text-muted">
               {t("orderDetail.customer")}:{" "}
               <span className="font-mono">{order.customer_id}</span>
             </p>
@@ -191,8 +191,8 @@ export default function OrderDetail() {
                       className={[
                         "rounded-xl px-4 py-2 text-sm font-semibold transition disabled:opacity-50",
                         action.kind === "status" && action.status === "canceled"
-                          ? "border border-red-200 text-red-600 hover:bg-red-50"
-                          : "bg-[#6D4AFF] text-white hover:bg-[#5A38E8]",
+                          ? "border border-red-200 text-danger-fg hover:bg-danger-bg"
+                          : "bg-accent text-white hover:bg-accent-hover",
                       ].join(" ")}
                     >
                       {busy
@@ -243,40 +243,40 @@ function TimelineSection({ order }: { order: Order }) {
   };
 
   return (
-    <div className="rounded-2xl border border-[#E5E3EE] bg-white p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)] sm:p-6">
-      <h2 className="mb-4 font-semibold text-[#1C1B1F]">
+    <div className="rounded-2xl border border-edge bg-surface p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)] sm:p-6">
+      <h2 className="mb-4 font-semibold text-ink">
         {t("orderDetail.timeline")}
       </h2>
       <dl className="grid gap-4 sm:grid-cols-2">
         {hasPending && (
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-faint">
               {t("orders.paymentDue")}
             </dt>
-            <dd className="mt-1 font-medium text-amber-700">
+            <dd className="mt-1 font-medium text-warn-fg">
               {formatDate(order.payment_due_at!, dateOpts)}
             </dd>
           </div>
         )}
         {order.paid_at && (
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-faint">
               {t("orders.paidAt")}
             </dt>
-            <dd className="mt-1 font-medium text-[#1C1B1F]">
+            <dd className="mt-1 font-medium text-ink">
               {formatDate(order.paid_at, dateOpts)}
             </dd>
           </div>
         )}
         {order.shipped_at && (
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-faint">
               {t("orders.shippedAt")}
             </dt>
-            <dd className="mt-1 font-medium text-[#1C1B1F]">
+            <dd className="mt-1 font-medium text-ink">
               {formatDate(order.shipped_at, dateOpts)}
               {order.shipped_by && (
-                <span className="ml-1 text-[#6B6480]">
+                <span className="ml-1 text-muted">
                   {t("orders.shippedBy", { name: order.shipped_by })}
                 </span>
               )}
@@ -293,8 +293,8 @@ function TimelineSection({ order }: { order: Order }) {
 function ItemsSection({ order }: { order: Order }) {
   const { t } = useI18n();
   return (
-    <div className="rounded-2xl border border-[#E5E3EE] bg-white p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)] sm:p-6">
-      <h2 className="mb-4 font-semibold text-[#1C1B1F]">
+    <div className="rounded-2xl border border-edge bg-surface p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)] sm:p-6">
+      <h2 className="mb-4 font-semibold text-ink">
         {t("orders.orderItems")}
       </h2>
       <div className="space-y-3">
@@ -320,35 +320,35 @@ function OrderItemRow({ item }: { item: OrderItem }) {
             className="h-9 w-9 shrink-0 rounded-lg object-cover"
           />
         ) : (
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#F4F3F8] text-xs font-bold text-[#6D4AFF]">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-page text-xs font-bold text-accent">
             {item.sku.slice(0, 2).toUpperCase()}
           </div>
         )}
         <div className="min-w-0">
           {item.product_name && (
-            <span className="block truncate text-xs font-semibold text-[#1C1B1F]">
+            <span className="block truncate text-xs font-semibold text-ink">
               {item.product_name}
             </span>
           )}
-          <span className="block truncate font-mono text-xs text-[#6B6480]">
+          <span className="block truncate font-mono text-xs text-muted">
             {item.sku}
             {item.available === false && (
-              <span className="ml-1.5 rounded bg-red-100 px-1 py-0.5 text-[10px] font-semibold text-red-600">
+              <span className="ml-1.5 rounded bg-red-100 px-1 py-0.5 text-[10px] font-semibold text-danger-fg">
                 {t("orders.itemUnavailable")}
               </span>
             )}
           </span>
           {item.sku_id && (
-            <span className="block truncate font-mono text-[10px] text-[#9D98B3]">
+            <span className="block truncate font-mono text-[10px] text-faint">
               {item.sku_id}
             </span>
           )}
-          <span className="text-xs text-[#9D98B3]">
+          <span className="text-xs text-faint">
             {t("orders.quantityTimes", { quantity: item.quantity })}
           </span>
         </div>
       </div>
-      <span className="shrink-0 font-semibold text-[#1C1B1F]">
+      <span className="shrink-0 font-semibold text-ink">
         {formatCents(item.unit_price_cents * item.quantity)}
       </span>
     </div>
@@ -359,14 +359,14 @@ function OrderTotals({ order }: { order: Order }) {
   const { t, formatCents } = useI18n();
   const hasDiscount = order.discount_cents > 0;
   return (
-    <div className="mt-4 space-y-1.5 border-t border-[#E5E3EE] pt-4 text-sm">
+    <div className="mt-4 space-y-1.5 border-t border-edge pt-4 text-sm">
       {hasDiscount && (
         <>
-          <div className="flex items-center justify-between text-[#6B6480]">
+          <div className="flex items-center justify-between text-muted">
             <span>{t("orders.subtotal")}</span>
             <span>{formatCents(order.subtotal_cents)}</span>
           </div>
-          <div className="flex items-center justify-between text-emerald-600">
+          <div className="flex items-center justify-between text-success-fg">
             <span>
               {order.coupon_code
                 ? t("orders.discountWithCode", { code: order.coupon_code })
@@ -376,7 +376,7 @@ function OrderTotals({ order }: { order: Order }) {
           </div>
         </>
       )}
-      <div className="flex items-center justify-between font-bold text-[#1C1B1F]">
+      <div className="flex items-center justify-between font-bold text-ink">
         <span>{t("orders.orderTotal")}</span>
         <span>{formatCents(order.total_cents)}</span>
       </div>
@@ -391,11 +391,11 @@ function FulfillmentSection({ order }: { order: Order }) {
 
   if (!orderHasFulfillment(order)) {
     return (
-      <div className="rounded-2xl border border-[#E5E3EE] bg-white p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
-        <h2 className="mb-3 font-semibold text-[#1C1B1F]">
+      <div className="rounded-2xl border border-edge bg-surface p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
+        <h2 className="mb-3 font-semibold text-ink">
           {t("orders.fulfillment")}
         </h2>
-        <p className="text-sm text-[#9D98B3]">{t("orders.noFulfillment")}</p>
+        <p className="text-sm text-faint">{t("orders.noFulfillment")}</p>
       </div>
     );
   }
@@ -411,37 +411,37 @@ function FulfillmentSection({ order }: { order: Order }) {
   ].filter((l): l is string => Boolean(l?.trim()));
 
   return (
-    <div className="rounded-2xl border border-[#E5E3EE] bg-white p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
-      <h2 className="mb-4 font-semibold text-[#1C1B1F]">
+    <div className="rounded-2xl border border-edge bg-surface p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
+      <h2 className="mb-4 font-semibold text-ink">
         {t("orders.fulfillment")}
       </h2>
       <dl className="space-y-3 text-sm">
         {order.recipient_name && (
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-faint">
               {t("orders.recipientName")}
             </dt>
-            <dd className="mt-1 font-medium text-[#1C1B1F]">
+            <dd className="mt-1 font-medium text-ink">
               {order.recipient_name}
             </dd>
           </div>
         )}
         {order.recipient_phone && (
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-faint">
               {t("orders.recipientPhone")}
             </dt>
-            <dd className="mt-1 font-medium text-[#1C1B1F]">
+            <dd className="mt-1 font-medium text-ink">
               {formatPhoneDisplay(order.recipient_phone)}
             </dd>
           </div>
         )}
         {addrLines.length > 0 && (
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-faint">
               {t("orders.shippingAddress")}
             </dt>
-            <dd className="mt-1 space-y-0.5 text-[#1C1B1F]">
+            <dd className="mt-1 space-y-0.5 text-ink">
               {addrLines.map((line) => (
                 <p key={line}>{line}</p>
               ))}
@@ -465,43 +465,43 @@ function MetaSection({ order }: { order: Order }) {
     minute: "2-digit",
   };
   return (
-    <div className="rounded-2xl border border-[#E5E3EE] bg-white p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
-      <h2 className="mb-4 font-semibold text-[#1C1B1F]">
+    <div className="rounded-2xl border border-edge bg-surface p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
+      <h2 className="mb-4 font-semibold text-ink">
         {t("orderDetail.meta")}
       </h2>
       <dl className="space-y-3 text-sm">
         <div>
-          <dt className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+          <dt className="text-xs font-semibold uppercase tracking-wide text-faint">
             {t("orderDetail.createdAt")}
           </dt>
-          <dd className="mt-1 text-[#1C1B1F]">
+          <dd className="mt-1 text-ink">
             {formatDate(order.created_at, dateOpts)}
           </dd>
         </div>
         <div>
-          <dt className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+          <dt className="text-xs font-semibold uppercase tracking-wide text-faint">
             {t("orderDetail.updatedAt")}
           </dt>
-          <dd className="mt-1 text-[#1C1B1F]">
+          <dd className="mt-1 text-ink">
             {formatDate(order.updated_at, dateOpts)}
           </dd>
         </div>
         {order.payment_id && (
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-faint">
               {t("orderDetail.paymentId")}
             </dt>
-            <dd className="mt-1 break-all font-mono text-xs text-[#6B6480]">
+            <dd className="mt-1 break-all font-mono text-xs text-muted">
               {order.payment_id}
             </dd>
           </div>
         )}
         {order.reservation_id && (
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-faint">
               {t("orderDetail.reservationId")}
             </dt>
-            <dd className="mt-1 break-all font-mono text-xs text-[#6B6480]">
+            <dd className="mt-1 break-all font-mono text-xs text-muted">
               {order.reservation_id}
             </dd>
           </div>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useI18n } from "~/lib/i18n";
 import { LanguageSwitcher } from "~/lib/i18n/LanguageSwitcher";
+import { ThemeSwitcher } from "~/lib/ThemeSwitcher";
 import { useNotify } from "~/lib/notifications";
 import {
   APP_BUILD_NUMBER,
@@ -111,10 +112,10 @@ export default function Settings() {
     <div className="space-y-8 max-w-2xl">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">
+        <h1 className="text-xl font-bold text-ink sm:text-2xl">
           {t("settings.title")}
         </h1>
-        <p className="mt-0.5 text-sm text-[#6B6480]">
+        <p className="mt-0.5 text-sm text-muted">
           {t("settings.subtitle")}
         </p>
       </div>
@@ -149,9 +150,14 @@ export default function Settings() {
 
           <div className="space-y-1.5">
             <LanguageSwitcher />
-            <p className="text-xs text-[#9D98B3]">
+            <p className="text-xs text-faint">
               {t("settings.languageDesc")}
             </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <ThemeSwitcher />
+            <p className="text-xs text-faint">{t("settings.themeDesc")}</p>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -188,12 +194,12 @@ export default function Settings() {
             </Field>
           </div>
 
-          <div className="flex flex-col gap-3 rounded-xl border border-[#E5E3EE] bg-[#FAFAFA] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 rounded-xl border border-edge bg-subtle px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-medium text-[#1C1B1F]">
+              <p className="text-sm font-medium text-ink">
                 {t("settings.maintenanceMode")}
               </p>
-              <p className="text-xs text-[#9D98B3]">
+              <p className="text-xs text-faint">
                 {t("settings.maintenanceModeDesc")}
               </p>
             </div>
@@ -209,7 +215,7 @@ export default function Settings() {
             <button
               type="submit"
               disabled={savingSite}
-              className="rounded-xl bg-[#6D4AFF] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#5A38E8] disabled:opacity-60"
+              className="rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-accent-hover disabled:opacity-60"
             >
               {savingSite ? t("settings.saving") : t("settings.saveChanges")}
             </button>
@@ -226,11 +232,11 @@ export default function Settings() {
           {notifItems.map(({ key, label, desc }) => (
             <div
               key={key}
-              className="flex flex-col gap-3 rounded-xl border border-[#E5E3EE] bg-[#FAFAFA] px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-3 rounded-xl border border-edge bg-subtle px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
             >
               <div>
-                <p className="text-sm font-medium text-[#1C1B1F]">{label}</p>
-                <p className="text-xs text-[#9D98B3]">{desc}</p>
+                <p className="text-sm font-medium text-ink">{label}</p>
+                <p className="text-xs text-faint">{desc}</p>
               </div>
               <Toggle
                 enabled={notif[key]}
@@ -243,7 +249,7 @@ export default function Settings() {
             <button
               type="submit"
               disabled={savingNotif}
-              className="rounded-xl bg-[#6D4AFF] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#5A38E8] disabled:opacity-60"
+              className="rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-accent-hover disabled:opacity-60"
             >
               {savingNotif
                 ? t("settings.saving")
@@ -260,26 +266,26 @@ export default function Settings() {
       >
         <dl className="grid gap-4 sm:grid-cols-3">
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-muted">
               {t("settings.appVersion")}
             </dt>
-            <dd className="mt-1 font-mono text-sm tabular-nums text-[#1C1B1F]">
+            <dd className="mt-1 font-mono text-sm tabular-nums text-ink">
               {APP_VERSION}
             </dd>
           </div>
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-muted">
               {t("settings.buildNumber")}
             </dt>
-            <dd className="mt-1 font-mono text-sm tabular-nums text-[#1C1B1F]">
+            <dd className="mt-1 font-mono text-sm tabular-nums text-ink">
               {APP_BUILD_NUMBER}
             </dd>
           </div>
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-muted">
               {t("settings.gitCommit")}
             </dt>
-            <dd className="mt-1 font-mono text-sm tabular-nums text-[#1C1B1F]">
+            <dd className="mt-1 font-mono text-sm tabular-nums text-ink">
               {shortGitSha()}
             </dd>
           </div>
@@ -291,7 +297,7 @@ export default function Settings() {
         title={t("settings.sectionDanger")}
         description={t("settings.sectionDangerDesc")}
       >
-        <div className="rounded-xl border border-red-200 bg-red-50 p-5">
+        <div className="rounded-xl border border-red-200 bg-danger-bg p-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-red-900">
@@ -303,7 +309,7 @@ export default function Settings() {
             </div>
             <button
               type="button"
-              className="shrink-0 rounded-xl border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50"
+              className="shrink-0 rounded-xl border border-red-300 bg-surface px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-danger-bg"
               onClick={() => alert(t("settings.notImplementedDemo"))}
             >
               {t("settings.clearData")}
@@ -325,10 +331,10 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-[#E5E3EE] bg-white p-6 shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
-      <div className="mb-5 border-b border-[#E5E3EE] pb-4">
-        <h2 className="font-bold text-[#1C1B1F]">{title}</h2>
-        <p className="mt-0.5 text-xs text-[#9D98B3]">{description}</p>
+    <div className="rounded-2xl border border-edge bg-surface p-6 shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
+      <div className="mb-5 border-b border-edge pb-4">
+        <h2 className="font-bold text-ink">{title}</h2>
+        <p className="mt-0.5 text-xs text-faint">{description}</p>
       </div>
       {children}
     </div>
@@ -344,7 +350,7 @@ function Field({
 }) {
   return (
     <div className="space-y-1.5">
-      <label className="block text-xs font-semibold uppercase tracking-wide text-[#6B6480]">
+      <label className="block text-xs font-semibold uppercase tracking-wide text-muted">
         {label}
       </label>
       {children}
@@ -367,12 +373,12 @@ function Toggle({
       onClick={() => onChange(!enabled)}
       className={[
         "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200",
-        enabled ? "bg-[#6D4AFF]" : "bg-[#D1CDE6]",
+        enabled ? "bg-accent" : "bg-edge",
       ].join(" ")}
     >
       <span
         className={[
-          "pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform duration-200",
+          "pointer-events-none inline-block h-4 w-4 rounded-full bg-surface shadow transition-transform duration-200",
           enabled ? "translate-x-4" : "translate-x-0",
         ].join(" ")}
       />
@@ -381,4 +387,4 @@ function Toggle({
 }
 
 const inputCls =
-  "w-full rounded-xl border border-[#E5E3EE] bg-[#F8F7FC] px-4 py-2.5 text-sm text-[#1C1B1F] outline-none transition placeholder:text-[#B4B0C8] focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/20";
+  "w-full rounded-xl border border-edge bg-panel px-4 py-2.5 text-sm text-ink outline-none transition placeholder:text-soft focus:border-accent focus:ring-2 focus:ring-accent/20";

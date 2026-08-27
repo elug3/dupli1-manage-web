@@ -19,7 +19,7 @@ export function meta() {
 }
 
 const inputCls =
-  "w-full rounded-xl border border-[#E5E3EE] bg-[#F8F7FC] px-4 py-2.5 text-sm text-[#1C1B1F] outline-none transition placeholder:text-[#B4B0C8] focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/20";
+  "w-full rounded-xl border border-edge bg-panel px-4 py-2.5 text-sm text-ink outline-none transition placeholder:text-soft focus:border-accent focus:ring-2 focus:ring-accent/20";
 
 const STATUS_TAB_VALUES: (TelegramSubscriptionStatus | "all")[] = [
   "all",
@@ -255,15 +255,15 @@ export default function Telegram() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">
+        <h1 className="text-xl font-bold text-ink sm:text-2xl">
           {t("telegram.title")}
         </h1>
-        <p className="mt-0.5 text-sm text-[#6B6480]">{t("telegram.subtitle")}</p>
+        <p className="mt-0.5 text-sm text-muted">{t("telegram.subtitle")}</p>
       </div>
 
       {settings?.features && (
-        <div className="rounded-2xl border border-[#E5E3EE] bg-white p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+        <div className="rounded-2xl border border-edge bg-surface p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
+          <p className="text-xs font-semibold uppercase tracking-wide text-faint">
             {t("telegram.serviceStatus")}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -278,14 +278,14 @@ export default function Telegram() {
                   className={[
                     "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium",
                     on
-                      ? "bg-emerald-50 text-emerald-700"
-                      : "bg-[#F4F3F8] text-[#9D98B3]",
+                      ? "bg-success-bg text-success-fg"
+                      : "bg-page text-faint",
                   ].join(" ")}
                 >
                   <span
                     className={[
                       "h-1.5 w-1.5 rounded-full",
-                      on ? "bg-emerald-500" : "bg-[#C6C2D6]",
+                      on ? "bg-emerald-500" : "bg-edge",
                     ].join(" ")}
                   />
                   {t(labelKey)}
@@ -298,13 +298,13 @@ export default function Telegram() {
 
       <form
         onSubmit={handleAdd}
-        className="grid gap-4 rounded-2xl border border-[#E5E3EE] bg-white p-6 shadow-[0_1px_4px_rgba(28,27,31,0.04)] sm:grid-cols-3"
+        className="grid gap-4 rounded-2xl border border-edge bg-surface p-6 shadow-[0_1px_4px_rgba(28,27,31,0.04)] sm:grid-cols-3"
       >
         <div className="sm:col-span-3">
-          <h2 className="text-sm font-semibold text-[#1C1B1F]">
+          <h2 className="text-sm font-semibold text-ink">
             {t("telegram.addTitle")}
           </h2>
-          <p className="mt-0.5 text-xs text-[#6B6480]">{t("telegram.addHint")}</p>
+          <p className="mt-0.5 text-xs text-muted">{t("telegram.addHint")}</p>
         </div>
         <Field label={t("telegram.fieldUserId")} id="telegram-user-id">
           <input
@@ -350,7 +350,7 @@ export default function Telegram() {
           <button
             type="submit"
             disabled={adding}
-            className="rounded-xl bg-[#6D4AFF] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#5A38E8] disabled:opacity-60"
+            className="rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-accent-hover disabled:opacity-60"
           >
             {adding ? t("telegram.adding") : t("telegram.add")}
           </button>
@@ -358,13 +358,13 @@ export default function Telegram() {
       </form>
 
       {error && (
-        <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+        <div className="rounded-xl bg-danger-bg px-4 py-3 text-sm text-danger-fg">
           {error}
         </div>
       )}
 
       <div className="-mx-1 overflow-x-auto px-1 pb-1">
-        <div className="flex w-max max-w-full flex-wrap gap-1 rounded-xl border border-[#E5E3EE] bg-white p-1 shadow-[0_1px_3px_rgba(28,27,31,0.04)] sm:w-fit">
+        <div className="flex w-max max-w-full flex-wrap gap-1 rounded-xl border border-edge bg-surface p-1 shadow-[0_1px_3px_rgba(28,27,31,0.04)] sm:w-fit">
           {STATUS_TAB_VALUES.map((value) => {
             const count =
               value === "all" ? subscriptions.length : (counts[value] ?? 0);
@@ -376,8 +376,8 @@ export default function Telegram() {
                 className={[
                   "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition",
                   activeTab === value
-                    ? "bg-[#6D4AFF] text-white shadow-sm"
-                    : "text-[#6B6480] hover:bg-[#F4F3F8] hover:text-[#1C1B1F]",
+                    ? "bg-accent text-white shadow-sm"
+                    : "text-muted hover:bg-page hover:text-ink",
                 ].join(" ")}
               >
                 {statusTabLabel(value)}
@@ -387,7 +387,7 @@ export default function Telegram() {
                       "rounded-full px-1.5 py-0.5 text-[10px] font-bold",
                       activeTab === value
                         ? "bg-white/20 text-white"
-                        : "bg-[#F4F3F8] text-[#6B6480]",
+                        : "bg-page text-muted",
                     ].join(" ")}
                   >
                     {count}
@@ -399,31 +399,31 @@ export default function Telegram() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-[#E5E3EE] bg-white shadow-[0_1px_4px_rgba(28,27,31,0.04)] overflow-hidden">
+      <div className="rounded-2xl border border-edge bg-surface shadow-[0_1px_4px_rgba(28,27,31,0.04)] overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#6D4AFF] border-t-transparent" />
+            <div className="h-7 w-7 animate-spin rounded-full border-2 border-accent border-t-transparent" />
           </div>
         ) : subscriptions.length === 0 ? (
           <div className="px-5 py-16 text-center">
-            <p className="text-[#9D98B3]">{t("telegram.noSubscriptions")}</p>
-            <p className="mt-1 text-sm text-[#B4B0C8]">
+            <p className="text-faint">{t("telegram.noSubscriptions")}</p>
+            <p className="mt-1 text-sm text-soft">
               {t("telegram.noSubscriptionsHint")}
             </p>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="px-5 py-16 text-center text-[#9D98B3]">
+          <div className="px-5 py-16 text-center text-faint">
             {t("telegram.noSubscriptionsInStatus")}
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[#F0EEF8] bg-[#FAFAFA] text-left">
+                <tr className="border-b border-edge-soft bg-subtle text-left">
                   {headers.map((h, i) => (
                     <th
                       key={h || `actions-${i}`}
-                      className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-[#9D98B3]"
+                      className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-faint"
                     >
                       {h}
                     </th>
@@ -437,20 +437,20 @@ export default function Telegram() {
                   return (
                     <tr
                       key={sub.id}
-                      className="border-b border-[#F0EEF8] last:border-0 hover:bg-[#FAFAFA]"
+                      className="border-b border-edge-soft last:border-0 hover:bg-subtle"
                     >
                       <td className="px-5 py-3.5">
-                        <span className="block font-mono text-xs font-semibold text-[#1C1B1F]">
+                        <span className="block font-mono text-xs font-semibold text-ink">
                           {sub.chat_id || t("common.emptyValue")}
                         </span>
                         {(sub.chat_label || sub.username) && (
-                          <span className="block text-xs text-[#6B6480]">
+                          <span className="block text-xs text-muted">
                             {sub.chat_label ||
                               (sub.username ? `@${sub.username}` : "")}
                           </span>
                         )}
                       </td>
-                      <td className="px-5 py-3.5 font-mono text-xs text-[#6B6480]">
+                      <td className="px-5 py-3.5 font-mono text-xs text-muted">
                         {sub.telegram_user_id ?? t("common.emptyValue")}
                       </td>
                       <td className="px-5 py-3.5">
@@ -484,7 +484,7 @@ export default function Telegram() {
                           />
                         </div>
                       </td>
-                      <td className="px-5 py-3.5 text-xs text-[#9D98B3]">
+                      <td className="px-5 py-3.5 text-xs text-faint">
                         {formatDateTime(sub.created_at, {
                           month: "short",
                           day: "numeric",
@@ -501,7 +501,7 @@ export default function Telegram() {
                                 type="button"
                                 disabled={busyId === sub.id}
                                 onClick={() => handleAccept(sub)}
-                                className="rounded-lg border border-[#E5E3EE] px-3 py-1.5 text-xs font-semibold text-[#6B6480] transition hover:border-[#6D4AFF]/40 hover:bg-[#F8F7FC] hover:text-[#6D4AFF] disabled:opacity-50"
+                                className="rounded-lg border border-edge px-3 py-1.5 text-xs font-semibold text-muted transition hover:border-accent/40 hover:bg-panel hover:text-accent disabled:opacity-50"
                               >
                                 {t("telegram.accept")}
                               </button>
@@ -509,7 +509,7 @@ export default function Telegram() {
                                 type="button"
                                 disabled={busyId === sub.id}
                                 onClick={() => handleReject(sub)}
-                                className="rounded-lg border border-[#E5E3EE] px-3 py-1.5 text-xs font-semibold text-[#6B6480] transition hover:bg-[#F4F3F8] disabled:opacity-50"
+                                className="rounded-lg border border-edge px-3 py-1.5 text-xs font-semibold text-muted transition hover:bg-page disabled:opacity-50"
                               >
                                 {t("telegram.reject")}
                               </button>
@@ -519,7 +519,7 @@ export default function Telegram() {
                             type="button"
                             disabled={busyId === sub.id}
                             onClick={() => handleDelete(sub)}
-                            className="text-xs font-semibold text-red-600 hover:underline disabled:opacity-50"
+                            className="text-xs font-semibold text-danger-fg hover:underline disabled:opacity-50"
                           >
                             {t("telegram.delete")}
                           </button>
@@ -552,7 +552,7 @@ function AlertChip({
 }) {
   const cls = [
     "rounded-full px-2.5 py-1 text-xs font-semibold",
-    on ? "bg-[#6D4AFF]/10 text-[#6D4AFF]" : "bg-[#F4F3F8] text-[#9D98B3]",
+    on ? "bg-accent/10 text-accent" : "bg-page text-faint",
   ].join(" ");
 
   if (!editable) return <span className={cls}>{label}</span>;
@@ -582,13 +582,13 @@ function Checkbox({
   onChange: (next: boolean) => void;
 }) {
   return (
-    <label htmlFor={id} className="flex items-center gap-2 text-sm text-[#1C1B1F]">
+    <label htmlFor={id} className="flex items-center gap-2 text-sm text-ink">
       <input
         id={id}
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="size-4 rounded border-[#E5E3EE] text-[#6D4AFF] focus:ring-[#6D4AFF]/20"
+        className="size-4 rounded border-edge text-accent focus:ring-accent/20"
       />
       {label}
     </label>
@@ -608,7 +608,7 @@ function Field({
     <div className="space-y-1.5">
       <label
         htmlFor={id}
-        className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]"
+        className="text-xs font-semibold uppercase tracking-wide text-muted"
       >
         {label}
       </label>

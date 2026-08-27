@@ -22,7 +22,7 @@ export function meta() {
 type DetailTab = "state" | "credentials" | "permissions";
 
 const inputCls =
-  "w-full rounded-xl border border-[#E5E3EE] bg-[#F8F7FC] px-4 py-2.5 text-sm text-[#1C1B1F] outline-none transition placeholder:text-[#B4B0C8] focus:border-[#6D4AFF] focus:ring-2 focus:ring-[#6D4AFF]/20";
+  "w-full rounded-xl border border-edge bg-panel px-4 py-2.5 text-sm text-ink outline-none transition placeholder:text-soft focus:border-accent focus:ring-2 focus:ring-accent/20";
 
 export default function UserDetail() {
   const { id } = useParams();
@@ -69,7 +69,7 @@ export default function UserDetail() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-32">
-        <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#6D4AFF] border-t-transparent" />
+        <div className="h-7 w-7 animate-spin rounded-full border-2 border-accent border-t-transparent" />
       </div>
     );
   }
@@ -77,10 +77,10 @@ export default function UserDetail() {
   if (error || !user) {
     return (
       <div className="space-y-4">
-        <Link to="/users" className="text-sm text-[#6D4AFF] hover:underline">
+        <Link to="/users" className="text-sm text-accent hover:underline">
           {t("userDetail.backToUsers")}
         </Link>
-        <div className="rounded-2xl border border-[#E5E3EE] bg-white p-10 text-center text-[#6B6480]">
+        <div className="rounded-2xl border border-edge bg-surface p-10 text-center text-muted">
           {error ?? t("userDetail.userNotFound")}
         </div>
       </div>
@@ -101,21 +101,21 @@ export default function UserDetail() {
 
   return (
     <div className="space-y-6">
-      <Link to="/users" className="text-sm text-[#6D4AFF] hover:underline">
+      <Link to="/users" className="text-sm text-accent hover:underline">
         {t("userDetail.backToUsers")}
       </Link>
 
-      <div className="rounded-2xl border border-[#E5E3EE] bg-white p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)] sm:p-8">
-        <h1 className="text-2xl font-bold text-[#1C1B1F]">{user.email}</h1>
-        <p className="mt-1 font-mono text-sm text-[#6B6480]">{user.user_id}</p>
-        <p className="mt-2 text-sm text-[#6B6480]">
+      <div className="rounded-2xl border border-edge bg-surface p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)] sm:p-8">
+        <h1 className="text-2xl font-bold text-ink">{user.email}</h1>
+        <p className="mt-1 font-mono text-sm text-muted">{user.user_id}</p>
+        <p className="mt-2 text-sm text-muted">
           {t("userDetail.accountTypeAndPermissions", {
             accountType: user.account_type,
             permissions: formatPermissions(user.permissions),
           })}
         </p>
 
-        <div className="mt-6 flex flex-wrap gap-2 border-b border-[#F0EEF8] pb-4">
+        <div className="mt-6 flex flex-wrap gap-2 border-b border-edge-soft pb-4">
           {detailTabs.map((tab) => (
             <button
               key={tab.value}
@@ -123,8 +123,8 @@ export default function UserDetail() {
               className={[
                 "rounded-full px-4 py-1.5 text-sm font-medium transition",
                 activeTab === tab.value
-                  ? "bg-[#6D4AFF] text-white"
-                  : "border border-[#E5E3EE] bg-white text-[#6B6480] hover:border-[#6D4AFF]/40",
+                  ? "bg-accent text-white"
+                  : "border border-edge bg-surface text-muted hover:border-accent/40",
               ].join(" ")}
             >
               {t(tab.labelKey)}
@@ -199,16 +199,16 @@ function StateTab({
       <dl className="grid gap-4 sm:grid-cols-2">
         {fields.map(([label, value]) => (
           <div key={label}>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-faint">
               {label}
             </dt>
-            <dd className="mt-1 text-sm text-[#1C1B1F]">{value}</dd>
+            <dd className="mt-1 text-sm text-ink">{value}</dd>
           </div>
         ))}
       </dl>
 
-      <div className="rounded-xl border border-[#E5E3EE] bg-[#FAFAFA] p-4">
-        <p className="text-sm text-[#6B6480]">{t("userDetail.stateHint")}</p>
+      <div className="rounded-xl border border-edge bg-subtle p-4">
+        <p className="text-sm text-muted">{t("userDetail.stateHint")}</p>
         <button
           type="button"
           onClick={handleToggle}
@@ -265,12 +265,12 @@ function CredentialsTab({ userId }: { userId: string }) {
 
   return (
     <form onSubmit={handleSubmit} className="mx-auto max-w-md space-y-4">
-      <p className="text-sm text-[#6B6480]">{t("userDetail.credentialsHint")}</p>
+      <p className="text-sm text-muted">{t("userDetail.credentialsHint")}</p>
 
       <div className="space-y-1.5">
         <label
           htmlFor="password"
-          className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]"
+          className="text-xs font-semibold uppercase tracking-wide text-muted"
         >
           {t("userDetail.newPassword")}
         </label>
@@ -288,7 +288,7 @@ function CredentialsTab({ userId }: { userId: string }) {
       <div className="space-y-1.5">
         <label
           htmlFor="confirm-password"
-          className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]"
+          className="text-xs font-semibold uppercase tracking-wide text-muted"
         >
           {t("userDetail.confirmPassword")}
         </label>
@@ -306,7 +306,7 @@ function CredentialsTab({ userId }: { userId: string }) {
       <button
         type="submit"
         disabled={saving}
-        className="rounded-xl bg-[#6D4AFF] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#5A38E8] disabled:opacity-60"
+        className="rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-accent-hover disabled:opacity-60"
       >
         {saving ? t("common.saving") : t("userDetail.updatePassword")}
       </button>
@@ -376,12 +376,12 @@ function PermissionsTab({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <p className="text-sm text-[#6B6480]">{t("userDetail.permissionsHint")}</p>
+      <p className="text-sm text-muted">{t("userDetail.permissionsHint")}</p>
 
       <div className="space-y-1.5">
         <label
           htmlFor="account-type"
-          className="text-xs font-semibold uppercase tracking-wide text-[#6B6480]"
+          className="text-xs font-semibold uppercase tracking-wide text-muted"
         >
           {t("userDetail.accountType")}
         </label>
@@ -403,13 +403,13 @@ function PermissionsTab({
         {ALL_PERMISSIONS.map((permission) => (
           <label
             key={permission}
-            className="flex cursor-pointer items-center gap-3 rounded-xl border border-[#E5E3EE] bg-[#FAFAFA] px-4 py-3 text-sm text-[#1C1B1F]"
+            className="flex cursor-pointer items-center gap-3 rounded-xl border border-edge bg-subtle px-4 py-3 text-sm text-ink"
           >
             <input
               type="checkbox"
               checked={selectedPermissions.includes(permission)}
               onChange={() => togglePermission(permission)}
-              className="size-4 rounded border-[#C8C4D8] text-[#6D4AFF] focus:ring-[#6D4AFF]/20"
+              className="size-4 rounded border-[#C8C4D8] text-accent focus:ring-accent/20"
             />
             <span className="font-mono text-xs font-medium">
               {permission}
@@ -421,7 +421,7 @@ function PermissionsTab({
       <button
         type="submit"
         disabled={saving}
-        className="rounded-xl bg-[#6D4AFF] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#5A38E8] disabled:opacity-60"
+        className="rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-accent-hover disabled:opacity-60"
       >
         {saving ? t("common.saving") : t("userDetail.savePermissions")}
       </button>

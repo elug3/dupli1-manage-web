@@ -96,16 +96,16 @@ export default function Orders() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-bold text-[#1C1B1F] sm:text-2xl">
+        <h1 className="text-xl font-bold text-ink sm:text-2xl">
           {t("orders.title")}
         </h1>
-        <p className="mt-0.5 text-sm text-[#6B6480]">
+        <p className="mt-0.5 text-sm text-muted">
           {t("orders.ordersTotal", { count: orders.length })}
         </p>
       </div>
 
       {error && (
-        <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+        <div className="rounded-xl bg-danger-bg px-4 py-3 text-sm text-danger-fg">
           {error}
         </div>
       )}
@@ -113,7 +113,7 @@ export default function Orders() {
       {/* Search */}
       <div className="relative">
         <svg
-          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#9D98B3]"
+          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-faint"
           viewBox="0 0 24 24"
           fill="none"
         >
@@ -136,13 +136,13 @@ export default function Orders() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t("orders.searchPlaceholder")}
-          className="w-full rounded-xl border border-[#E5E3EE] bg-white py-2.5 pl-9 pr-4 text-sm text-[#1C1B1F] placeholder:text-[#9D98B3] focus:border-[#6D4AFF] focus:outline-none focus:ring-1 focus:ring-[#6D4AFF]/30"
+          className="w-full rounded-xl border border-edge bg-surface py-2.5 pl-9 pr-4 text-sm text-ink placeholder:text-faint focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/30"
         />
       </div>
 
       {/* Status tabs */}
       <div className="-mx-1 overflow-x-auto px-1 pb-1">
-        <div className="flex w-max max-w-full flex-wrap gap-1 rounded-xl border border-[#E5E3EE] bg-white p-1 shadow-[0_1px_3px_rgba(28,27,31,0.04)] sm:w-fit">
+        <div className="flex w-max max-w-full flex-wrap gap-1 rounded-xl border border-edge bg-surface p-1 shadow-[0_1px_3px_rgba(28,27,31,0.04)] sm:w-fit">
           {STATUS_TAB_VALUES.map((value) => {
             const count =
               value === "all" ? orders.length : (counts[value] ?? 0);
@@ -153,8 +153,8 @@ export default function Orders() {
                 className={[
                   "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition",
                   activeTab === value
-                    ? "bg-[#6D4AFF] text-white shadow-sm"
-                    : "text-[#6B6480] hover:bg-[#F4F3F8] hover:text-[#1C1B1F]",
+                    ? "bg-accent text-white shadow-sm"
+                    : "text-muted hover:bg-page hover:text-ink",
                 ].join(" ")}
               >
                 {statusTabLabel(value)}
@@ -164,7 +164,7 @@ export default function Orders() {
                       "rounded-full px-1.5 py-0.5 text-[10px] font-bold",
                       activeTab === value
                         ? "bg-white/20 text-white"
-                        : "bg-[#F4F3F8] text-[#6B6480]",
+                        : "bg-page text-muted",
                     ].join(" ")}
                   >
                     {count}
@@ -177,19 +177,19 @@ export default function Orders() {
       </div>
 
       {/* Orders list */}
-      <div className="overflow-hidden rounded-2xl border border-[#E5E3EE] bg-white shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
+      <div className="overflow-hidden rounded-2xl border border-edge bg-surface shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#6D4AFF] border-t-transparent" />
+            <div className="h-7 w-7 animate-spin rounded-full border-2 border-accent border-t-transparent" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="px-5 py-16 text-center text-[#9D98B3]">
+          <div className="px-5 py-16 text-center text-faint">
             {q ? t("orders.noMatchingOrders") : t("orders.noOrdersInStatus")}
           </div>
         ) : (
           <>
             {/* Mobile cards */}
-            <div className="divide-y divide-[#F0EEF8] md:hidden">
+            <div className="divide-y divide-edge-soft md:hidden">
               {filtered.map((order) => (
                 <OrderCard key={order.id} order={order} />
               ))}
@@ -199,7 +199,7 @@ export default function Orders() {
             <div className="hidden overflow-x-auto md:block">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-[#F0EEF8] bg-[#FAFAFA]">
+                  <tr className="border-b border-edge-soft bg-subtle">
                     {(
                       [
                         t("orders.colOrderId"),
@@ -212,7 +212,7 @@ export default function Orders() {
                     ).map((label) => (
                       <th
                         key={label}
-                        className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#9D98B3]"
+                        className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-faint"
                       >
                         {label}
                       </th>
@@ -238,25 +238,25 @@ function OrderCard({ order }: { order: Order }) {
   return (
     <Link
       to={`/orders/${encodeURIComponent(order.id)}`}
-      className="block p-4 transition hover:bg-[#FAFAFA] active:bg-[#F4F3F8]"
+      className="block p-4 transition hover:bg-subtle active:bg-page"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate font-mono text-xs font-semibold text-[#1C1B1F]">
+          <p className="truncate font-mono text-xs font-semibold text-ink">
             {order.id}
           </p>
-          <p className="mt-1 text-sm text-[#6B6480]">{order.customer_id}</p>
+          <p className="mt-1 text-sm text-muted">{order.customer_id}</p>
         </div>
         <OrderStatusBadge status={order.status} />
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-        <span className="font-semibold text-[#1C1B1F]">
+        <span className="font-semibold text-ink">
           {formatCents(order.total_cents)}
         </span>
-        <span className="text-[#6B6480]">
+        <span className="text-muted">
           {t("common.itemCount", { count: order.items.length })}
         </span>
-        <span className="text-xs text-[#9D98B3]">
+        <span className="text-xs text-faint">
           {formatDate(order.created_at, {
             month: "short",
             day: "numeric",
@@ -273,25 +273,25 @@ function OrderRow({ order }: { order: Order }) {
   const navigate = useNavigate();
   return (
     <tr
-      className="cursor-pointer border-b border-[#F0EEF8] transition-colors last:border-0 hover:bg-[#FAFAFA]"
+      className="cursor-pointer border-b border-edge-soft transition-colors last:border-0 hover:bg-subtle"
       onClick={() => navigate(`/orders/${encodeURIComponent(order.id)}`)}
     >
       <td className="px-5 py-3.5">
-        <span className="font-mono text-xs font-semibold text-[#1C1B1F]">
+        <span className="font-mono text-xs font-semibold text-ink">
           {order.id}
         </span>
       </td>
-      <td className="px-5 py-3.5 text-[#1C1B1F]">{order.customer_id}</td>
-      <td className="px-5 py-3.5 text-[#6B6480]">
+      <td className="px-5 py-3.5 text-ink">{order.customer_id}</td>
+      <td className="px-5 py-3.5 text-muted">
         {t("common.itemCount", { count: order.items.length })}
       </td>
-      <td className="px-5 py-3.5 font-semibold text-[#1C1B1F]">
+      <td className="px-5 py-3.5 font-semibold text-ink">
         {formatCents(order.total_cents)}
       </td>
       <td className="px-5 py-3.5">
         <OrderStatusBadge status={order.status} />
       </td>
-      <td className="px-5 py-3.5 text-xs text-[#9D98B3]">
+      <td className="px-5 py-3.5 text-xs text-faint">
         {formatDate(order.created_at, {
           month: "short",
           day: "numeric",
