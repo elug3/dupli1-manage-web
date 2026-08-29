@@ -3,8 +3,12 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif,
-    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  /* English/Latin → Cascadia Code; Korean Hangul → Noto Sans KR (no Cascadia glyphs). */
+  --font-sans: "Cascadia Code", "Noto Sans KR", ui-sans-serif, system-ui,
+    sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+    "Noto Color Emoji";
+  --font-mono: "Cascadia Code", ui-monospace, SFMono-Regular, Menlo, Monaco,
+    Consolas, "Liberation Mono", "Courier New", monospace;
 
   --color-page: var(--dupli-page);
   --color-surface: var(--dupli-surface);
@@ -73,7 +77,7 @@
 
 html,
 body {
-  @apply bg-page text-ink;
+  @apply bg-page font-sans text-ink;
 }
 
 html {
