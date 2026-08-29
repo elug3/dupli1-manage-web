@@ -151,6 +151,29 @@ export const zhCN: Messages = {
     noBrand: "无品牌",
     variantCount_one: "{count} 个变体",
     variantCount_other: "{count} 个变体",
+    exportZip: "导出 ZIP",
+    importZip: "导入 ZIP",
+    transferExportTitle: "导出商品",
+    transferImportTitle: "导入商品",
+    transferExportConfirm: "导出当前筛选条件下的 {count} 个商品（含图片）？",
+    transferExportLargeConfirm:
+      "导出 {count} 个商品？大批量导出可能较慢或占用较多内存。",
+    transferNothingToExport: "当前筛选条件下没有商品。",
+    transferExportDone: "已导出 {count} 个商品。",
+    transferExportFailed: "导出失败",
+    transferImportFailed: "导入失败",
+    transferMasterGaps: "缺少目录主数据代码。请先在「目录」中添加后再导入。",
+    transferOpenCatalog: "打开目录",
+    transferImages: "图片",
+    transferDryRun: "试运行",
+    transferRunImport: "导入",
+    transferCannotImport: "没有可导入项（请先修复主数据缺失或跳过项）。",
+    transferImportConfirm: "从此 ZIP 创建 {count} 个新商品？",
+    transferDryRunDone:
+      "试运行：将创建 {created}，跳过 {skipped}，失败 {failed}。",
+    transferImportDone:
+      "导入完成：已创建 {created}，跳过 {skipped}，失败 {failed}。",
+    transferDownloadLog: "下载结果日志",
   },
 
   productNew: {

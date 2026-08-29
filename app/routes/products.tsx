@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
+import { ProductTransferActions } from "~/components/ProductTransferActions";
 import {
   type CatalogCodeName,
   type Product,
@@ -211,13 +212,26 @@ export default function Products() {
             {t("products.subtitle")}
           </p>
         </div>
-        <Link
-          to="/products/new"
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-accent-hover active:scale-[0.98] sm:w-auto"
-        >
-          <PlusIcon />
-          {t("products.newProduct")}
-        </Link>
+        <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:items-end">
+          <Link
+            to="/products/new"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-accent-hover active:scale-[0.98] sm:w-auto"
+          >
+            <PlusIcon />
+            {t("products.newProduct")}
+          </Link>
+          <ProductTransferActions
+            filteredTotal={total}
+            listQuery={{
+              q: qParam || undefined,
+              category: category || undefined,
+              brand: brand || undefined,
+              status: status || undefined,
+              sort: sort || undefined,
+              order: order || undefined,
+            }}
+          />
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2">

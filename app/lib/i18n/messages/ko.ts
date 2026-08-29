@@ -151,6 +151,31 @@ export const ko: Messages = {
     noBrand: "브랜드 없음",
     variantCount_one: "{count}개 변형",
     variantCount_other: "{count}개 변형",
+    exportZip: "ZIP 내보내기",
+    importZip: "ZIP 가져오기",
+    transferExportTitle: "상품 내보내기",
+    transferImportTitle: "상품 가져오기",
+    transferExportConfirm:
+      "현재 필터에 맞는 상품 {count}개(이미지 포함)를 내보내시겠습니까?",
+    transferExportLargeConfirm:
+      "상품 {count}개를 내보내시겠습니까? 대용량 내보내기는 느리거나 메모리를 많이 사용할 수 있습니다.",
+    transferNothingToExport: "현재 필터에 맞는 상품이 없습니다.",
+    transferExportDone: "상품 {count}개를 내보냈습니다.",
+    transferExportFailed: "내보내기 실패",
+    transferImportFailed: "가져오기 실패",
+    transferMasterGaps:
+      "카탈로그 마스터 코드가 없습니다. 가져오기 전에 카탈로그에서 추가하세요.",
+    transferOpenCatalog: "카탈로그 열기",
+    transferImages: "이미지",
+    transferDryRun: "미리보기 실행",
+    transferRunImport: "가져오기",
+    transferCannotImport: "가져올 항목이 없습니다(마스터 누락 또는 건너뛰기).",
+    transferImportConfirm: "이 ZIP에서 새 상품 {count}개를 생성할까요?",
+    transferDryRunDone:
+      "미리보기: 생성 {created}, 건너뛰기 {skipped}, 실패 {failed}.",
+    transferImportDone:
+      "가져오기 완료: 생성 {created}, 건너뛰기 {skipped}, 실패 {failed}.",
+    transferDownloadLog: "결과 로그 다운로드",
   },
 
   productNew: {
