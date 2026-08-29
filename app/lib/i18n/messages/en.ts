@@ -149,6 +149,30 @@ export const en = {
     noBrand: "No brand",
     variantCount_one: "{count} variant",
     variantCount_other: "{count} variants",
+    exportZip: "Export ZIP",
+    importZip: "Import ZIP",
+    transferExportTitle: "Export products",
+    transferImportTitle: "Import products",
+    transferExportConfirm: "Export {count} product(s) matching current filters (including images)?",
+    transferExportLargeConfirm:
+      "Export {count} products? Large exports may be slow or use a lot of memory.",
+    transferNothingToExport: "No products match the current filters.",
+    transferExportDone: "Exported {count} product(s).",
+    transferExportFailed: "Export failed",
+    transferImportFailed: "Import failed",
+    transferMasterGaps:
+      "Missing catalog master codes. Add them under Catalog before importing.",
+    transferOpenCatalog: "Open Catalog",
+    transferImages: "Images",
+    transferDryRun: "Dry run",
+    transferRunImport: "Import",
+    transferCannotImport: "Nothing to import (fix master gaps or skips).",
+    transferImportConfirm: "Create {count} new product(s) from this ZIP?",
+    transferDryRunDone:
+      "Dry run: would create {created}, skip {skipped}, fail {failed}.",
+    transferImportDone:
+      "Import finished: created {created}, skipped {skipped}, failed {failed}.",
+    transferDownloadLog: "Download result log",
   },
 
   productNew: {

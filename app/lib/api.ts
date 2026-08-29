@@ -584,6 +584,38 @@ export async function listAllProducts(
   return products;
 }
 
+const EXPORT_PAGE_SIZE = 100;
+
+/**
+ * Walk every page of `GET /api/v1/products` for the given filters.
+ * Prefer this over `listAllProducts` when the catalog may exceed one page.
+ */
+export async function listAllProductsPaged(
+  query: ProductListQuery = {},
+  onPage?: (loaded: number, total: number) => void
+): Promise<Product[]> {
+  const pageSize = Math.min(query.limit ?? EXPORT_PAGE_SIZE, EXPORT_PAGE_SIZE);
+  const all: Product[] = [];
+  let offset = 0;
+  let total = Infinity;
+
+  while (offset < total) {
+    const page = await searchProducts({
+      ...query,
+      limit: pageSize,
+      offset,
+    });
+    total = page.total;
+    all.push(...page.products);
+    onPage?.(all.length, total);
+    if (page.products.length === 0) break;
+    offset += page.products.length;
+    if (page.products.length < pageSize) break;
+  }
+
+  return all;
+}
+
 export async function getProducts(): Promise<Product[]> {
   return listAllProducts();
 }
@@ -628,10 +660,15 @@ export async function uploadProductImage(
 export async function uploadVariantImage(
   productId: string,
   sku: string,
-  file: File
+  file: File | Blob,
+  filename = "image.jpg"
 ): Promise<ProductVariant> {
   const form = new FormData();
-  form.append("image", file);
+  if (file instanceof File) {
+    form.append("image", file);
+  } else {
+    form.append("image", file, filename);
+  }
   const res = await authedFetch(
     productPath(
       `/api/v1/products/${encodeURIComponent(productId)}/variants/${encodeURIComponent(sku)}/images`

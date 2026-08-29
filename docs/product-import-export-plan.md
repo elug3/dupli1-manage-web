@@ -1,8 +1,13 @@
 # Plan: Product import / export with images (manage-web)
 
-**Status:** Proposed  
+**Status:** Phase 1 implemented (client ZIP in manage-web)  
 **Repos:** `dupli1-manage-web` (primary); `dupli1` only if Phase 2 bulk APIs are approved  
 **Related:** backend [product-sku-system.md](../../dupli1/docs/product-sku-system.md), [product-images-browser-access.md](../../dupli1/docs/product-images-browser-access.md), [product-price-on-parent.md](../../dupli1/docs/product-price-on-parent.md); gallery ops scripts `dupli1/scripts/import_gallery_products.py`, `upload_product_images.py`
+
+**As-built (manage-web):**
+- `app/lib/product-transfer.ts` — ZIP build/parse, master-gap preview, create-only import
+- `app/components/ProductTransferActions.tsx` — Products toolbar Export / Import
+- `listAllProductsPaged` + Blob-aware `uploadVariantImage` in `app/lib/api.ts`
 
 ---
 
