@@ -1,266 +1,218 @@
-# Product import / export (with images)
+# Plan: Product import / export with images (manage-web)
 
-Plan for admin **export** and **import** of parent products + variants **including image files** in `dupli1-manage-web`.
+**Status:** Phase 1 implemented (client ZIP in manage-web)  
+**Repos:** `dupli1-manage-web` (primary); `dupli1` only if Phase 2 bulk APIs are approved  
+**Related:** backend [product-sku-system.md](../../dupli1/docs/product-sku-system.md), [product-images-browser-access.md](../../dupli1/docs/product-images-browser-access.md), [product-price-on-parent.md](../../dupli1/docs/product-price-on-parent.md); gallery ops scripts `dupli1/scripts/import_gallery_products.py`, `upload_product_images.py`
 
-Related contracts: [CLAUDE.md](../CLAUDE.md) (product / image APIs), backend [product-sku-system.md](../../dupli1/docs/product-sku-system.md), [product-sku-master-data-plan.md](../../dupli1/docs/product-sku-master-data-plan.md).
+**As-built (manage-web):**
+- `app/lib/product-transfer.ts` — ZIP build/parse, master-gap preview, create-only import
+- `app/components/ProductTransferActions.tsx` — Products toolbar Export / Import
+- `listAllProductsPaged` + Blob-aware `uploadVariantImage` in `app/lib/api.ts`
 
 ---
 
 ## Goal
 
-Operators can:
-
-1. **Export** selected or filtered catalog products to a downloadable package that includes metadata **and** image binaries.
-2. **Import** that package (or an equivalently structured package) to recreate products in another environment (local ↔ prod backup, staging seed, bulk onboarding).
-
-No backend bulk endpoint exists today. v1 is **client-orchestrated** over existing REST APIs.
+Let catalog managers **export** parent products + variants **including image files**, and **import** the same package (or an edited package) back into Dupli1 from the admin Products page — without hand-creating each SKU in the UI.
 
 ---
 
-## Current building blocks (already in manage-web)
+## Current state (as-built)
 
-| Need | Existing API helper |
-|------|---------------------|
-| List / detail | `searchProducts`, `getProductDetail` |
-| Create parent | `createProductParent` (requires existing `brandCode` + `styleCode`) |
-| Create variant | `createVariant` (requires existing `colorCode` + `sizeCode`) |
-| Upload images | `uploadProductImage`, `uploadVariantImage` (multipart `image`, max 50 MiB) |
-| Masters | `list*` / `createBrand` / `createStyle` / `createColor` / `createSize` / `createEdition` |
-| Same-origin image GET | `productImageSrc` + `/product-images/*` proxy |
+| Capability | Today |
+|------------|--------|
+| Create parent / variants / upload images | UI + API (`POST /products`, `POST …/variants`, `POST …/images`) |
+| Bulk import/export in manage-web | **None** |
+| Orders “Export CSV” i18n | String exists; products have no equivalent |
+| Backend bulk endpoints | **None** — list is paginated (`limit` default 50, max 100) |
+| Images | Multipart upload to MinIO/S3; `imageUrls` are absolute (local gateway or CloudFront) |
+| Parent create requirements | Existing `brandCode` + `styleCode` masters |
+| Variant create requirements | Existing `colorCode` + `sizeCode` (+ optional `editionCode`) |
+| Price | Parent only (KRW whole won) |
+| Permissions | `product.read`, `product.create`, `product.update`, `product.image.upload`, `product.master.read` |
 
-Identity constraints that shape the package:
-
-- Parent `id` and variant `skuId` are **ULIDs generated on create** — not portable as write keys.
-- Human identity is **`brandCode` + `styleCode`** (one style → one product; unique pair).
-- Human variant `sku` is composed from masters and is **immutable after create**.
-- Image URLs in the API are storage/CDN locations; export must **embed files**, not rely on absolute URLs surviving across envs.
+`listAllProducts()` in `app/lib/api.ts` does **not** page through `total` — export must add a paginated fetcher first.
 
 ---
 
-## Recommended package format
+## Recommended approach (Phase 1)
 
-**ZIP** containing a JSON manifest + an `images/` tree. Prefer ZIP over CSV: nested variants, attributes maps, and binary images fit poorly in a flat spreadsheet.
+**Client-orchestrated ZIP** in manage-web, reusing existing product APIs. No new backend routes for v1.
 
 ```text
-dupli1-products-v1.zip
-├── manifest.json
-└── images/
-    └── {brandCode}_{styleCode}/
-        ├── parent/                 # optional default-variant / parent uploads
-        │   └── 001.jpg
-        └── variants/
-            └── {colorCode}_{sizeCode}[_edition]/
-                ├── 001.jpg
-                └── 002.webp
+Export:  search/pages → GET PDP per parent → download image bytes → build ZIP
+Import:  parse ZIP → ensure/report masters → POST parent → POST variants → POST images
 ```
 
-### `manifest.json` (v1 schema sketch)
+### Why not backend bulk first?
+
+- Upload, masters, and auth already work end-to-end through the BFF session gateway.
+- Ops scripts already prove the same API sequence (create → upload images).
+- A server ZIP endpoint would need temp storage, long timeouts, and new permissions — defer until catalog size or timeouts force it.
+
+### Package format: ZIP (not CSV alone)
+
+CSV cannot carry binary images. Use:
+
+```text
+dupli1-products-export.zip
+├── manifest.json          # schemaVersion + products[]
+└── images/
+    └── {productId}/
+        └── {sku}/
+            ├── 0.jpg
+            └── 1.jpg
+```
+
+`manifest.json` is the source of truth for fields; image paths are relative to the ZIP root.
+
+**Optional later:** also emit/accept a flat `products.csv` for spreadsheet edits of non-image fields — not required for Phase 1.
+
+---
+
+## Manifest schema (draft)
 
 ```json
 {
-  "format": "dupli1-products",
-  "version": 1,
-  "exportedAt": "2026-08-29T00:00:00.000Z",
-  "source": { "gatewayHint": "optional opaque string" },
-  "masters": {
-    "brands": [{ "code": "BOT", "name": "Bottega Veneta" }],
-    "styles": [{ "brandCode": "BOT", "code": "CAS001", "name": "Cassette" }],
-    "colors": [{ "code": "BLK", "name": "Black" }],
-    "sizes": [{ "code": "OS", "name": "One Size" }],
-    "editions": []
-  },
+  "schemaVersion": 1,
+  "exportedAt": "2026-08-29T00:00:00Z",
+  "source": "dupli1-manage-web",
   "products": [
     {
+      "name": "Cassette Bag",
       "brandCode": "BOT",
       "styleCode": "CAS001",
-      "name": "Cassette",
+      "material": "Leather",
       "category": "bags",
-      "material": "leather",
       "description": "…",
       "status": "active",
-      "price": 3900000,
+      "price": 3500000,
       "officialPrice": 4200000,
       "subCategory": "handbags",
       "style": "casual",
       "target": "women",
       "attributes": { "lining": "suede" },
-      "parentImages": ["images/BOT_CAS001/parent/001.jpg"],
       "variants": [
         {
           "colorCode": "BLK",
-          "sizeCode": "OS",
-          "editionCode": "",
+          "sizeCode": "MED",
+          "editionCode": "V",
           "status": "active",
           "dimensions": { "widthMm": 230, "heightMm": 150, "depthMm": 50 },
-          "images": ["images/BOT_CAS001/variants/BLK_OS/001.jpg"]
+          "images": ["images/…/0.jpg", "images/…/1.jpg"]
         }
-      ],
-      "exportMeta": {
-        "sourceProductId": "01J…",
-        "sourceSkus": [{ "sku": "BOT_CAS001_BLK_OS", "skuId": "01J…" }]
-      }
+      ]
     }
   ]
 }
 ```
 
-Rules:
+### Identity rules
 
-- Paths in `parentImages` / `images` are **ZIP-relative**.
-- `exportMeta` is informational only (audit / debug); import **must not** require source ULIDs.
-- Omit inventory quantities in v1 (inventory is a separate service); optional later field `initialStock` if we wire `setInventory` like `products.new`.
+| Field | Export | Import |
+|-------|--------|--------|
+| Parent `id` | Include as `exportedId` (informational) | **Do not** reuse — API assigns ULID |
+| Variant `sku` / `skuId` | Include as `exportedSku` / `exportedSkuId` | **Do not** send — API composes SKU from codes |
+| Master codes | Required | Must already exist (or Phase 1.1 auto-create — see Open questions) |
+| Remote `imageUrls` | Not sufficient alone | Always re-upload file bytes via multipart |
 
-Dependency: add a small ZIP helper (e.g. `fflate` or `jszip`) — none in `package.json` today.
-
----
-
-## Export (manage-web)
-
-### UX
-
-On `/products` header (next to **New product**):
-
-- **Export** — exports current filter result, or checked rows if we add selection later.
-- Progress toast / panel: “Fetching 12/40… bundling images…”.
-
-Start with **export current search result** (cap, e.g. 100 products) to avoid huge ZIPs; add “export selected” when row checkboxes exist.
-
-### Algorithm
-
-1. Resolve product ids from current list query (`searchProducts`) or selection.
-2. For each id, `getProductDetail` (full `variants[]` + image URL lists).
-3. Collect referenced master codes; fetch names via catalog list APIs into `masters`.
-4. For each image URL: `fetch(productImageSrc(url), { credentials: "include" })` → blob → write under `images/…` with stable sequential names.
-5. Build `manifest.json`; ZIP; trigger browser download (`dupli1-products-YYYYMMDD.zip`).
-
-### Failure modes
-
-- Missing/broken image URL → record warning in a `warnings[]` sidecar or skip that file and note in UI; still export metadata.
-- CORS / proxy: always use same-origin rewritten URLs (`productImageSrc`), never raw gateway/MinIO hosts from the browser.
-- CloudFront URLs (`images.dupli1.com`) are already absolute public CDN — fetch as-is when not gateway-rewritable.
+Match on import: treat as **create-only** in Phase 1 (skip or fail if same `brandCode`+`styleCode`+variant codes already exist). Upsert is Phase 2.
 
 ---
 
-## Import (manage-web)
+## UX (manage-web)
 
-### UX
+Entry point: **Products** list header (`app/routes/products.tsx`), beside **New product**.
 
-On `/products`: **Import** opens a panel/modal:
+| Control | Behavior |
+|---------|----------|
+| **Export** | Respect current list filters (`q`, `brand`, `status`, `category`, …). Confirm “export N products”. Progress bar while paging + downloading images. Download ZIP. |
+| **Import** | File picker (`.zip`). Validate `manifest.json`. Preview table: parents, variant count, image count, master-code gaps. **Dry-run** then **Import**. Row-level success / skip / error log downloadable as JSON. |
 
-1. Choose `.zip` file.
-2. Parse + validate schema (`format` + `version`).
-3. Show summary: N products, M variants, K images; list blocking errors (unknown schema, empty products).
-4. Options:
-   - **Create missing masters** (default on) — needs `product.master.write`.
-   - **On existing `brandCode`+`styleCode`:** `skip` (default) | `fail` | `update` (phase 2).
-5. Run import with a live log (per product: created / skipped / error).
+Permissions: hide/disable Export without `product.read` (+ image fetch); Import without `product.create` + `product.image.upload`. Master gaps need `product.master.read` (and optionally link to `/catalog`).
 
-### Algorithm (create mode)
+i18n: add `products.exportZip`, `products.importZip`, progress/error strings in `en` / `ko` / `zh-CN` (mirror unused `orders.exportCsv` pattern).
 
-For each product in order:
-
-1. Ensure masters exist (create brand/style/color/size/edition if opted-in and missing).
-2. If a product already exists for `brandCode`+`styleCode` → apply conflict policy (`skip` / `fail`).
-3. `createProductParent` with merchandising + price fields.
-4. Optionally `updateProduct` for fields not accepted on create (`subCategory`, `style`, `target`, `attributes`) if create payload is narrower than update — match whatever `products.new` / detail edit already send.
-5. For each variant: `createVariant` → for each image file: `uploadVariantImage` (or `uploadProductImage` for parent-level gallery / first default variant, matching create-product flow).
-6. Continue on per-product errors; accumulate a final report (downloadable JSON optional).
-
-### Permissions
-
-| Action | Permission |
-|--------|------------|
-| Export | `product.read` (+ image GET via session gateway) |
-| Import create | `product.create`, `product.image.upload` |
-| Create masters | `product.master.write` |
-| Update existing (phase 2) | `product.update` (and variant update if needed) |
-
-Hide/disable Import when the session lacks create/upload.
-
-### Non-goals for v1
-
-- Atomic all-or-nothing transaction (no backend bulk API).
-- Preserving source ULIDs / human `sku` strings when masters differ.
-- Replacing images on existing variants without an explicit update mode.
-- CSV-only import (can add a thin CSV→manifest converter later if merchandisers demand Excel).
-- Coupons, orders, inventory reservations.
+Preserve existing admin chrome (no new marketing layout). Keep actions as toolbar buttons, not a card-heavy wizard; one preview panel is enough for the import interaction.
 
 ---
 
 ## Implementation slices
 
-### Phase 0 — Spec lock (this doc)
+### Phase 1 — manage-web only (ship this first)
 
-- Agree on ZIP + `manifest.json` version 1.
-- Agree create-only import + skip-on-conflict.
-- No backend changes.
+1. **`app/lib/product-transfer.ts`** (new)
+   - Types for `schemaVersion: 1` manifest
+   - `fetchAllProductsForExport(query)` — paginate `searchProducts` until `offset + len >= total`
+   - `buildExportZip(products)` — for each parent `getProductDetail`; for each variant image URL, `fetch(productImageSrc(url))` (same-origin rewrite so SSR/Vite proxy works); pack with a ZIP library (prefer `fflate` — small, no Node zlib dependency in browser)
+   - `parseImportZip(file)` → `{ manifest, files: Map<path, Blob> }`
+   - `runImport(manifest, files, { dryRun, onProgress })` — sequential API calls via existing `createProductParent` / `createVariant` / `uploadVariantImage`
 
-### Phase 1 — Export with images
+2. **API helpers** (`app/lib/api.ts`)
+   - Fix/add `listAllProductsPaged` that walks offsets (limit 100)
+   - Optionally wrap `uploadVariantImage` for Blob + filename from ZIP entries
 
-| Area | Work |
-|------|------|
-| `app/lib/product-package.ts` | Types, validateManifest, buildExportManifest, zip helpers |
-| `app/lib/api.ts` | Thin helpers only if needed (e.g. list details in parallel with concurrency limit) |
-| `app/routes/products.tsx` | Export button + progress |
-| i18n `en` / `ko` / `zh-CN` | Export strings |
-| Deps | Add ZIP library |
+3. **UI**
+   - Export / Import on `products.tsx`
+   - Lightweight modal or route section for import preview + progress (`useNotify` for completion)
 
-### Phase 2 — Import create-only
+4. **BFF / proxy**
+   - Confirm image `fetch` through `/product-images/…` works from the browser session (already used by `<img productImageSrc>`). Export download may need `credentials: "include"` only if images ever require auth — today public CDN/gateway paths do not; local MinIO via gateway should still work same-origin.
+   - Multipart import already goes through `authedFetch` → session gateway; no change expected unless body size limits appear (see Risks).
 
-| Area | Work |
-|------|------|
-| Same `product-package.ts` | unzip, validate, resolve masters, runImport |
-| UI | Import modal on `/products` |
-| i18n | Import strings + error messages |
-| Edge | Cap concurrent uploads; surface partial success |
+5. **Tests**
+   - Unit: manifest parse/validate, relative path resolution, skip-existing matching
+   - Manual: export 1–2 seeded products with images → wipe/create on another brand codes set → re-import → PDP shows images
 
-### Phase 3 — Upsert / update (optional)
+### Phase 2 — only if needed
 
-- Match by `brandCode`+`styleCode`.
-- `updateProduct` for parent fields; add missing variants by color/size/edition; append images via upload (do not wipe galleries unless user opts in).
-- Still no ULID rewrite.
-
-### Phase 4 — Backend bulk (only if needed)
-
-If catalogs grow large (timeouts, memory, reliability), add something like:
-
-- `POST /api/v1/products/import` (multipart ZIP) and/or
-- `GET /api/v1/products/export?…` (stream ZIP)
-
-Requires `dupli1` product service work + OpenAPI. Prefer staying client-side until Phase 1–2 prove painful.
+| Trigger | Work |
+|---------|------|
+| Catalog ≫ ~200 parents or export timeouts | Backend `GET /api/v1/products/export` streaming ZIP (product service reads S3 directly) |
+| Frequent re-sync / staging → prod | Upsert by `brandCode`+`styleCode`+variant codes; optional stock sync |
+| Spreadsheet workflows | CSV sidecar + images folder convention |
+| Missing masters block imports | Import option “create missing masters” (`product.master.write`) |
 
 ---
 
-## UI placement (preserve admin patterns)
+## Risks & constraints
 
-Keep the existing products page composition: title + actions row. Secondary actions (**Export** / **Import**) as outline buttons beside the primary **New product** accent button — not a new nav item, not cards in a hero.
-
-Reuse existing form/button classes (`rounded-xl`, `border-edge`, `bg-accent`) and `useNotify` for completion/errors.
-
----
-
-## Testing
-
-1. **Round-trip local:** create product with variant image → export ZIP → wipe or use another style code / empty DB → import → PDP shows same fields + images.
-2. **Master gap:** import with unknown `colorCode` and “create masters” off → clear error; on → color created then product succeeds.
-3. **Conflict:** import twice with skip → second run reports skipped, no duplicate.
-4. **Broken image in ZIP:** product still created; warning for that file.
-5. `npm run typecheck`.
-
-Manual QA against Docker gateway (`DUPLI1_GATEWAY_URL`); login `admin@dupli1.com` / `password`.
+| Risk | Mitigation |
+|------|------------|
+| Browser memory for large ZIPs | Cap export (e.g. warn > 50 parents or > 100 MB); Phase 2 server export |
+| CORS / absolute CloudFront URLs on export | Prefer rewriting via `productImageSrc` when URL is gateway-shaped; for production CloudFront, browser `fetch` of public CDN should work; if not, add manage-web image proxy pass-through for export only |
+| Master codes missing on import | Preview fails closed with link to `/catalog` |
+| Duplicate parents | Create-only + explicit skip when codes collide |
+| Empty `imageUrls` clear semantics | Import only appends via upload API; never PUT empty galleries |
+| Gateway / SSR body size | Watch nginx + Node limits on multipart; upload images one file at a time (already the API) |
+| Flatten model later ([product-flat-sellable-model-plan.md](../../dupli1/docs/product-flat-sellable-model-plan.md)) | Keep `schemaVersion`; bump if parent/variant shape changes |
 
 ---
 
-## Open decisions (confirm before coding)
+## Out of scope (Phase 1)
 
-1. **Selection model for export:** current filters only, or add row checkboxes in the same PR?
-2. **Default conflict policy:** skip vs fail?
-3. **Auto-create masters:** default on or off?
-4. **Inventory:** include optional `initialStock` per variant in v1?
-5. **Ship Phase 1 only first**, or Phase 1+2 in one PR?
+- Inventory quantities / reservations
+- Coupons, wishlist, view/sold counters
+- Storefront (`dupli1-web`)
+- Replacing Python gallery scripts (they remain for scraper pipelines)
+- Backend OpenAPI changes
 
 ---
 
-## Suggested first PR (implementation)
+## Open questions (decide before coding)
 
-After this plan is accepted: implement **Phase 1 (export)** + **Phase 2 create-only import** in one feature branch if scope stays manage-web-only; otherwise split export first for an earlier reviewable slice.
+1. **Missing masters:** fail import vs auto-create codes when user has `product.master.write`?
+2. **Filter scope on export:** always current filters, or “export all” toggle?
+3. **Stock:** include optional `quantity` in manifest and call inventory adjust after variant create?
+4. **Library:** confirm `fflate` (or existing dep) for browser ZIP — avoid pulling JSZip if tree-shaking/`fflate` is enough.
+
+**Proposed defaults:** fail on missing masters; export uses current filters + “export all matching”; no stock in Phase 1; use `fflate`.
+
+---
+
+## Success criteria
+
+- Manager can download a ZIP of filtered products with real image files.
+- Same ZIP (or edited manifest + images) imports as new parents/variants with images visible on PDP/SKU pages.
+- Clear preview of master-code errors before any write.
+- No backend deploy required for Phase 1.
