@@ -4,6 +4,8 @@ import {
   type Order,
   type OrderItem,
   type OrderStatus,
+  type ShipCarrier,
+  SHIP_CARRIERS,
   getOrder,
   orderHasFulfillment,
   productImageSrc,
@@ -64,6 +66,25 @@ function actionKey(a: OrderAction): string {
   return a.kind === "ship" ? "ship" : a.status;
 }
 
+function carrierLabelKey(carrier: string): string {
+  switch (carrier) {
+    case "cj":
+      return "orderDetail.carrierCj";
+    case "hanjin":
+      return "orderDetail.carrierHanjin";
+    case "lotte":
+      return "orderDetail.carrierLotte";
+    case "logen":
+      return "orderDetail.carrierLogen";
+    case "epost":
+      return "orderDetail.carrierEpost";
+    case "other":
+      return "orderDetail.carrierOther";
+    default:
+      return "orderDetail.carrier";
+  }
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function formatPhoneDisplay(phone: string): string {
@@ -85,6 +106,10 @@ export default function OrderDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatingAction, setUpdatingAction] = useState<string | null>(null);
+  const [shipOpen, setShipOpen] = useState(false);
+  const [carrier, setCarrier] = useState<ShipCarrier>("cj");
+  const [trackingNumber, setTrackingNumber] = useState("");
+  const [carrierNote, setCarrierNote] = useState("");
 
   useEffect(() => {
     if (!id) return;
@@ -111,14 +136,50 @@ export default function OrderDetail() {
 
   async function handleAction(action: OrderAction) {
     if (!order) return;
+    if (action.kind === "ship") {
+      setShipOpen(true);
+      return;
+    }
     const key = actionKey(action);
     setUpdatingAction(key);
     try {
-      const updated =
-        action.kind === "ship"
-          ? await shipOrder(order.id)
-          : await updateOrderStatus(order.id, action.status);
+      const updated = await updateOrderStatus(order.id, action.status);
       setOrder(updated);
+    } catch (err) {
+      notify(
+        err instanceof Error
+          ? err.message
+          : t("orderDetail.failedToUpdateStatus"),
+        "error"
+      );
+    } finally {
+      setUpdatingAction(null);
+    }
+  }
+
+  async function confirmShip() {
+    if (!order) return;
+    const tracking = trackingNumber.trim();
+    if (!tracking) {
+      notify(t("orderDetail.shipHint"), "error");
+      return;
+    }
+    if (carrier === "other" && !carrierNote.trim()) {
+      notify(t("orderDetail.carrierNoteHint"), "error");
+      return;
+    }
+    setUpdatingAction("ship");
+    try {
+      const updated = await shipOrder(order.id, {
+        carrier,
+        tracking_number: tracking,
+        carrier_note: carrier === "other" ? carrierNote.trim() : undefined,
+      });
+      setOrder(updated);
+      setShipOpen(false);
+      setTrackingNumber("");
+      setCarrierNote("");
+      setCarrier("cj");
     } catch (err) {
       notify(
         err instanceof Error
@@ -222,6 +283,88 @@ export default function OrderDetail() {
           <MetaSection order={order} />
         </div>
       </div>
+
+      {shipOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="ship-dialog-title"
+            className="w-full max-w-md rounded-2xl border border-edge bg-surface p-6 shadow-xl"
+          >
+            <h2
+              id="ship-dialog-title"
+              className="text-lg font-semibold text-ink"
+            >
+              {t("orderDetail.shipTitle")}
+            </h2>
+            <p className="mt-1 text-sm text-muted">{t("orderDetail.shipHint")}</p>
+            <div className="mt-5 space-y-4">
+              <label className="block text-sm">
+                <span className="mb-1.5 block font-medium text-ink">
+                  {t("orderDetail.carrier")}
+                </span>
+                <select
+                  value={carrier}
+                  onChange={(e) => setCarrier(e.target.value as ShipCarrier)}
+                  className="w-full rounded-xl border border-edge bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-accent"
+                >
+                  {SHIP_CARRIERS.map((code) => (
+                    <option key={code} value={code}>
+                      {t(carrierLabelKey(code))}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block text-sm">
+                <span className="mb-1.5 block font-medium text-ink">
+                  {t("orderDetail.trackingNumber")}
+                </span>
+                <input
+                  value={trackingNumber}
+                  onChange={(e) => setTrackingNumber(e.target.value)}
+                  className="w-full rounded-xl border border-edge bg-white px-3 py-2.5 font-mono text-sm text-ink outline-none focus:border-accent"
+                  autoComplete="off"
+                />
+              </label>
+              {carrier === "other" && (
+                <label className="block text-sm">
+                  <span className="mb-1.5 block font-medium text-ink">
+                    {t("orderDetail.carrierNote")}
+                  </span>
+                  <input
+                    value={carrierNote}
+                    onChange={(e) => setCarrierNote(e.target.value)}
+                    placeholder={t("orderDetail.carrierNoteHint")}
+                    className="w-full rounded-xl border border-edge bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-accent"
+                    autoComplete="off"
+                  />
+                </label>
+              )}
+            </div>
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                type="button"
+                disabled={updatingAction === "ship"}
+                onClick={() => setShipOpen(false)}
+                className="rounded-xl border border-edge px-4 py-2 text-sm font-semibold text-muted hover:bg-page"
+              >
+                {t("orderDetail.cancelShip")}
+              </button>
+              <button
+                type="button"
+                disabled={updatingAction === "ship"}
+                onClick={() => void confirmShip()}
+                className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-hover disabled:opacity-50"
+              >
+                {updatingAction === "ship"
+                  ? t("common.loadingEllipsis")
+                  : t("orderDetail.confirmShip")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -280,6 +423,24 @@ function TimelineSection({ order }: { order: Order }) {
                   {t("orders.shippedBy", { name: order.shipped_by })}
                 </span>
               )}
+            </dd>
+          </div>
+        )}
+        {order.tracking_number && (
+          <div className="sm:col-span-2">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-faint">
+              {t("orderDetail.tracking")}
+            </dt>
+            <dd className="mt-1 font-medium text-ink">
+              <span>
+                {order.carrier === "other" && order.carrier_note
+                  ? order.carrier_note
+                  : order.carrier
+                    ? t(carrierLabelKey(order.carrier))
+                    : null}
+              </span>
+              {order.carrier && <span className="mx-1.5 text-faint">·</span>}
+              <span className="font-mono">{order.tracking_number}</span>
             </dd>
           </div>
         )}
