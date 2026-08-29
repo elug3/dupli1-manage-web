@@ -1272,8 +1272,36 @@ export interface Order {
   payment_due_at?: string;
   shipped_at?: string;
   shipped_by?: string;
+  /** Fixed KR carrier code set at ship time (`cj`, `hanjin`, …, `other`). */
+  carrier?: string;
+  tracking_number?: string;
+  /** Free-text carrier name when `carrier` is `other`. */
+  carrier_note?: string;
   created_at: string;
   updated_at: string;
+}
+
+export type ShipCarrier =
+  | "cj"
+  | "hanjin"
+  | "lotte"
+  | "logen"
+  | "epost"
+  | "other";
+
+export const SHIP_CARRIERS: ShipCarrier[] = [
+  "cj",
+  "hanjin",
+  "lotte",
+  "logen",
+  "epost",
+  "other",
+];
+
+export interface ShipOrderInput {
+  carrier: ShipCarrier;
+  tracking_number: string;
+  carrier_note?: string;
 }
 
 /** True when the order carries a usable fulfillment snapshot. */
@@ -1347,10 +1375,21 @@ export async function getOrder(id: string): Promise<Order> {
   return res.json() as Promise<Order>;
 }
 
-/** Ship a paid order (`paid` → `in_transit`). Requires `order.ship`. */
-export async function shipOrder(id: string): Promise<Order> {
+/** Ship a paid order (`paid` → `in_transit`). Requires `order.ship` + tracking. */
+export async function shipOrder(
+  id: string,
+  input: ShipOrderInput
+): Promise<Order> {
   const res = await authedFetch(orderPath(`/api/v1/orders/${id}/ship`), {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      carrier: input.carrier,
+      tracking_number: input.tracking_number.trim(),
+      ...(input.carrier === "other" && input.carrier_note?.trim()
+        ? { carrier_note: input.carrier_note.trim() }
+        : {}),
+    }),
   });
   if (!res.ok) throw new Error(await readError(res, "Failed to ship order"));
   return res.json() as Promise<Order>;
