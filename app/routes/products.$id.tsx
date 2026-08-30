@@ -17,6 +17,7 @@ import {
   formatDimensionsMm,
   formatVariantOption,
   getInventory,
+  getInventoryBySkuId,
   getManageProduct,
   getMasterCatalog,
   listBrands,
@@ -28,6 +29,7 @@ import {
   productSkuPath,
   productVariants,
   setInventory,
+  setInventoryBySkuId,
   updateProduct,
   updateVariant,
   uploadProductImage,
@@ -74,14 +76,19 @@ export default function ProductDetail() {
       const rows = await Promise.all(
         variants.map(async (variant) => {
           try {
-            const stock = await getInventory(variant.sku);
+            const stock = variant.skuId
+              ? await getInventoryBySkuId(variant.skuId).catch(() =>
+                  getInventory(variant.sku)
+                )
+              : await getInventory(variant.sku);
             return {
               ...variant,
               quantity: stock.quantity,
               reserved: stock.reserved,
             };
           } catch {
-            return { ...variant, quantity: null, reserved: null };
+            // Always-tracked SKUs: missing row is qty 0, not "unknown".
+            return { ...variant, quantity: 0, reserved: 0 };
           }
         })
       );
@@ -103,18 +110,21 @@ export default function ProductDetail() {
 
   async function refreshVariantStock(sku: string) {
     try {
-      const stock = await getInventory(sku);
+      const row = variantRows.find((r) => r.sku === sku);
+      const stock = row?.skuId
+        ? await getInventoryBySkuId(row.skuId).catch(() => getInventory(sku))
+        : await getInventory(sku);
       setVariantRows((rows) =>
-        rows.map((row) =>
-          row.sku === sku
-            ? { ...row, quantity: stock.quantity, reserved: stock.reserved }
-            : row
+        rows.map((r) =>
+          r.sku === sku
+            ? { ...r, quantity: stock.quantity, reserved: stock.reserved }
+            : r
         )
       );
     } catch {
       setVariantRows((rows) =>
-        rows.map((row) =>
-          row.sku === sku ? { ...row, quantity: null, reserved: null } : row
+        rows.map((r) =>
+          r.sku === sku ? { ...r, quantity: 0, reserved: 0 } : r
         )
       );
     }
@@ -766,7 +776,14 @@ function VariantsSection({
 
   async function handleSetStock(sku: string, quantity: number) {
     try {
-      await setInventory(sku, quantity);
+      const row = rows.find((r) => r.sku === sku);
+      if (row?.skuId) {
+        await setInventoryBySkuId(row.skuId, quantity).catch(() =>
+          setInventory(sku, quantity)
+        );
+      } else {
+        await setInventory(sku, quantity);
+      }
       await onStockUpdated(sku);
       notify(t("productDetail.stockUpdatedFor", { sku }));
     } catch (err) {
@@ -1258,7 +1275,13 @@ function AddVariantForm({
 
       const stockQty = Number.parseInt(initialStock, 10);
       if (!Number.isNaN(stockQty) && stockQty >= 0) {
-        await setInventory(variant.sku, stockQty).catch(() => {});
+        if (variant.skuId) {
+          await setInventoryBySkuId(variant.skuId, stockQty).catch(() =>
+            setInventory(variant.sku, stockQty)
+          );
+        } else {
+          await setInventory(variant.sku, stockQty).catch(() => {});
+        }
       }
 
       await onAdded();

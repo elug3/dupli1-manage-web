@@ -1490,6 +1490,25 @@ export async function setInventory(
   return res.json() as Promise<StockItem>;
 }
 
+/** Set stock by canonical ULID `skuId`. */
+export async function setInventoryBySkuId(
+  skuId: string,
+  quantity: number
+): Promise<StockItem> {
+  const res = await authedFetch(
+    inventoryPath(
+      `/api/v1/inventory/by-sku-id/${encodeURIComponent(skuId)}`
+    ),
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ quantity }),
+    }
+  );
+  if (!res.ok) throw new Error(await readError(res, "Failed to update stock"));
+  return res.json() as Promise<StockItem>;
+}
+
 export async function adjustInventory(
   sku: string,
   delta: number
