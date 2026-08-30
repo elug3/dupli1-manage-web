@@ -28,7 +28,8 @@ export const links = () => [
   },
   {
     rel: "stylesheet",
-    href: "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap",
+    // Cascadia Code covers Latin/English; Noto Sans KR covers Hangul (and CJK fallback).
+    href: "https://fonts.googleapis.com/css2?family=Cascadia+Code:ital,wght@0,200..700;1,200..700&family=Noto+Sans+KR:wght@100..900&display=swap",
   },
 ];
 
