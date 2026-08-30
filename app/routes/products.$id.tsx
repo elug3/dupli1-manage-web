@@ -35,6 +35,7 @@ import {
 } from "~/lib/api";
 import { useI18n } from "~/lib/i18n";
 import { useNotify } from "~/lib/notifications";
+import { ProductExportButton } from "~/components/ProductExportButton";
 
 const MAX_IMAGE_BYTES = 50 * 1024 * 1024;
 const LOW_STOCK_THRESHOLD = 5;
@@ -397,13 +398,16 @@ function ParentSummarySection({
           </p>
         </div>
         {!editing && (
-          <button
-            type="button"
-            onClick={() => setEditing(true)}
-            className="rounded-xl border border-edge px-4 py-2 text-sm font-semibold text-accent transition hover:border-accent/40 hover:bg-subtle"
-          >
-            {t("productDetail.editStyle")}
-          </button>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+            <ProductExportButton product={product} />
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="rounded-xl border border-edge px-4 py-2 text-sm font-semibold text-accent transition hover:border-accent/40 hover:bg-subtle"
+            >
+              {t("productDetail.editStyle")}
+            </button>
+          </div>
         )}
       </div>
 

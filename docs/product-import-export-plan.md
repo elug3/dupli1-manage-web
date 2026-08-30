@@ -6,7 +6,8 @@
 
 **As-built (manage-web):**
 - `app/lib/product-transfer.ts` — ZIP build/parse, master-gap preview, create-only import
-- `app/components/ProductTransferActions.tsx` — Products toolbar Export / Import
+- `app/components/ProductTransferActions.tsx` — Products list toolbar Export / Import
+- `app/components/ProductExportButton.tsx` — single-product Export ZIP on PDP
 - `listAllProductsPaged` + Blob-aware `uploadVariantImage` in `app/lib/api.ts`
 
 ---
