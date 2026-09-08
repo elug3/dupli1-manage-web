@@ -187,7 +187,27 @@ export const ko: Messages = {
     subtitleCatalogLink: "카탈로그",
     noBrandsWarning:
       "아직 브랜드가 없습니다. 상품을 추가하기 전에 카탈로그에서 브랜드와 스타일 코드를 생성하세요.",
+    wizardNav: "상품 생성 단계",
+    stepOf: "{total}단계 중 {current}단계",
+    stepProduct: "상품",
+    stepSkus: "SKU",
+    next: "다음",
+    previous: "이전",
+    finish: "완료",
+    skipSkus: "나중에 하기",
     sectionStyleParent: "스타일 (상위)",
+    sectionPricing: "가격 및 상태",
+    sectionSkus: "SKU",
+    skusSubtitle:
+      "이 상품의 판매 가능한 SKU를 추가하세요. 나중에 상품 페이지에서도 더 추가할 수 있습니다.",
+    createdProductLabel: "상품 생성됨",
+    createdProductSummary: "{name}의 SKU 추가",
+    noSkusYet: "아직 SKU가 없습니다 — 아래에서 첫 번째 SKU를 추가하세요.",
+    addFirstSku: "첫 SKU 추가",
+    addSku: "SKU 추가",
+    addAnotherSku: "SKU 추가",
+    skuAdded: "SKU가 추가되었습니다: {sku}",
+    failedToAddSku: "SKU를 추가하지 못했습니다",
     name: "이름",
     namePlaceholder: "Cassette Bag",
     brandCode: "브랜드 코드",
@@ -200,7 +220,6 @@ export const ko: Messages = {
     createStyle: "스타일 생성",
     material: "소재",
     description: "설명",
-    sectionFirstVariant: "첫 번째 변형 (SKU)",
     colorCode: "색상 코드",
     sizeCode: "사이즈 코드",
     editionCode: "에디션 코드",
@@ -213,10 +232,8 @@ export const ko: Messages = {
     initialStockPlaceholder: "이 SKU의 재고 수량",
     image: "이미지",
     imageHint:
-      "선택 사항. 상품 생성 후 이 변형에 업로드됩니다 (최대 50 MiB).",
+      "선택 사항. SKU 추가 시 이 SKU에 업로드됩니다 (최대 50 MiB).",
     chooseImage: "이미지 선택",
-    createProduct: "상품 생성",
-    creatingAndUploading: "생성 및 업로드 중…",
     styleCodeAndNameRequired: "스타일 코드와 이름은 필수입니다",
     styleCreated: "스타일 {code}이(가) 생성되었습니다",
     failedToCreateStyle: "스타일을 생성하지 못했습니다",
@@ -227,9 +244,7 @@ export const ko: Messages = {
     enterValidPrice: "상위 상품의 유효한 가격을 입력하세요",
     productCreated: "상품이 생성되었습니다: {name}",
     productCreatedButImageFailed:
-      "상품은 생성되었지만 이미지 업로드에 실패했습니다: {error}. 상품 페이지에서 다시 시도할 수 있습니다.",
-    styleCreatedButVariantFailed:
-      '스타일 "{name}"은(는) 생성되었지만 첫 번째 변형에 실패했습니다: {error}. 상품 페이지에서 변형을 추가해 설정을 완료하세요.',
+      "SKU는 생성되었지만 이미지 업로드에 실패했습니다: {error}. 상품 페이지에서 다시 시도할 수 있습니다.",
     masterMissing:
       "브랜드, 스타일, 색상 또는 사이즈 코드가 카탈로그 마스터에 없습니다. 먼저 카탈로그에서 생성하세요.",
     duplicateExists:

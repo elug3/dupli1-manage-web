@@ -185,7 +185,27 @@ export const zhCN: Messages = {
     subtitleCatalogLink: "目录",
     noBrandsWarning:
       "尚无品牌。添加商品前，请先在目录中创建品牌和款式代码。",
+    wizardNav: "创建商品步骤",
+    stepOf: "第 {current} 步，共 {total} 步",
+    stepProduct: "商品",
+    stepSkus: "SKU",
+    next: "下一步",
+    previous: "上一步",
+    finish: "完成",
+    skipSkus: "暂时跳过",
     sectionStyleParent: "款式（父级）",
+    sectionPricing: "价格与状态",
+    sectionSkus: "SKU",
+    skusSubtitle:
+      "为此商品添加可售 SKU。之后也可在商品页面继续添加。",
+    createdProductLabel: "商品已创建",
+    createdProductSummary: "正在为 {name} 添加 SKU",
+    noSkusYet: "尚无 SKU — 请在下方添加第一个。",
+    addFirstSku: "添加首个 SKU",
+    addSku: "添加 SKU",
+    addAnotherSku: "再添加 SKU",
+    skuAdded: "已添加 SKU：{sku}",
+    failedToAddSku: "添加 SKU 失败",
     name: "名称",
     namePlaceholder: "Cassette Bag",
     brandCode: "品牌代码",
@@ -198,7 +218,6 @@ export const zhCN: Messages = {
     createStyle: "创建款式",
     material: "材质",
     description: "描述",
-    sectionFirstVariant: "第一个变体（SKU）",
     colorCode: "颜色代码",
     sizeCode: "尺码代码",
     editionCode: "版本代码",
@@ -211,10 +230,8 @@ export const zhCN: Messages = {
     initialStockPlaceholder: "此 SKU 的库存数量",
     image: "图片",
     imageHint:
-      "可选。商品创建后上传到此变体（最大 50 MiB）。",
+      "可选。添加 SKU 时上传到该 SKU（最大 50 MiB）。",
     chooseImage: "选择图片",
-    createProduct: "创建商品",
-    creatingAndUploading: "正在创建并上传…",
     styleCodeAndNameRequired: "款式代码和名称为必填项",
     styleCreated: "已创建款式 {code}",
     failedToCreateStyle: "创建款式失败",
@@ -225,9 +242,7 @@ export const zhCN: Messages = {
     enterValidPrice: "请为父级商品输入有效价格",
     productCreated: "商品已创建：{name}",
     productCreatedButImageFailed:
-      "商品已创建，但图片上传失败：{error}。您可在商品页面重试。",
-    styleCreatedButVariantFailed:
-      '款式 "{name}" 已创建，但第一个变体失败：{error}。请在商品页面添加变体以完成设置。',
+      "SKU 已创建，但图片上传失败：{error}。您可在商品页面重试。",
     masterMissing:
       "品牌、款式、颜色或尺码代码在目录主数据中缺失。请先在目录中创建。",
     duplicateExists:
