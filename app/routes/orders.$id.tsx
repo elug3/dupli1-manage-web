@@ -519,23 +519,30 @@ function OrderItemRow({ item }: { item: OrderItem }) {
 function OrderTotals({ order }: { order: Order }) {
   const { t, formatCents } = useI18n();
   const hasDiscount = order.discount_cents > 0;
+  const shipping = order.shipping_fee_krw ?? 0;
   return (
     <div className="mt-4 space-y-1.5 border-t border-edge pt-4 text-sm">
+      <div className="flex items-center justify-between text-muted">
+        <span>{t("orders.subtotal")}</span>
+        <span>{formatCents(order.subtotal_cents)}</span>
+      </div>
+      <div className="flex items-center justify-between text-muted">
+        <span>{t("orders.shippingFee")}</span>
+        <span>
+          {shipping === 0
+            ? t("orders.shippingFeeFree")
+            : formatCents(shipping)}
+        </span>
+      </div>
       {hasDiscount && (
-        <>
-          <div className="flex items-center justify-between text-muted">
-            <span>{t("orders.subtotal")}</span>
-            <span>{formatCents(order.subtotal_cents)}</span>
-          </div>
-          <div className="flex items-center justify-between text-success-fg">
-            <span>
-              {order.coupon_code
-                ? t("orders.discountWithCode", { code: order.coupon_code })
-                : t("orders.discount")}
-            </span>
-            <span>−{formatCents(order.discount_cents)}</span>
-          </div>
-        </>
+        <div className="flex items-center justify-between text-success-fg">
+          <span>
+            {order.coupon_code
+              ? t("orders.discountWithCode", { code: order.coupon_code })
+              : t("orders.discount")}
+          </span>
+          <span>−{formatCents(order.discount_cents)}</span>
+        </div>
       )}
       <div className="flex items-center justify-between font-bold text-ink">
         <span>{t("orders.orderTotal")}</span>

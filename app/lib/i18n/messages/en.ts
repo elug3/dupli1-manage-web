@@ -503,6 +503,8 @@ export const en = {
     postalCodeValue: "Postal {code}",
     noFulfillment: "No shipping snapshot on this order (direct create or pre-fulfillment checkout).",
     subtotal: "Subtotal",
+    shippingFee: "Shipping fee",
+    shippingFeeFree: "Free",
     discount: "Discount",
     discountWithCode: "Discount ({code})",
     paymentDue: "Payment due",

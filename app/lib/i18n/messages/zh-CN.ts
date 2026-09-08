@@ -502,6 +502,8 @@ export const zhCN: Messages = {
     postalCodeValue: "邮编 {code}",
     noFulfillment: "此订单无配送快照（直接创建或旧结账流程）。",
     subtotal: "小计",
+    shippingFee: "运费",
+    shippingFeeFree: "免费",
     discount: "折扣",
     discountWithCode: "折扣（{code}）",
     paymentDue: "付款截止",

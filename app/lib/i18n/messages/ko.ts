@@ -506,6 +506,8 @@ export const ko: Messages = {
     noFulfillment:
       "이 주문에는 배송 스냅샷이 없습니다 (직접 생성 또는 이전 체크아웃).",
     subtotal: "소계",
+    shippingFee: "배송비",
+    shippingFeeFree: "무료",
     discount: "할인",
     discountWithCode: "할인 ({code})",
     paymentDue: "결제 기한",
