@@ -90,7 +90,7 @@ export const zhCN: Messages = {
     revenueToday: "今日营收",
     ordersToday: "今日订单",
     ordersPlacedToday: "今日下单",
-    catalogItems: "目录商品",
+    activeProducts: "已上架商品",
     pendingOrders: "待处理订单",
     pendingAwaitingPayment: "等待付款",
     analyticsNotYetAvailable: "分析功能尚未可用",

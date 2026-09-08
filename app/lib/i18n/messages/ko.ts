@@ -90,7 +90,7 @@ export const ko: Messages = {
     revenueToday: "오늘 매출",
     ordersToday: "오늘 주문",
     ordersPlacedToday: "오늘 접수",
-    catalogItems: "카탈로그 항목",
+    activeProducts: "활성 상품",
     pendingOrders: "대기 중 주문",
     pendingAwaitingPayment: "결제 대기 중",
     analyticsNotYetAvailable: "분석 기능을 아직 사용할 수 없습니다",

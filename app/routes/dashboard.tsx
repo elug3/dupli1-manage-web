@@ -129,7 +129,9 @@ function StatsGrid({
   loading: boolean;
 }) {
   const { t } = useI18n();
-  const active = products.length;
+  const active = products.filter(
+    (p) => (p.status ?? "active").toLowerCase() === "active"
+  ).length;
 
   const cards: {
     label: string;
@@ -155,12 +157,12 @@ function StatsGrid({
       to: "/orders",
     },
     {
-      label: t("dashboard.catalogItems"),
+      label: t("dashboard.activeProducts"),
       value: loading ? t("common.loadingEllipsis") : String(active),
       sub: loading ? null : t("dashboard.parentProductsStyles"),
       icon: <BoxIcon />,
       color: "bg-success-bg text-success-fg",
-      to: "/products",
+      to: "/products?status=active",
     },
     {
       label: t("dashboard.pendingOrders"),
