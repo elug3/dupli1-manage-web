@@ -184,7 +184,27 @@ export const en = {
     subtitleCatalogLink: "Catalog",
     noBrandsWarning:
       "No brands yet. Create brand and style codes under Catalog before adding products.",
+    wizardNav: "Create product steps",
+    stepOf: "Step {current} of {total}",
+    stepProduct: "Product",
+    stepSkus: "SKUs",
+    next: "Next",
+    previous: "Previous",
+    finish: "Finish",
+    skipSkus: "Skip for now",
     sectionStyleParent: "Style (parent)",
+    sectionPricing: "Pricing & status",
+    sectionSkus: "SKUs",
+    skusSubtitle:
+      "Add sellable SKUs for this product. You can add more later from the product page.",
+    createdProductLabel: "Product created",
+    createdProductSummary: "Adding SKUs for {name}",
+    noSkusYet: "No SKUs yet — add the first one below.",
+    addFirstSku: "Add first SKU",
+    addSku: "Add SKU",
+    addAnotherSku: "Add another SKU",
+    skuAdded: "SKU added: {sku}",
+    failedToAddSku: "Failed to add SKU",
     name: "Name",
     namePlaceholder: "Cassette Bag",
     brandCode: "Brand code",
@@ -197,7 +217,6 @@ export const en = {
     createStyle: "Create style",
     material: "Material",
     description: "Description",
-    sectionFirstVariant: "First variant (SKU)",
     colorCode: "Color code",
     sizeCode: "Size code",
     editionCode: "Edition code",
@@ -210,10 +229,8 @@ export const en = {
     initialStockPlaceholder: "Inventory quantity for this SKU",
     image: "Image",
     imageHint:
-      "Optional. Uploaded to this variant after the product is created (max 50 MiB).",
+      "Optional. Uploaded to this SKU when you add it (max 50 MiB).",
     chooseImage: "Choose image",
-    createProduct: "Create product",
-    creatingAndUploading: "Creating & uploading…",
     styleCodeAndNameRequired: "Style code and name are required",
     styleCreated: "Style {code} created",
     failedToCreateStyle: "Failed to create style",
@@ -224,9 +241,7 @@ export const en = {
     enterValidPrice: "Enter a valid price for the parent product",
     productCreated: "Product created: {name}",
     productCreatedButImageFailed:
-      "Product created, but image upload failed: {error}. You can retry from the product page.",
-    styleCreatedButVariantFailed:
-      'Style "{name}" was created, but the first variant failed: {error}. Add a variant from the product page to finish setup.',
+      "SKU created, but image upload failed: {error}. You can retry from the product page.",
     masterMissing:
       "A brand, style, color, or size code is missing from catalog masters. Create it under Catalog first.",
     duplicateExists:
