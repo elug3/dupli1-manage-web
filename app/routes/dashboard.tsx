@@ -220,7 +220,7 @@ function StatsGrid({
 }
 
 function RecentOrdersTable({ orders }: { orders: Order[] }) {
-  const { t, formatCents, formatDate } = useI18n();
+  const { t, formatKrw, formatDate } = useI18n();
   const headers = [
     t("dashboard.colOrder"),
     t("dashboard.colCustomer"),
@@ -276,7 +276,7 @@ function RecentOrdersTable({ orders }: { orders: Order[] }) {
                     {order.customer_id}
                   </td>
                   <td className="px-5 py-3.5 font-semibold text-ink">
-                    {formatCents(order.total_cents)}
+                    {formatKrw(order.total_krw)}
                   </td>
                   <td className="px-5 py-3.5">
                     <OrderStatusBadge status={order.status} />
@@ -313,7 +313,7 @@ function RecentOrdersTable({ orders }: { orders: Order[] }) {
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="font-semibold text-ink">
-                  {formatCents(order.total_cents)}
+                  {formatKrw(order.total_krw)}
                 </span>
                 <span className="text-faint">
                   {formatDate(order.created_at, {

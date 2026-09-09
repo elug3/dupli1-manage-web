@@ -100,7 +100,7 @@ export function translate(
 export const STORE_CURRENCY = "KRW" as const;
 
 /**
- * Format a major-unit money amount (product `price`, or whole-KRW `*_cents` /
+ * Format a major-unit money amount (product `price`, or whole-KRW `*_krw` /
  * `shipping_fee_krw` fields). Always KRW; the optional `currency` argument is
  * ignored for API stability.
  */
@@ -120,12 +120,12 @@ export function formatCurrency(
 }
 
 /** Format API money fields that are whole KRW won (zero-decimal; never ÷100). */
-export function formatCents(
+export function formatKrw(
   locale: Locale,
-  cents: number,
+  krw: number,
   options?: Intl.NumberFormatOptions
 ): string {
-  return formatCurrency(locale, cents, STORE_CURRENCY, options);
+  return formatCurrency(locale, krw, STORE_CURRENCY, options);
 }
 
 export function formatDate(
@@ -161,8 +161,8 @@ interface I18nContextValue {
     currency?: string,
     options?: Intl.NumberFormatOptions
   ) => string;
-  formatCents: (
-    cents: number,
+  formatKrw: (
+    krw: number,
     options?: Intl.NumberFormatOptions
   ) => string;
   formatDate: (
@@ -243,7 +243,7 @@ export function I18nProvider({
       t: (key, vars) => translate(locale, key, vars),
       formatCurrency: (amount, currency, options) =>
         formatCurrency(locale, amount, currency, options),
-      formatCents: (cents, options) => formatCents(locale, cents, options),
+      formatKrw: (krw, options) => formatKrw(locale, krw, options),
       formatDate: (date, options) => formatDate(locale, date, options),
       formatDateTime: (date, options) =>
         formatDateTime(locale, date, options),

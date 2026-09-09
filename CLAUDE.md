@@ -47,7 +47,7 @@ Local Docker embeds browser URLs as `{S3_PUBLIC_ENDPOINT}/product-images/{key}` 
 
 ### Currency
 
-Admin UI is **KRW-only**. `formatCurrency` / `formatCents` (`app/lib/i18n`) always format as Korean Won; settings does not offer other currencies. Aligns with backend `domain.DefaultCurrency = "krw"`.
+Admin UI is **KRW-only**. `formatCurrency` / `formatKrw` (`app/lib/i18n`) always format as Korean Won; settings does not offer other currencies. Aligns with backend `domain.DefaultCurrency = "krw"`.
 
 ### Auth (`/auth`)
 
