@@ -88,7 +88,7 @@ export const en = {
     revenueToday: "Revenue today",
     ordersToday: "Orders today",
     ordersPlacedToday: "placed today",
-    catalogItems: "Catalog items",
+    activeProducts: "Active products",
     pendingOrders: "Pending orders",
     pendingAwaitingPayment: "awaiting payment",
     analyticsNotYetAvailable: "Analytics not yet available",
