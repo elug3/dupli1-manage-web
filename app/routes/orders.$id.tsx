@@ -469,7 +469,7 @@ function ItemsSection({ order }: { order: Order }) {
 }
 
 function OrderItemRow({ item }: { item: OrderItem }) {
-  const { t, formatCents } = useI18n();
+  const { t, formatKrw } = useI18n();
   const imgSrc = item.image_url ? productImageSrc(item.image_url) : null;
   return (
     <div className="flex items-center justify-between gap-3 text-sm">
@@ -510,28 +510,28 @@ function OrderItemRow({ item }: { item: OrderItem }) {
         </div>
       </div>
       <span className="shrink-0 font-semibold text-ink">
-        {formatCents(item.unit_price_cents * item.quantity)}
+        {formatKrw(item.unit_price_krw * item.quantity)}
       </span>
     </div>
   );
 }
 
 function OrderTotals({ order }: { order: Order }) {
-  const { t, formatCents } = useI18n();
-  const hasDiscount = order.discount_cents > 0;
+  const { t, formatKrw } = useI18n();
+  const hasDiscount = order.discount_krw > 0;
   const shipping = order.shipping_fee_krw ?? 0;
   return (
     <div className="mt-4 space-y-1.5 border-t border-edge pt-4 text-sm">
       <div className="flex items-center justify-between text-muted">
         <span>{t("orders.subtotal")}</span>
-        <span>{formatCents(order.subtotal_cents)}</span>
+        <span>{formatKrw(order.subtotal_krw)}</span>
       </div>
       <div className="flex items-center justify-between text-muted">
         <span>{t("orders.shippingFee")}</span>
         <span>
           {shipping === 0
             ? t("orders.shippingFeeFree")
-            : formatCents(shipping)}
+            : formatKrw(shipping)}
         </span>
       </div>
       {hasDiscount && (
@@ -541,12 +541,12 @@ function OrderTotals({ order }: { order: Order }) {
               ? t("orders.discountWithCode", { code: order.coupon_code })
               : t("orders.discount")}
           </span>
-          <span>−{formatCents(order.discount_cents)}</span>
+          <span>−{formatKrw(order.discount_krw)}</span>
         </div>
       )}
       <div className="flex items-center justify-between font-bold text-ink">
         <span>{t("orders.orderTotal")}</span>
-        <span>{formatCents(order.total_cents)}</span>
+        <span>{formatKrw(order.total_krw)}</span>
       </div>
     </div>
   );

@@ -490,7 +490,7 @@ export function mapProduct(
       hitNumber(hit, "price") ??
       hitNumber(hit, "priceFrom") ??
       hitNumber(hit, "price_from") ??
-      hitNumber(hit, "unit_price_cents"),
+      hitNumber(hit, "unit_price_krw"),
     officialPrice:
       hitNumber(hit, "officialPrice") ??
       hitNumber(hit, "official_price") ??
@@ -1270,7 +1270,7 @@ export interface OrderItem {
   sku_id?: string;
   sku: string;
   quantity: number;
-  unit_price_cents: number;
+  unit_price_krw: number;
   /** Captured at order creation from the product catalog. */
   product_name?: string;
   image_url?: string;
@@ -1294,11 +1294,11 @@ export interface Order {
   items: OrderItem[];
   status: OrderStatus;
   coupon_code?: string;
-  subtotal_cents: number;
-  discount_cents: number;
+  subtotal_krw: number;
+  discount_krw: number;
   /** Flat delivery charge in whole KRW, snapshotted at order creation. */
   shipping_fee_krw?: number;
-  total_cents: number;
+  total_krw: number;
   /** Recipient display name from checkout fulfillment snapshot. */
   recipient_name?: string;
   /** KR mobile digits from checkout fulfillment snapshot. */
@@ -1800,7 +1800,7 @@ export async function getAnalytics(): Promise<AnalyticsSummary | null> {
     now - new Date(o.created_at).getTime() <= days * day;
 
   const sumRevenue = (list: Order[]) =>
-    list.reduce((sum, o) => sum + o.total_cents, 0);
+    list.reduce((sum, o) => sum + o.total_krw, 0);
 
   const last7 = orders.filter(within(7));
   const last30 = orders.filter(within(30));

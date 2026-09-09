@@ -23,7 +23,7 @@ The value is **whole KRW won** (zero-decimal). `30000` means ₩30,000. Default 
 
 ## Do not change
 
-- Other `*_cents` money fields (`subtotal_cents`, `discount_cents`, `total_cents`, `unit_price_cents`, …). Those stay `*_cents`.
+- Money identifiers stay `*_krw` / `KRW` / `Krw`. Do not revert JSON, Go, Postgres, or TypeScript names to `*_cents`.
 - The default amount (`30000`) or pricing rules (flat per order, no free-shipping threshold, coupons discount goods only).
 - Display math: never divide by 100.
 

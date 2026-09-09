@@ -234,7 +234,7 @@ export default function Orders() {
 }
 
 function OrderCard({ order }: { order: Order }) {
-  const { t, formatCents, formatDate } = useI18n();
+  const { t, formatKrw, formatDate } = useI18n();
   return (
     <Link
       to={`/orders/${encodeURIComponent(order.id)}`}
@@ -251,7 +251,7 @@ function OrderCard({ order }: { order: Order }) {
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
         <span className="font-semibold text-ink">
-          {formatCents(order.total_cents)}
+          {formatKrw(order.total_krw)}
         </span>
         <span className="text-muted">
           {t("common.itemCount", { count: order.items.length })}
@@ -269,7 +269,7 @@ function OrderCard({ order }: { order: Order }) {
 }
 
 function OrderRow({ order }: { order: Order }) {
-  const { t, formatCents, formatDate } = useI18n();
+  const { t, formatKrw, formatDate } = useI18n();
   const navigate = useNavigate();
   return (
     <tr
@@ -286,7 +286,7 @@ function OrderRow({ order }: { order: Order }) {
         {t("common.itemCount", { count: order.items.length })}
       </td>
       <td className="px-5 py-3.5 font-semibold text-ink">
-        {formatCents(order.total_cents)}
+        {formatKrw(order.total_krw)}
       </td>
       <td className="px-5 py-3.5">
         <OrderStatusBadge status={order.status} />
