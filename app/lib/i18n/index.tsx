@@ -100,8 +100,9 @@ export function translate(
 export const STORE_CURRENCY = "KRW" as const;
 
 /**
- * Format a major-unit money amount (product `price`, or order cents / 100).
- * Always KRW; the optional `currency` argument is ignored for API stability.
+ * Format a major-unit money amount (product `price`, or whole-KRW `*_cents` /
+ * `shipping_fee_krw` fields). Always KRW; the optional `currency` argument is
+ * ignored for API stability.
  */
 export function formatCurrency(
   locale: Locale,
@@ -118,13 +119,13 @@ export function formatCurrency(
   }).format(amount);
 }
 
-/** Format API `*_cents` fields (cart/order still store price × 100). */
+/** Format API money fields that are whole KRW won (zero-decimal; never ÷100). */
 export function formatCents(
   locale: Locale,
   cents: number,
   options?: Intl.NumberFormatOptions
 ): string {
-  return formatCurrency(locale, cents / 100, STORE_CURRENCY, options);
+  return formatCurrency(locale, cents, STORE_CURRENCY, options);
 }
 
 export function formatDate(

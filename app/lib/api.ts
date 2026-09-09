@@ -1296,6 +1296,8 @@ export interface Order {
   coupon_code?: string;
   subtotal_cents: number;
   discount_cents: number;
+  /** Flat delivery charge in whole KRW, snapshotted at order creation. */
+  shipping_fee_krw?: number;
   total_cents: number;
   /** Recipient display name from checkout fulfillment snapshot. */
   recipient_name?: string;
