@@ -446,6 +446,8 @@ export const ko: Messages = {
     failedToLoad: "주문을 불러오지 못했습니다",
     notFound: "주문을 찾을 수 없습니다",
     failedToUpdateStatus: "주문 상태를 업데이트하지 못했습니다",
+    confirmCancel: "이 주문을 취소할까요?",
+    confirmCancelPaid: "카드 결제를 환불하고 이 주문을 취소할까요?",
     orderId: "주문 ID",
     customer: "고객",
     timeline: "타임라인",
