@@ -332,11 +332,11 @@ export default function OrderDetail() {
             )}
           </div>
         </div>
-        {(order.confirmation_overdue ||
-          order.cancel_requested_at ||
-          (order.status === "paid" &&
-            !order.confirmed_at &&
-            order.confirmation_due_at)) && (
+        {((order.status === "paid" &&
+          !order.confirmed_at &&
+          (order.confirmation_overdue || order.confirmation_due_at)) ||
+          ((order.status === "paid" || order.status === "in_transit") &&
+            order.cancel_requested_at)) && (
           <div className="mt-5 space-y-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
             {order.status === "paid" && !order.confirmed_at && (
               <p>

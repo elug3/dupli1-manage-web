@@ -242,7 +242,8 @@ function PolicyChips({ order }: { order: Order }) {
           {t("orderDetail.unconfirmed")}
         </span>
       ) : null}
-      {order.cancel_requested_at ? (
+      {order.cancel_requested_at &&
+      (order.status === "paid" || order.status === "in_transit") ? (
         <span className="mt-1 inline-flex rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-medium text-red-800">
           {t("orderDetail.cancelRequested")}
         </span>
