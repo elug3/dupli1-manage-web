@@ -2,7 +2,6 @@ import { authedFetch } from "./auth";
 import {
   authPath,
   inventoryPath,
-  notificationPath,
   orderPath,
   productPath,
 } from "./gateway";
@@ -1816,6 +1815,9 @@ export async function getAnalytics(): Promise<AnalyticsSummary | null> {
 }
 
 // ── Notification (Telegram ops bot) ──────────────────────────────────────────
+// Wire types only — fetches live in `app/lib/server/notification.server.ts`
+// and are invoked from the `/telegram` route loader/action (SSR), so the
+// browser never calls `/notification/api/v1/notification/…`.
 
 export type TelegramSubscriptionStatus = "pending" | "accepted" | "rejected";
 
@@ -1853,86 +1855,4 @@ export interface NotificationSettings {
   service: string;
   api_version: string;
   features?: Record<string, boolean>;
-}
-
-function telegramSubscriptionPath(id?: string, action?: string): string {
-  const base = "/api/v1/notification/telegram/subscriptions";
-  if (!id) return notificationPath(base);
-  const suffix = action ? `/${action}` : "";
-  return notificationPath(`${base}/${encodeURIComponent(id)}${suffix}`);
-}
-
-export async function getTelegramSubscriptions(
-  status?: TelegramSubscriptionStatus
-): Promise<TelegramSubscription[]> {
-  const query = status ? `?status=${encodeURIComponent(status)}` : "";
-  const res = await authedFetch(`${telegramSubscriptionPath()}${query}`);
-  if (!res.ok) {
-    throw new Error(await readError(res, "Failed to load Telegram subscriptions"));
-  }
-  const data = (await res.json()) as { items?: TelegramSubscription[] | null };
-  return Array.isArray(data.items) ? data.items : [];
-}
-
-export async function createTelegramSubscription(
-  input: TelegramSubscriptionInput
-): Promise<TelegramSubscription> {
-  const res = await authedFetch(telegramSubscriptionPath(), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
-  if (!res.ok) {
-    throw new Error(await readError(res, "Failed to add Telegram subscription"));
-  }
-  return res.json() as Promise<TelegramSubscription>;
-}
-
-export async function acceptTelegramSubscription(
-  id: string,
-  alerts: TelegramAlertFlags
-): Promise<TelegramSubscription> {
-  const res = await authedFetch(telegramSubscriptionPath(id, "accept"), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(alerts),
-  });
-  if (!res.ok) {
-    throw new Error(await readError(res, "Failed to accept Telegram subscription"));
-  }
-  return res.json() as Promise<TelegramSubscription>;
-}
-
-export async function rejectTelegramSubscription(
-  id: string
-): Promise<TelegramSubscription> {
-  const res = await authedFetch(telegramSubscriptionPath(id, "reject"), {
-    method: "POST",
-  });
-  if (!res.ok) {
-    throw new Error(await readError(res, "Failed to reject Telegram subscription"));
-  }
-  return res.json() as Promise<TelegramSubscription>;
-}
-
-export async function deleteTelegramSubscription(id: string): Promise<void> {
-  const res = await authedFetch(telegramSubscriptionPath(id), {
-    method: "DELETE",
-  });
-  if (!res.ok) {
-    throw new Error(await readError(res, "Failed to remove Telegram subscription"));
-  }
-}
-
-/** Best-effort service status; the settings endpoint is public and may be absent. */
-export async function getNotificationSettings(): Promise<NotificationSettings | null> {
-  try {
-    const res = await authedFetch(
-      notificationPath("/api/v1/notification/settings")
-    );
-    if (!res.ok) return null;
-    return (await res.json()) as NotificationSettings;
-  } catch {
-    return null;
-  }
 }

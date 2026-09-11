@@ -284,7 +284,12 @@ export async function handleSessionRegister(
   return jsonResponse({ user_id: data.user_id }, { status: 201 });
 }
 
-async function accessTokenFromSession(
+/**
+ * Resolve a short-lived access token from the httpOnly session cookie.
+ * Returns a JSON 401 Response when the session is missing/expired.
+ * Used by the session gateway proxy and SSR page loaders/actions.
+ */
+export async function accessTokenFromSession(
   request: Request,
   options: { forceRefresh?: boolean } = {}
 ): Promise<{ accessToken: string } | Response> {
