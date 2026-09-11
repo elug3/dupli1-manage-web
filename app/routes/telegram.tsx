@@ -1,22 +1,38 @@
 import { useEffect, useState } from "react";
-import {
-  type NotificationSettings,
-  type TelegramAlertFlags,
-  type TelegramSubscription,
-  type TelegramSubscriptionStatus,
-  acceptTelegramSubscription,
-  createTelegramSubscription,
-  deleteTelegramSubscription,
-  getNotificationSettings,
-  getTelegramSubscriptions,
-  rejectTelegramSubscription,
+import { useFetcher, useLoaderData } from "react-router";
+import type {
+  NotificationSettings,
+  TelegramAlertFlags,
+  TelegramSubscription,
+  TelegramSubscriptionStatus,
 } from "~/lib/api";
 import { useI18n } from "~/lib/i18n";
 import { useNotify } from "~/lib/notifications";
+import {
+  acceptTelegramSubscriptionServer,
+  createTelegramSubscriptionServer,
+  deleteTelegramSubscriptionServer,
+  loadNotificationSettings,
+  loadTelegramSubscriptions,
+  rejectTelegramSubscriptionServer,
+} from "~/lib/server/notification.server";
+import type { Route } from "./+types/telegram";
 
 export function meta() {
   return [{ title: "Telegram | Dupli1 Admin" }];
 }
+
+export type TelegramLoaderData = {
+  subscriptions: TelegramSubscription[];
+  settings: NotificationSettings | null;
+  error: string | null;
+};
+
+export type TelegramActionData = {
+  ok: boolean;
+  intent?: string;
+  error?: string;
+};
 
 const inputCls =
   "w-full rounded-xl border border-edge bg-panel px-4 py-2.5 text-sm text-ink outline-none transition placeholder:text-soft focus:border-accent focus:ring-2 focus:ring-accent/20";
@@ -43,53 +59,159 @@ const STATUS_FEATURES = [
   ["product_chat_configured", "telegram.featureProductChat"],
 ] as const;
 
+function mapLoadError(raw: string, authNotConfigured: string): string {
+  return /auth not configured/i.test(raw) ? authNotConfigured : raw;
+}
+
+export async function loader({
+  request,
+}: Route.LoaderArgs): Promise<TelegramLoaderData> {
+  const [settings, subscriptionsResult] = await Promise.all([
+    loadNotificationSettings(request),
+    loadTelegramSubscriptions(request)
+      .then((subscriptions) => ({ subscriptions, error: null as string | null }))
+      .catch((err: unknown) => ({
+        subscriptions: [] as TelegramSubscription[],
+        error:
+          err instanceof Error
+            ? err.message
+            : "Failed to load Telegram subscriptions",
+      })),
+  ]);
+
+  return {
+    settings,
+    subscriptions: subscriptionsResult.subscriptions,
+    error: subscriptionsResult.error,
+  };
+}
+
+export async function action({
+  request,
+}: Route.ActionArgs): Promise<TelegramActionData> {
+  const formData = await request.formData();
+  const intent = String(formData.get("intent") ?? "");
+
+  try {
+    switch (intent) {
+      case "create": {
+        const trimmedUserId = String(formData.get("telegram_user_id") ?? "").trim();
+        const trimmedChatId = String(formData.get("chat_id") ?? "").trim();
+        if (!trimmedUserId && !trimmedChatId) {
+          return {
+            ok: false,
+            intent,
+            error: "Telegram user ID or chat ID is required",
+          };
+        }
+        const parsedUserId = trimmedUserId ? Number(trimmedUserId) : undefined;
+        if (
+          parsedUserId !== undefined &&
+          !Number.isSafeInteger(parsedUserId)
+        ) {
+          return { ok: false, intent, error: "Invalid Telegram user ID" };
+        }
+        await createTelegramSubscriptionServer(request, {
+          telegram_user_id: parsedUserId,
+          chat_id: trimmedChatId || undefined,
+          chat_label:
+            String(formData.get("chat_label") ?? "").trim() || undefined,
+          alert_order: formData.get("alert_order") === "on",
+          alert_product: formData.get("alert_product") === "on",
+        });
+        return { ok: true, intent };
+      }
+      case "accept": {
+        const id = String(formData.get("id") ?? "");
+        if (!id) return { ok: false, intent, error: "Missing subscription id" };
+        await acceptTelegramSubscriptionServer(request, id, {
+          alert_order: formData.get("alert_order") === "true",
+          alert_product: formData.get("alert_product") === "true",
+        });
+        return { ok: true, intent };
+      }
+      case "reject": {
+        const id = String(formData.get("id") ?? "");
+        if (!id) return { ok: false, intent, error: "Missing subscription id" };
+        await rejectTelegramSubscriptionServer(request, id);
+        return { ok: true, intent };
+      }
+      case "delete": {
+        const id = String(formData.get("id") ?? "");
+        if (!id) return { ok: false, intent, error: "Missing subscription id" };
+        await deleteTelegramSubscriptionServer(request, id);
+        return { ok: true, intent };
+      }
+      default:
+        return { ok: false, error: "Unknown action" };
+    }
+  } catch (err) {
+    return {
+      ok: false,
+      intent,
+      error: err instanceof Error ? err.message : "Request failed",
+    };
+  }
+}
+
 export default function Telegram() {
   const { notify } = useNotify();
   const { t, formatDateTime } = useI18n();
-  const [subscriptions, setSubscriptions] = useState<TelegramSubscription[]>([]);
-  const [settings, setSettings] = useState<NotificationSettings | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const loaderData = useLoaderData<typeof loader>();
+  const fetcher = useFetcher<TelegramActionData>();
+
+  const subscriptions = loaderData.subscriptions;
+  const settings = loaderData.settings;
+  const loadError = loaderData.error
+    ? mapLoadError(loaderData.error, t("telegram.authNotConfigured"))
+    : null;
+
   const [activeTab, setActiveTab] = useState<TelegramSubscriptionStatus | "all">(
     "all"
   );
-  const [busyId, setBusyId] = useState<string | null>(null);
-
   const [userId, setUserId] = useState("");
   const [chatId, setChatId] = useState("");
   const [chatLabel, setChatLabel] = useState("");
   const [newAlertOrder, setNewAlertOrder] = useState(true);
   const [newAlertProduct, setNewAlertProduct] = useState(true);
-  const [adding, setAdding] = useState(false);
 
   // Alert flags an operator picks before accepting a pending row; both default on.
   const [pendingAlerts, setPendingAlerts] = useState<
     Record<string, TelegramAlertFlags>
   >({});
 
-  function loadSubscriptions() {
-    setLoading(true);
-    setError(null);
-    getTelegramSubscriptions()
-      .then(setSubscriptions)
-      .catch((err) => {
-        setSubscriptions([]);
-        const raw =
-          err instanceof Error ? err.message : t("telegram.failedToLoad");
-        // Upstream notification service with no AUTH_JWKS_URL returns this 503.
-        setError(
-          /auth not configured/i.test(raw)
-            ? t("telegram.authNotConfigured")
-            : raw
-        );
-      })
-      .finally(() => setLoading(false));
-  }
+  const busy =
+    fetcher.state !== "idle" &&
+    fetcher.formData != null;
+  const busyId = busy ? String(fetcher.formData?.get("id") ?? "") : null;
+  const adding =
+    busy && String(fetcher.formData?.get("intent") ?? "") === "create";
 
   useEffect(() => {
-    loadSubscriptions();
-    void getNotificationSettings().then(setSettings);
-  }, []);
+    if (fetcher.state !== "idle" || !fetcher.data) return;
+    const data = fetcher.data;
+    if (!data.ok) {
+      notify(data.error ?? t("telegram.failedToLoad"), "error");
+      return;
+    }
+    switch (data.intent) {
+      case "create":
+        setUserId("");
+        setChatId("");
+        setChatLabel("");
+        notify(t("telegram.subscriptionAdded"));
+        break;
+      case "accept":
+        notify(t("telegram.subscriptionAccepted"));
+        break;
+      case "reject":
+        notify(t("telegram.subscriptionRejected"));
+        break;
+      case "delete":
+        notify(t("telegram.subscriptionDeleted"));
+        break;
+    }
+  }, [fetcher.state, fetcher.data, notify, t]);
 
   function alertsFor(sub: TelegramSubscription): TelegramAlertFlags {
     return (
@@ -111,13 +233,7 @@ export default function Telegram() {
     }));
   }
 
-  function replaceSubscription(updated: TelegramSubscription) {
-    setSubscriptions((prev) =>
-      prev.map((s) => (s.id === updated.id ? updated : s))
-    );
-  }
-
-  async function handleAdd(e: React.FormEvent) {
+  function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     const trimmedUserId = userId.trim();
     const trimmedChatId = chatId.trim();
@@ -125,81 +241,43 @@ export default function Telegram() {
       notify(t("telegram.needUserIdOrChatId"), "error");
       return;
     }
-    const parsedUserId = trimmedUserId ? Number(trimmedUserId) : undefined;
-    if (parsedUserId !== undefined && !Number.isSafeInteger(parsedUserId)) {
+    if (trimmedUserId && !Number.isSafeInteger(Number(trimmedUserId))) {
       notify(t("telegram.invalidUserId"), "error");
       return;
     }
-
-    setAdding(true);
-    try {
-      const created = await createTelegramSubscription({
-        telegram_user_id: parsedUserId,
-        chat_id: trimmedChatId || undefined,
-        chat_label: chatLabel.trim() || undefined,
-        alert_order: newAlertOrder,
-        alert_product: newAlertProduct,
-      });
-      setSubscriptions((prev) => [created, ...prev]);
-      setUserId("");
-      setChatId("");
-      setChatLabel("");
-      notify(t("telegram.subscriptionAdded"));
-    } catch (err) {
-      notify(
-        err instanceof Error ? err.message : t("telegram.failedToAdd"),
-        "error"
-      );
-    } finally {
-      setAdding(false);
-    }
+    const fd = new FormData();
+    fd.set("intent", "create");
+    fd.set("telegram_user_id", trimmedUserId);
+    fd.set("chat_id", trimmedChatId);
+    fd.set("chat_label", chatLabel.trim());
+    if (newAlertOrder) fd.set("alert_order", "on");
+    if (newAlertProduct) fd.set("alert_product", "on");
+    fetcher.submit(fd, { method: "post" });
   }
 
-  async function handleAccept(sub: TelegramSubscription) {
-    setBusyId(sub.id);
-    try {
-      replaceSubscription(await acceptTelegramSubscription(sub.id, alertsFor(sub)));
-      notify(t("telegram.subscriptionAccepted"));
-    } catch (err) {
-      notify(
-        err instanceof Error ? err.message : t("telegram.failedToAccept"),
-        "error"
-      );
-    } finally {
-      setBusyId(null);
-    }
+  function handleAccept(sub: TelegramSubscription) {
+    const alerts = alertsFor(sub);
+    const fd = new FormData();
+    fd.set("intent", "accept");
+    fd.set("id", sub.id);
+    fd.set("alert_order", String(alerts.alert_order));
+    fd.set("alert_product", String(alerts.alert_product));
+    fetcher.submit(fd, { method: "post" });
   }
 
-  async function handleReject(sub: TelegramSubscription) {
-    setBusyId(sub.id);
-    try {
-      replaceSubscription(await rejectTelegramSubscription(sub.id));
-      notify(t("telegram.subscriptionRejected"));
-    } catch (err) {
-      notify(
-        err instanceof Error ? err.message : t("telegram.failedToReject"),
-        "error"
-      );
-    } finally {
-      setBusyId(null);
-    }
+  function handleReject(sub: TelegramSubscription) {
+    const fd = new FormData();
+    fd.set("intent", "reject");
+    fd.set("id", sub.id);
+    fetcher.submit(fd, { method: "post" });
   }
 
-  async function handleDelete(sub: TelegramSubscription) {
+  function handleDelete(sub: TelegramSubscription) {
     if (!window.confirm(t("telegram.confirmDelete"))) return;
-    setBusyId(sub.id);
-    try {
-      await deleteTelegramSubscription(sub.id);
-      setSubscriptions((prev) => prev.filter((s) => s.id !== sub.id));
-      notify(t("telegram.subscriptionDeleted"));
-    } catch (err) {
-      notify(
-        err instanceof Error ? err.message : t("telegram.failedToDelete"),
-        "error"
-      );
-    } finally {
-      setBusyId(null);
-    }
+    const fd = new FormData();
+    fd.set("intent", "delete");
+    fd.set("id", sub.id);
+    fetcher.submit(fd, { method: "post" });
   }
 
   const filtered =
@@ -357,9 +435,9 @@ export default function Telegram() {
         </div>
       </form>
 
-      {error && (
+      {loadError && (
         <div className="rounded-xl bg-danger-bg px-4 py-3 text-sm text-danger-fg">
-          {error}
+          {loadError}
         </div>
       )}
 
@@ -400,22 +478,18 @@ export default function Telegram() {
       </div>
 
       <div className="rounded-2xl border border-edge bg-surface shadow-[0_1px_4px_rgba(28,27,31,0.04)] overflow-hidden">
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="h-7 w-7 animate-spin rounded-full border-2 border-accent border-t-transparent" />
-          </div>
-        ) : subscriptions.length === 0 ? (
+        {subscriptions.length === 0 && !loadError ? (
           <div className="px-5 py-16 text-center">
             <p className="text-faint">{t("telegram.noSubscriptions")}</p>
             <p className="mt-1 text-sm text-soft">
               {t("telegram.noSubscriptionsHint")}
             </p>
           </div>
-        ) : filtered.length === 0 ? (
+        ) : filtered.length === 0 && !loadError ? (
           <div className="px-5 py-16 text-center text-faint">
             {t("telegram.noSubscriptionsInStatus")}
           </div>
-        ) : (
+        ) : filtered.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -531,7 +605,7 @@ export default function Telegram() {
               </tbody>
             </table>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

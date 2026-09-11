@@ -91,12 +91,14 @@ Orders from checkout complete include an immutable fulfillment snapshot (`recipi
 
 ### Notification (`/notification`)
 
-Telegram ops bot manager API (served by `dupli1-notification`):
+Telegram ops bot manager API (served by `dupli1-notification`). Upstream paths:
 
-- `GET /notification/api/v1/notification/telegram/subscriptions` — list (`notification.telegram.read`)
+- `GET /api/v1/notification/telegram/subscriptions` — list (`notification.telegram.read`)
 - `POST …/subscriptions`, `…/{id}/accept|reject`, `DELETE …/{id}` — manage (`notification.telegram.manage`)
 
-UI: `/telegram`. **Production requires `AUTH_JWKS_URL` on the notification ECS task** — without it the API returns `503 auth not configured` and the tab fails to load. See [docs/ai-instruct-dupli1-notification-jwks.md](docs/ai-instruct-dupli1-notification-jwks.md).
+UI: `/telegram` loads and mutates via **SSR** `loader`/`action` (`app/lib/server/notification.server.ts`) so the browser does not call `/notification/…` or `/auth/session/gateway/notification/…`. The `/notification` Vite/SSR gateway prefix remains for other/public proxy use.
+
+**Production requires `AUTH_JWKS_URL` on the notification ECS task** — without it the API returns `503 auth not configured` and the tab fails to load. See [docs/ai-instruct-dupli1-notification-jwks.md](docs/ai-instruct-dupli1-notification-jwks.md).
 
 ## Auth (browser)
 
