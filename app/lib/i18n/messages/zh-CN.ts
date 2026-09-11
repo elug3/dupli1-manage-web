@@ -568,8 +568,7 @@ export const zhCN: Messages = {
   telegram: {
     metaTitle: "Telegram | Dupli1 Admin",
     title: "Telegram",
-    subtitle:
-      "审批哪些人接收 Dupli1 机器人的运营告警（/notification/api/v1/notification/telegram）",
+    subtitle: "审批哪些人接收 Dupli1 机器人的运营告警",
     serviceStatus: "服务状态",
     featureTelegramEnabled: "机器人令牌",
     featureTelegramWebhook: "Webhook",

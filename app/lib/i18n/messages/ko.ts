@@ -572,8 +572,7 @@ export const ko: Messages = {
   telegram: {
     metaTitle: "텔레그램 | Dupli1 Admin",
     title: "텔레그램",
-    subtitle:
-      "Dupli1 봇의 운영 알림 수신자를 승인합니다 (/notification/api/v1/notification/telegram)",
+    subtitle: "Dupli1 봇의 운영 알림 수신자를 승인합니다",
     serviceStatus: "서비스 상태",
     featureTelegramEnabled: "봇 토큰",
     featureTelegramWebhook: "웹훅",
