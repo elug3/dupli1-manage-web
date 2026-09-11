@@ -567,8 +567,7 @@ export const en = {
   telegram: {
     metaTitle: "Telegram | Dupli1 Admin",
     title: "Telegram",
-    subtitle:
-      "Approve who receives ops alerts from the Dupli1 bot (/notification/api/v1/notification/telegram)",
+    subtitle: "Approve who receives ops alerts from the Dupli1 bot",
     serviceStatus: "Service status",
     featureTelegramEnabled: "Bot token",
     featureTelegramWebhook: "Webhook",
