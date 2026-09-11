@@ -233,6 +233,25 @@ export default function Orders() {
   );
 }
 
+function PolicyChips({ order }: { order: Order }) {
+  const { t } = useI18n();
+  return (
+    <>
+      {order.status === "paid" && !order.confirmed_at ? (
+        <span className="mt-1 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-800">
+          {t("orderDetail.unconfirmed")}
+        </span>
+      ) : null}
+      {order.cancel_requested_at &&
+      (order.status === "paid" || order.status === "in_transit") ? (
+        <span className="mt-1 inline-flex rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-medium text-red-800">
+          {t("orderDetail.cancelRequested")}
+        </span>
+      ) : null}
+    </>
+  );
+}
+
 function OrderCard({ order }: { order: Order }) {
   const { t, formatKrw, formatDate } = useI18n();
   return (
@@ -246,6 +265,7 @@ function OrderCard({ order }: { order: Order }) {
             {order.id}
           </p>
           <p className="mt-1 text-sm text-muted">{order.customer_id}</p>
+          <PolicyChips order={order} />
         </div>
         <OrderStatusBadge status={order.status} />
       </div>
@@ -289,7 +309,10 @@ function OrderRow({ order }: { order: Order }) {
         {formatKrw(order.total_krw)}
       </td>
       <td className="px-5 py-3.5">
-        <OrderStatusBadge status={order.status} />
+        <div className="flex flex-col items-start gap-1">
+          <OrderStatusBadge status={order.status} />
+          <PolicyChips order={order} />
+        </div>
       </td>
       <td className="px-5 py-3.5 text-xs text-faint">
         {formatDate(order.created_at, {

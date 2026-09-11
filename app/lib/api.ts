@@ -1311,6 +1311,16 @@ export interface Order {
   payment_due_at?: string;
   shipped_at?: string;
   shipped_by?: string;
+  /** Set when a manager accepts a paid order (or when it ships). */
+  confirmed_at?: string;
+  confirmation_due_at?: string;
+  confirmation_overdue?: boolean;
+  cancel_requested_at?: string;
+  cancel_request_reason?: string;
+  cancel_confirm_due_at?: string;
+  cancel_confirm_overdue?: boolean;
+  immediate_cancel_allowed?: boolean;
+  cancel_request_allowed?: boolean;
   /** Fixed KR carrier code set at ship time (`cj`, `hanjin`, …, `other`). */
   carrier?: string;
   tracking_number?: string;
@@ -1445,6 +1455,35 @@ export async function updateOrderStatus(
     body: JSON.stringify({ status }),
   });
   if (!res.ok) throw new Error(await readError(res, "Failed to update order"));
+  return res.json() as Promise<Order>;
+}
+
+/** Manager accepts a paid order. After this, customer cancel needs approval. */
+export async function confirmOrder(id: string): Promise<Order> {
+  const res = await authedFetch(orderPath(`/api/v1/orders/${id}/confirm`), {
+    method: "POST",
+  });
+  if (!res.ok) throw new Error(await readError(res, "Failed to confirm order"));
+  return res.json() as Promise<Order>;
+}
+
+/** Approve a customer cancel request and refund. */
+export async function approveOrderCancel(id: string): Promise<Order> {
+  const res = await authedFetch(
+    orderPath(`/api/v1/orders/${id}/cancel/approve`),
+    { method: "POST" }
+  );
+  if (!res.ok) throw new Error(await readError(res, "Failed to approve cancel"));
+  return res.json() as Promise<Order>;
+}
+
+/** Reject a customer cancel request; the order stays in place. */
+export async function rejectOrderCancel(id: string): Promise<Order> {
+  const res = await authedFetch(
+    orderPath(`/api/v1/orders/${id}/cancel/reject`),
+    { method: "POST" }
+  );
+  if (!res.ok) throw new Error(await readError(res, "Failed to reject cancel"));
   return res.json() as Promise<Order>;
 }
 
