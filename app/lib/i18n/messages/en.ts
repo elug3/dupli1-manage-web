@@ -444,6 +444,8 @@ export const en = {
     failedToLoad: "Failed to load order",
     notFound: "Order not found",
     failedToUpdateStatus: "Failed to update order status",
+    confirmCancel: "Cancel this order?",
+    confirmCancelPaid: "Refund the captured card payment and cancel this order?",
     orderId: "Order ID",
     customer: "Customer",
     timeline: "Timeline",

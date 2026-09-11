@@ -443,6 +443,8 @@ export const zhCN: Messages = {
     failedToLoad: "加载订单失败",
     notFound: "订单未找到",
     failedToUpdateStatus: "更新订单状态失败",
+    confirmCancel: "取消此订单？",
+    confirmCancelPaid: "退还已捕获的卡支付并取消此订单？",
     orderId: "订单 ID",
     customer: "客户",
     timeline: "时间线",

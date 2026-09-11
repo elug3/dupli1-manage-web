@@ -79,7 +79,7 @@ SKU identity: each variant has immutable `skuId` (ULID) and human `sku` composed
 - `GET /order/api/v1/orders?customer_id=` — list orders (admin aggregates across users)
 - `GET /order/api/v1/orders/{id}`
 - `POST /order/api/v1/orders/{id}/ship` — `paid` → `in_transit` (`order.ship`)
-- `PUT /order/api/v1/orders/{id}/status` — `canceled` or `fulfilled` only (`order.status.update`)
+- `PUT /order/api/v1/orders/{id}/status` — `canceled` or `fulfilled` only (`order.status.update`). **Paid** cancel refunds the captured payment at NANO (or Bypass) first; a PG rejection leaves the order `paid`.
 
 Statuses: `pending` → `paid` → `in_transit` → `fulfilled` (or `canceled` from pending/paid).
 

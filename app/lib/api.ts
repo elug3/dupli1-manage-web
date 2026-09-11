@@ -1605,6 +1605,8 @@ export const PERMISSION_CATALOG = [
   "cart.read",
   "payment.create",
   "payment.read.all",
+  "payment.bypass",
+  "payment.cancel",
   "notification.telegram.read",
   "notification.telegram.manage",
 ] as const;

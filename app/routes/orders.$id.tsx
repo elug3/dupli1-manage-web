@@ -141,6 +141,16 @@ export default function OrderDetail() {
       return;
     }
     const key = actionKey(action);
+    if (action.status === "canceled") {
+      const paidWithCapture =
+        order.status === "paid" && Boolean(order.payment_id);
+      const ok = window.confirm(
+        paidWithCapture
+          ? t("orderDetail.confirmCancelPaid")
+          : t("orderDetail.confirmCancel")
+      );
+      if (!ok) return;
+    }
     setUpdatingAction(key);
     try {
       const updated = await updateOrderStatus(order.id, action.status);
