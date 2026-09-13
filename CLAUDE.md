@@ -80,10 +80,21 @@ SKU identity: each variant has immutable `skuId` (ULID) and human `sku` composed
 - `GET /order/api/v1/orders/{id}`
 - `POST /order/api/v1/orders/{id}/ship` — `paid` → `in_transit` (`order.ship`)
 - `PUT /order/api/v1/orders/{id}/status` — `canceled` or `fulfilled` only (`order.status.update`). **Paid** cancel refunds the captured payment at NANO (or Bypass) first; a PG rejection leaves the order `paid`.
+- `GET /order/api/v1/orders/events` — **live order feed (SSE)**, `order.read.all`
 
 Statuses: `pending` → `paid` → `in_transit` → `fulfilled` (or `canceled` from pending/paid).
 
 Orders from checkout complete include an immutable fulfillment snapshot (`recipient_name`, `recipient_phone`, `shipping_address`) shown in the order expand panel.
+
+#### Live order feed
+
+`OrderFeedProvider` (`app/lib/order-events.tsx`) wraps the routed pages in `admin.tsx`, so **one** stream of `GET /order/api/v1/orders/events` serves the whole console: it survives navigation, and it raises the `order.created` / `order.paid` notification wherever the operator happens to be — not just on `/orders`. It mounts past the layout's `if (!user) return null`, so no stream opens before sign-in.
+
+Pages join that feed with `useOrderFeed(listener, enabled)` and only keep their own view in step — `/orders` merges rows and renders the Live / Not live pill, the dashboard refreshes its tiles. They gate on `enabled` until their first list load lands, so a streamed snapshot cannot render as the only row there is. Notifying is the provider's job alone; a page must not toast, or the operator gets two.
+
+Each `event: order` frame carries the full order snapshot, so no follow-up fetch is needed; an `event: reset` frame means reload via `getOrders()`. SSE rather than a WebSocket because the BFF proxies with `fetch` (no HTTP upgrade) and the browser `WebSocket` API cannot send `Authorization` — see backend [docs/order-live-events.md](../dupli1/docs/order-live-events.md).
+
+`npm run test:orders:browser` drives all of this in a real browser against `npm run mock:gateway`.
 
 ### Inventory (`/inventory`)
 
@@ -105,9 +116,11 @@ UI: `/telegram` loads and mutates via **SSR** `loader`/`action` (`app/lib/server
 Server-side session storage keeps both refresh and access tokens off the browser entirely:
 
 - No token of any kind is stored client-side (not in `localStorage`, not in a readable cookie).
-- Refresh token and a short-lived cached access token live in the SSR server's in-memory session cache, keyed by `session_id`.
+- Refresh token and a short-lived cached access token live in the session store, keyed by `session_id`. **Backed by Redis when `REDIS_URL` is set** (`redis://redis.dupli1.local:6379` in ECS, wired in `infra/terraform/ecs_frontends.tf`), otherwise a per-process `Map` so `npm run dev` needs no infrastructure. The Map is only correct for a single task: the `manage-tg` target group has `stickiness.enabled=false`, so a request landing on another task finds no session, **clears the cookie, and logs the operator out everywhere** — and a rolling deploy runs two tasks for the 300s deregistration delay. `npm run test:session:shared` drives two dev servers against one Redis; run it with `REDIS_URL` unset and it must fail.
 - `dupli1_sid` httpOnly cookie carries the session id; the browser never sees either token.
 - `POST /auth/session/login`, `/auth/session/logout`, `GET /auth/session/me` proxy auth to the gateway and manage the session cookie. `/auth/session/refresh` always force-exchanges the refresh token (never returns a cached access token) — callers reach it after a 401, so the cached token is exactly what just failed.
+- **Auth rotates refresh tokens.** Every exchange kills the token it was given and returns a replacement in `refresh_token` alongside `token`; `exchangeRefreshToken` returns both and each caller must persist the new one (`updateSessionRefreshToken`, or `createSession` at login — login spends the token once to prime the cache, so the one auth returned at login is already dead). Dropping the replacement stranded the session on a rejected token, so the first refresh 401'd and cleared the session: admin sessions lasted one access-token lifetime (15 min) instead of the session's 30 days. Exchanges are coalesced per session, because two parallel cache misses would spend the same token and the loser's 401 would tear down a healthy session. `npm run test:session` covers this against a real auth service.
+- The session gateway forwards `Last-Event-ID` upstream (it rebuilds request headers from scratch), which is what lets the order stream resume after a reconnect. `EventSource` cannot see a status code, so `useOrderEvents` treats a permanently-closed stream as "refresh the session, then reconnect with backoff".
 - `authedFetch` (in `app/lib/auth.ts`) sends all `/auth`, `/product`, `/inventory`, `/order`, `/notification` API calls to `/auth/session/gateway/*` with `credentials: "include"` and no `Authorization` header. The `auth.session.gateway.tsx` route (`handleSessionGatewayProxy`) resolves the session cookie server-side, exchanges/reuses a cached access token, attaches `Authorization: Bearer <token>`, and forwards the request to the real gateway. **Auth is the source of truth for login:** a non-auth upstream 401 triggers one forced refresh + retry in the BFF; if auth refresh fails the session is cleared (real logout). If refresh succeeds but the upstream still rejects, the BFF returns `502` `upstream_unauthorized` so the browser does not bounce to `/login`. Client-side, redirect to `/login` only when refresh fails or an **auth** service path still returns 401.
 - Users carry `permissions: string[]` and `account_type: "customer" | "manager" | "service"` (see `PERMISSION_CATALOG` / `AccountType` in `app/lib/api.ts`) — includes `product.master.read|write`. The legacy `roles` claim was removed from the backend. Auth stores human operators as `manager`; manage-web still accepts legacy wire `admin` on read via `normalizeAccountType`.
 

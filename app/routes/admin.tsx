@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { type User, getMe, logout } from "~/lib/auth";
 import { useI18n } from "~/lib/i18n";
 import { LanguageSwitcher } from "~/lib/i18n/LanguageSwitcher";
+import { OrderFeedProvider } from "~/lib/order-events";
 import { ThemeSwitcher } from "~/lib/ThemeSwitcher";
 import { APP_BUILD_NUMBER, APP_VERSION } from "~/lib/version";
 
@@ -210,7 +211,9 @@ export default function AdminLayout() {
         {/* Page content */}
         <main className="flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]">
           <div className="mx-auto max-w-7xl p-4 sm:p-6">
-            <Outlet />
+            <OrderFeedProvider>
+              <Outlet />
+            </OrderFeedProvider>
           </div>
         </main>
       </div>

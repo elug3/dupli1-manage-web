@@ -626,6 +626,14 @@ function FulfillmentSection({ order }: { order: Order }) {
             </dd>
           </div>
         )}
+        {addr?.pccc && (
+          <div>
+            <dt className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+              {t("orders.pccc")}
+            </dt>
+            <dd className="mt-1 font-medium text-[#1C1B1F]">{addr.pccc}</dd>
+          </div>
+        )}
       </dl>
     </div>
   );

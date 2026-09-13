@@ -10,13 +10,13 @@ import {
 } from "./session-cookie";
 import {
   clearCachedAccessToken,
+  commitTokenExchange,
   createSession,
   deleteSession,
   getCachedAccessToken,
   getRefreshToken,
   getSession,
   setCachedAccessToken,
-  updateSessionRefreshToken,
 } from "./session-store";
 import { AUTH_PREFIX } from "../gateway";
 
@@ -66,12 +66,12 @@ async function readError(res: Response, fallback: string): Promise<string> {
  * store next.
  *
  * Auth rotates: the token just spent is dead the moment this returns, and the
- * replacement arrives alongside the access token. Callers **must** persist the
+ * replacement arrives in the response. Whoever calls this **must** persist the
  * returned `refreshToken`, or the session is left holding a token auth will
- * reject — the next exchange then 401s and the operator is signed out.
+ * reject and the next exchange logs the operator out.
  *
- * Falls back to the token we sent when the response carries no replacement, so
- * an auth build that does not rotate keeps working.
+ * Falls back to the token we sent if the response omits a replacement, so an
+ * auth build that does not rotate keeps working.
  */
 async function exchangeRefreshToken(
   refreshToken: string
@@ -103,13 +103,10 @@ function jwtExpiryMs(token: string): number | null {
   }
 }
 
-function cacheAccessToken(sessionId: string, accessToken: string): void {
+/** When a cached access token should stop being handed out. */
+function accessTokenExpiry(accessToken: string): number {
   const expiresAt = jwtExpiryMs(accessToken);
-  setCachedAccessToken(
-    sessionId,
-    accessToken,
-    (expiresAt ?? Date.now()) - ACCESS_TOKEN_REFRESH_SKEW_MS
-  );
+  return (expiresAt ?? Date.now()) - ACCESS_TOKEN_REFRESH_SKEW_MS;
 }
 
 /**
@@ -129,6 +126,9 @@ const exchangesInFlight = new Map<
  * Exchange the session's refresh token for an access token, reusing a cached
  * one while it's fresh. Pass `forceRefresh` after an upstream 401 (or for
  * `/auth/session/refresh`) so we don't hand back the same rejected token.
+ *
+ * `refreshToken` must be read from the store immediately before calling, since
+ * each exchange rotates it.
  */
 async function cachedAccessTokenExchange(
   sessionId: string,
@@ -136,9 +136,9 @@ async function cachedAccessTokenExchange(
   options: { forceRefresh?: boolean } = {}
 ): Promise<{ accessToken: string } | null> {
   if (options.forceRefresh) {
-    clearCachedAccessToken(sessionId);
+    await clearCachedAccessToken(sessionId);
   } else {
-    const cached = getCachedAccessToken(sessionId);
+    const cached = await getCachedAccessToken(sessionId);
     if (cached) return { accessToken: cached };
   }
 
@@ -147,11 +147,39 @@ async function cachedAccessTokenExchange(
 
   const exchange = (async () => {
     const exchanged = await exchangeRefreshToken(refreshToken);
-    if (!exchanged) return null;
-    // Store the replacement before anything else can read it.
-    updateSessionRefreshToken(sessionId, exchanged.refreshToken);
-    cacheAccessToken(sessionId, exchanged.accessToken);
-    return { accessToken: exchanged.accessToken };
+    if (exchanged) {
+      await commitTokenExchange(
+        sessionId,
+        exchanged.refreshToken,
+        exchanged.accessToken,
+        accessTokenExpiry(exchanged.accessToken)
+      );
+      return { accessToken: exchanged.accessToken };
+    }
+
+    // Auth rejected our token. With a shared store that does not prove the
+    // session is dead: another task may have rotated it between our read and
+    // our call, which invalidates ours while the session stays healthy.
+    // In-process coalescing cannot see that, so check the store before giving
+    // up — otherwise one unlucky race logs the operator out.
+    const current = await getSession(sessionId);
+    if (!current || current.refreshToken === refreshToken) {
+      // Unchanged: the token really is spent or revoked.
+      return null;
+    }
+
+    const fresh = await getCachedAccessToken(sessionId);
+    if (fresh) return { accessToken: fresh };
+
+    const retried = await exchangeRefreshToken(current.refreshToken);
+    if (!retried) return null;
+    await commitTokenExchange(
+      sessionId,
+      retried.refreshToken,
+      retried.accessToken,
+      accessTokenExpiry(retried.accessToken)
+    );
+    return { accessToken: retried.accessToken };
   })();
 
   exchangesInFlight.set(sessionId, exchange);
@@ -211,15 +239,19 @@ export async function handleSessionLogin(request: Request): Promise<Response> {
 
   // exchanged.refreshToken, not refresh_token: the exchange above already spent
   // the one auth handed us at login, so storing it would start the session on a
-  // token auth will reject.
-  const sessionId = createSession(
+  // dead token.
+  const sessionId = await createSession(
     exchanged.refreshToken,
     profile.email || email,
     profile.user_id,
     profile.permissions ?? [],
     normalizeSessionAccountType(profile.account_type)
   );
-  cacheAccessToken(sessionId, exchanged.accessToken);
+  await setCachedAccessToken(
+    sessionId,
+    exchanged.accessToken,
+    accessTokenExpiry(exchanged.accessToken)
+  );
 
   return jsonResponse(
     { email },
@@ -240,13 +272,13 @@ export async function handleSessionRefresh(request: Request): Promise<Response> 
 export async function handleSessionLogout(request: Request): Promise<Response> {
   const sessionId = getSessionId(request);
   if (sessionId) {
-    const refreshToken = getRefreshToken(sessionId);
+    const refreshToken = await getRefreshToken(sessionId);
     if (refreshToken) {
       await backendPost("auth", "/api/v1/auth/logout", {
         refresh_token: refreshToken,
       }).catch(() => {});
     }
-    deleteSession(sessionId);
+    await deleteSession(sessionId);
   }
 
   return new Response(null, {
@@ -261,7 +293,7 @@ export async function handleSessionMe(request: Request): Promise<Response> {
     return jsonResponse({ error: "No session" }, { status: 401 });
   }
 
-  const session = getSession(sessionId);
+  const session = await getSession(sessionId);
   if (!session) {
     return jsonResponse({ error: "Session expired" }, {
       status: 401,
@@ -276,7 +308,7 @@ export async function handleSessionMe(request: Request): Promise<Response> {
     session.refreshToken
   );
   if (!exchanged) {
-    deleteSession(sessionId);
+    await deleteSession(sessionId);
     return jsonResponse({ error: "Session expired" }, {
       status: 401,
       headers: { "Set-Cookie": clearSessionCookieHeader(request) },
@@ -345,7 +377,7 @@ export async function accessTokenFromSession(
     return jsonResponse({ error: "Not authenticated" }, { status: 401 });
   }
 
-  const refreshToken = getRefreshToken(sessionId);
+  const refreshToken = await getRefreshToken(sessionId);
   if (!refreshToken) {
     return jsonResponse({ error: "Session expired" }, {
       status: 401,
@@ -359,7 +391,7 @@ export async function accessTokenFromSession(
     options
   );
   if (!exchanged) {
-    deleteSession(sessionId);
+    await deleteSession(sessionId);
     return jsonResponse({ error: "Session expired" }, {
       status: 401,
       headers: { "Set-Cookie": clearSessionCookieHeader(request) },
