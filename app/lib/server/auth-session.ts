@@ -16,6 +16,7 @@ import {
   getRefreshToken,
   getSession,
   setCachedAccessToken,
+  updateSessionRefreshToken,
 } from "./session-store";
 import { AUTH_PREFIX } from "../gateway";
 
@@ -25,6 +26,8 @@ interface LoginResponse {
 
 interface RefreshResponse {
   token: string;
+  /** Auth rotates on every exchange and returns the replacement here. */
+  refresh_token?: string;
 }
 
 interface AuthMeResponse {
@@ -58,15 +61,30 @@ async function readError(res: Response, fallback: string): Promise<string> {
   }
 }
 
+/**
+ * Exchange a refresh token for an access token, returning the refresh token to
+ * store next.
+ *
+ * Auth rotates: the token just spent is dead the moment this returns, and the
+ * replacement arrives alongside the access token. Callers **must** persist the
+ * returned `refreshToken`, or the session is left holding a token auth will
+ * reject — the next exchange then 401s and the operator is signed out.
+ *
+ * Falls back to the token we sent when the response carries no replacement, so
+ * an auth build that does not rotate keeps working.
+ */
 async function exchangeRefreshToken(
   refreshToken: string
-): Promise<{ accessToken: string } | null> {
+): Promise<{ accessToken: string; refreshToken: string } | null> {
   const res = await backendPost("auth", "/api/v1/auth/refresh", {
     refresh_token: refreshToken,
   });
   if (!res.ok) return null;
   const body = (await res.json()) as RefreshResponse;
-  return { accessToken: body.token };
+  return {
+    accessToken: body.token,
+    refreshToken: body.refresh_token?.trim() || refreshToken,
+  };
 }
 
 /** Refresh this long before the JWT's actual `exp` to absorb request latency and clock drift. */
@@ -95,6 +113,19 @@ function cacheAccessToken(sessionId: string, accessToken: string): void {
 }
 
 /**
+ * One in-flight exchange per session.
+ *
+ * Rotation makes a concurrent second exchange fail: two parallel API calls that
+ * both miss the cache would spend the same token, and the loser's 401 would
+ * tear down a session that is perfectly healthy. Joiners share the winner's
+ * result instead.
+ */
+const exchangesInFlight = new Map<
+  string,
+  Promise<{ accessToken: string } | null>
+>();
+
+/**
  * Exchange the session's refresh token for an access token, reusing a cached
  * one while it's fresh. Pass `forceRefresh` after an upstream 401 (or for
  * `/auth/session/refresh`) so we don't hand back the same rejected token.
@@ -111,11 +142,24 @@ async function cachedAccessTokenExchange(
     if (cached) return { accessToken: cached };
   }
 
-  const exchanged = await exchangeRefreshToken(refreshToken);
-  if (!exchanged) return null;
+  const joined = exchangesInFlight.get(sessionId);
+  if (joined) return joined;
 
-  cacheAccessToken(sessionId, exchanged.accessToken);
-  return exchanged;
+  const exchange = (async () => {
+    const exchanged = await exchangeRefreshToken(refreshToken);
+    if (!exchanged) return null;
+    // Store the replacement before anything else can read it.
+    updateSessionRefreshToken(sessionId, exchanged.refreshToken);
+    cacheAccessToken(sessionId, exchanged.accessToken);
+    return { accessToken: exchanged.accessToken };
+  })();
+
+  exchangesInFlight.set(sessionId, exchange);
+  try {
+    return await exchange;
+  } finally {
+    exchangesInFlight.delete(sessionId);
+  }
 }
 
 async function fetchAuthProfile(
@@ -165,8 +209,11 @@ export async function handleSessionLogin(request: Request): Promise<Response> {
       permissions: [],
     };
 
+  // exchanged.refreshToken, not refresh_token: the exchange above already spent
+  // the one auth handed us at login, so storing it would start the session on a
+  // token auth will reject.
   const sessionId = createSession(
-    refresh_token,
+    exchanged.refreshToken,
     profile.email || email,
     profile.user_id,
     profile.permissions ?? [],
