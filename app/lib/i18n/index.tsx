@@ -100,8 +100,11 @@ export function translate(
 export const STORE_CURRENCY = "KRW" as const;
 
 /**
- * Format a major-unit money amount (product `price`, or order cents / 100).
- * Always KRW; the optional `currency` argument is ignored for API stability.
+ * Format a money amount. Always KRW; the optional `currency` argument is
+ * ignored for API stability.
+ *
+ * Every money field on the Dupli1 API is in whole won — product `price` and
+ * `officialPrice`, and the `*_won` fields alike. Nothing here scales.
  */
 export function formatCurrency(
   locale: Locale,
@@ -118,13 +121,21 @@ export function formatCurrency(
   }).format(amount);
 }
 
-/** Format API `*_cents` fields (cart/order still store price × 100). */
-export function formatCents(
+/**
+ * Format an API `*_won` field (`total_won`, `unit_price_won`,
+ * `shipping_fee_won`, …). Identical to {@link formatCurrency} — kept as a
+ * separate name so call sites read in the same terms as the field they pass.
+ *
+ * These fields were once named `*_cents`, which led to a divide-by-100 here
+ * that showed every order, revenue and analytics figure at a hundredth of its
+ * real value. They always held whole won; the name now says so.
+ */
+export function formatWon(
   locale: Locale,
-  cents: number,
+  won: number,
   options?: Intl.NumberFormatOptions
 ): string {
-  return formatCurrency(locale, cents / 100, STORE_CURRENCY, options);
+  return formatCurrency(locale, won, STORE_CURRENCY, options);
 }
 
 export function formatDate(
@@ -160,8 +171,8 @@ interface I18nContextValue {
     currency?: string,
     options?: Intl.NumberFormatOptions
   ) => string;
-  formatCents: (
-    cents: number,
+  formatWon: (
+    won: number,
     options?: Intl.NumberFormatOptions
   ) => string;
   formatDate: (
@@ -242,7 +253,7 @@ export function I18nProvider({
       t: (key, vars) => translate(locale, key, vars),
       formatCurrency: (amount, currency, options) =>
         formatCurrency(locale, amount, currency, options),
-      formatCents: (cents, options) => formatCents(locale, cents, options),
+      formatWon: (won, options) => formatWon(locale, won, options),
       formatDate: (date, options) => formatDate(locale, date, options),
       formatDateTime: (date, options) =>
         formatDateTime(locale, date, options),

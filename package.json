@@ -9,7 +9,11 @@
     "start": "react-router-serve ./build/server/index.js",
     "typecheck": "react-router typegen && tsc",
     "test:login": "node scripts/test-login-local.mjs",
-    "test:login:browser": "node scripts/test-login-browser.mjs"
+    "test:login:browser": "node scripts/test-login-browser.mjs",
+    "test:orders:browser": "node scripts/test-order-stream-browser.mjs",
+    "test:session": "node scripts/test-session-refresh.mjs",
+    "test:session:shared": "node scripts/test-session-shared.mjs",
+    "mock:gateway": "node scripts/mock-gateway.mjs"
   },
   "dependencies": {
     "@react-router/node": "7.16.0",
@@ -17,7 +21,8 @@
     "isbot": "^5.1.36",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
-    "react-router": "7.16.0"
+    "react-router": "7.16.0",
+    "redis": "^6.2.1"
   },
   "devDependencies": {
     "@react-router/dev": "7.16.0",

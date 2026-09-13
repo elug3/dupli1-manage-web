@@ -308,7 +308,7 @@ function ItemsSection({ order }: { order: Order }) {
 }
 
 function OrderItemRow({ item }: { item: OrderItem }) {
-  const { t, formatCents } = useI18n();
+  const { t, formatWon } = useI18n();
   const imgSrc = item.image_url ? productImageSrc(item.image_url) : null;
   return (
     <div className="flex items-center justify-between gap-3 text-sm">
@@ -349,22 +349,22 @@ function OrderItemRow({ item }: { item: OrderItem }) {
         </div>
       </div>
       <span className="shrink-0 font-semibold text-[#1C1B1F]">
-        {formatCents(item.unit_price_cents * item.quantity)}
+        {formatWon(item.unit_price_won * item.quantity)}
       </span>
     </div>
   );
 }
 
 function OrderTotals({ order }: { order: Order }) {
-  const { t, formatCents } = useI18n();
-  const hasDiscount = order.discount_cents > 0;
+  const { t, formatWon } = useI18n();
+  const hasDiscount = order.discount_won > 0;
   return (
     <div className="mt-4 space-y-1.5 border-t border-[#E5E3EE] pt-4 text-sm">
       {hasDiscount && (
         <>
           <div className="flex items-center justify-between text-[#6B6480]">
             <span>{t("orders.subtotal")}</span>
-            <span>{formatCents(order.subtotal_cents)}</span>
+            <span>{formatWon(order.subtotal_won)}</span>
           </div>
           <div className="flex items-center justify-between text-emerald-600">
             <span>
@@ -372,13 +372,13 @@ function OrderTotals({ order }: { order: Order }) {
                 ? t("orders.discountWithCode", { code: order.coupon_code })
                 : t("orders.discount")}
             </span>
-            <span>−{formatCents(order.discount_cents)}</span>
+            <span>−{formatWon(order.discount_won)}</span>
           </div>
         </>
       )}
       <div className="flex items-center justify-between font-bold text-[#1C1B1F]">
         <span>{t("orders.orderTotal")}</span>
-        <span>{formatCents(order.total_cents)}</span>
+        <span>{formatWon(order.total_won)}</span>
       </div>
     </div>
   );
@@ -446,6 +446,14 @@ function FulfillmentSection({ order }: { order: Order }) {
                 <p key={line}>{line}</p>
               ))}
             </dd>
+          </div>
+        )}
+        {addr?.pccc && (
+          <div>
+            <dt className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+              {t("orders.pccc")}
+            </dt>
+            <dd className="mt-1 font-medium text-[#1C1B1F]">{addr.pccc}</dd>
           </div>
         )}
       </dl>
