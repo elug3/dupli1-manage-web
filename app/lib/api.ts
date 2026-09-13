@@ -1284,6 +1284,8 @@ export interface ShippingAddress {
   address_line2?: string;
   city: string;
   province: string;
+  /** Korea Personal Customs Clearance Code ("P" + 12 digits); overseas-sourced shipments only. */
+  pccc?: string;
 }
 
 export interface Order {
@@ -1367,6 +1369,7 @@ async function fetchCustomerOrders(customerId: string): Promise<Order[]> {
 }
 
 async function fetchAllOrders(): Promise<Order[]> {
+  // No customer_id → backend lists every order (requires order.read.all).
   const res = await authedFetch(orderPath("/api/v1/orders"));
   if (!res.ok) throw new Error(await readError(res, "Failed to fetch orders"));
   const data = (await res.json()) as OrdersResponse;

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router";
 import {
   type Order,
@@ -9,6 +9,7 @@ import {
   getProducts,
 } from "~/lib/api";
 import { useI18n } from "~/lib/i18n";
+import { mergeOrder, useOrderFeed } from "~/lib/order-events";
 
 export function meta() {
   return [{ title: "Dashboard | Dupli1 Admin" }];
@@ -31,6 +32,8 @@ export default function Dashboard() {
   const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [errors, setErrors] = useState<string[]>([]);
+  // Stream only after the first load, so a snapshot cannot seed an empty list.
+  const [streamReady, setStreamReady] = useState(false);
 
   useEffect(() => {
     const failures: string[] = [];
@@ -58,8 +61,28 @@ export default function Dashboard() {
       setAllOrders(orders);
       setErrors(failures);
       setLoading(false);
+      setStreamReady(true);
     });
   }, [t]);
+
+  // Live order changes keep the stat tiles and the recent-orders table honest;
+  // products and stock alerts still only load once.
+  const handleOrderEvent = useCallback((order: Order) => {
+    setAllOrders((current) => mergeOrder(current, order));
+  }, []);
+
+  const handleResync = useCallback(() => {
+    getOrders()
+      .then(setAllOrders)
+      .catch(() => {
+        // Leave the last good numbers in place rather than blanking the tiles.
+      });
+  }, []);
+
+  useOrderFeed(
+    { onOrder: handleOrderEvent, onResync: handleResync },
+    streamReady
+  );
 
   const ordersToday = allOrders.filter((o) => isToday(o.created_at)).length;
   const pendingCount = allOrders.filter((o) => o.status === "pending").length;
