@@ -10,7 +10,9 @@
     "typecheck": "react-router typegen && tsc",
     "test": "vitest run",
     "test:login": "node scripts/test-login-local.mjs",
-    "test:login:browser": "node scripts/test-login-browser.mjs"
+    "test:login:browser": "node scripts/test-login-browser.mjs",
+    "test:orders:browser": "node scripts/test-order-stream-browser.mjs",
+    "mock:gateway": "node scripts/mock-gateway.mjs"
   },
   "dependencies": {
     "@react-router/node": "7.16.0",

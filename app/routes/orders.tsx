@@ -1,7 +1,12 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { type Order, type OrderStatus, getOrders } from "~/lib/api";
 import { useI18n } from "~/lib/i18n";
+import {
+  type OrderStreamStatus,
+  mergeOrder,
+  useOrderFeed,
+} from "~/lib/order-events";
 
 export function meta() {
   return [{ title: "Orders | Dupli1 Admin" }];
@@ -50,6 +55,9 @@ export default function Orders() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<OrderStatus | "all">("all");
   const [search, setSearch] = useState("");
+  // Hold the feed until the first list has loaded, so a streamed snapshot
+  // cannot land in an empty table and look like the only order there is.
+  const [streamReady, setStreamReady] = useState(false);
 
   useEffect(() => {
     setError(null);
@@ -58,8 +66,30 @@ export default function Orders() {
       .catch((err) =>
         setError(err instanceof Error ? err.message : t("orders.failedToLoad"))
       )
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        setStreamReady(true);
+      });
   }, [t]);
+
+  // Notifying is the feed provider's job — this only keeps the table in step.
+  const handleOrderEvent = useCallback((order: Order) => {
+    setOrders((current) => mergeOrder(current, order));
+  }, []);
+
+  // The feed could not prove what we missed; the list is the source of truth.
+  const handleResync = useCallback(() => {
+    getOrders()
+      .then(setOrders)
+      .catch(() => {
+        // Keep the rows on screen; the indicator shows the connection state.
+      });
+  }, []);
+
+  const streamStatus = useOrderFeed(
+    { onOrder: handleOrderEvent, onResync: handleResync },
+    streamReady
+  );
 
   const q = search.trim().toLowerCase();
   const filtered = orders.filter((o) => {
@@ -95,13 +125,16 @@ export default function Orders() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold text-ink sm:text-2xl">
-          {t("orders.title")}
-        </h1>
-        <p className="mt-0.5 text-sm text-muted">
-          {t("orders.ordersTotal", { count: orders.length })}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-ink sm:text-2xl">
+            {t("orders.title")}
+          </h1>
+          <p className="mt-0.5 text-sm text-muted">
+            {t("orders.ordersTotal", { count: orders.length })}
+          </p>
+        </div>
+        <OrderStreamIndicator status={streamStatus} />
       </div>
 
       {error && (
@@ -230,6 +263,33 @@ export default function Orders() {
         )}
       </div>
     </div>
+  );
+}
+
+/** Whether the page is receiving live order changes, or has gone stale. */
+function OrderStreamIndicator({ status }: { status: OrderStreamStatus }) {
+  const { t } = useI18n();
+  const label =
+    status === "live"
+      ? t("orders.liveOn")
+      : status === "connecting"
+        ? t("orders.liveConnecting")
+        : t("orders.liveOff");
+  const tone =
+    status === "live"
+      ? { pill: "bg-success-bg text-success-fg", dot: "bg-success-fg" }
+      : status === "connecting"
+        ? { pill: "bg-soft text-muted", dot: "animate-pulse bg-placeholder" }
+        : { pill: "bg-warn-bg text-warn-fg", dot: "bg-warn-fg" };
+
+  return (
+    <span
+      title={status === "offline" ? t("orders.liveOffHint") : undefined}
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${tone.pill}`}
+    >
+      <span aria-hidden="true" className={`size-1.5 rounded-full ${tone.dot}`} />
+      {label}
+    </span>
   );
 }
 
