@@ -47,11 +47,7 @@ Local Docker embeds browser URLs as `{S3_PUBLIC_ENDPOINT}/product-images/{key}` 
 
 ### Currency
 
-Admin UI is **KRW-only**. `formatCurrency` / `formatWon` (`app/lib/i18n`) always format as Korean Won; settings does not offer other currencies. Aligns with backend `domain.DefaultCurrency = "krw"`.
-
-**Every money field on the API is in whole won** — product `price` / `officialPrice` *and* the `*_won` fields (`total_won`, `unit_price_won`, `shipping_fee_won`, …). One scale everywhere: the same ₩250,000 bag is `price: 250000` from `/products` and `unit_price_won: 250000` from `/orders`, and neither helper scales the value.
-
-These fields were named `*_cents` until the unit was corrected across the platform (KRW has no minor unit, so they always held whole won). The misnomer had produced a divide-by-100 in `formatCents`, showing every order, revenue and analytics amount at a hundredth of its real value. Old databases are renamed in place by `renameColumnIfExists` in the order and payment `pg` repositories.
+Admin UI is **KRW-only**. `formatCurrency` / `formatKrw` (`app/lib/i18n`) always format as Korean Won; settings does not offer other currencies. Aligns with backend `domain.DefaultCurrency = "krw"`.
 
 ### Auth (`/auth`)
 
@@ -83,7 +79,7 @@ SKU identity: each variant has immutable `skuId` (ULID) and human `sku` composed
 - `GET /order/api/v1/orders?customer_id=` — list orders (admin aggregates across users)
 - `GET /order/api/v1/orders/{id}`
 - `POST /order/api/v1/orders/{id}/ship` — `paid` → `in_transit` (`order.ship`)
-- `PUT /order/api/v1/orders/{id}/status` — `canceled` or `fulfilled` only (`order.status.update`)
+- `PUT /order/api/v1/orders/{id}/status` — `canceled` or `fulfilled` only (`order.status.update`). **Paid** cancel refunds the captured payment at NANO (or Bypass) first; a PG rejection leaves the order `paid`.
 - `GET /order/api/v1/orders/events` — **live order feed (SSE)**, `order.read.all`
 
 Statuses: `pending` → `paid` → `in_transit` → `fulfilled` (or `canceled` from pending/paid).
@@ -106,12 +102,14 @@ Each `event: order` frame carries the full order snapshot, so no follow-up fetch
 
 ### Notification (`/notification`)
 
-Telegram ops bot manager API (served by `dupli1-notification`):
+Telegram ops bot manager API (served by `dupli1-notification`). Upstream paths:
 
-- `GET /notification/api/v1/notification/telegram/subscriptions` — list (`notification.telegram.read`)
+- `GET /api/v1/notification/telegram/subscriptions` — list (`notification.telegram.read`)
 - `POST …/subscriptions`, `…/{id}/accept|reject`, `DELETE …/{id}` — manage (`notification.telegram.manage`)
 
-UI: `/telegram`. **Production requires `AUTH_JWKS_URL` on the notification ECS task** — without it the API returns `503 auth not configured` and the tab fails to load. See [docs/ai-instruct-dupli1-notification-jwks.md](docs/ai-instruct-dupli1-notification-jwks.md).
+UI: `/telegram` loads and mutates via **SSR** `loader`/`action` (`app/lib/server/notification.server.ts`) so the browser does not call `/notification/…` or `/auth/session/gateway/notification/…`. The `/notification` Vite/SSR gateway prefix remains for other/public proxy use.
+
+**Production requires `AUTH_JWKS_URL` on the notification ECS task** — without it the API returns `503 auth not configured` and the tab fails to load. See [docs/ai-instruct-dupli1-notification-jwks.md](docs/ai-instruct-dupli1-notification-jwks.md).
 
 ## Auth (browser)
 

@@ -4,6 +4,7 @@ import { type User, getMe, logout } from "~/lib/auth";
 import { useI18n } from "~/lib/i18n";
 import { LanguageSwitcher } from "~/lib/i18n/LanguageSwitcher";
 import { OrderFeedProvider } from "~/lib/order-events";
+import { ThemeSwitcher } from "~/lib/ThemeSwitcher";
 import { APP_BUILD_NUMBER, APP_VERSION } from "~/lib/version";
 
 export default function AdminLayout() {
@@ -68,10 +69,10 @@ export default function AdminLayout() {
 
   if (checking) {
     return (
-      <div className="flex min-h-dvh items-center justify-center bg-[#F4F3F8]">
+      <div className="flex min-h-dvh items-center justify-center bg-page">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#6D4AFF] border-t-transparent" />
-          <span className="text-sm text-[#6B6480]">{t("nav.loading")}</span>
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+          <span className="text-sm text-muted">{t("nav.loading")}</span>
         </div>
       </div>
     );
@@ -80,7 +81,7 @@ export default function AdminLayout() {
   if (!user) return null;
 
   return (
-    <div className="flex h-dvh overflow-hidden bg-[#F4F3F8]">
+    <div className="flex h-dvh overflow-hidden bg-page">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
@@ -100,7 +101,7 @@ export default function AdminLayout() {
       >
         {/* Logo */}
         <div className="flex h-16 items-center gap-3 border-b border-white/10 px-5">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#6D4AFF]">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent">
             <svg className="size-4 text-white" viewBox="0 0 24 24" fill="none">
               <path
                 d="M4 7h16M4 12h10M4 17h7"
@@ -121,7 +122,7 @@ export default function AdminLayout() {
           <button
             type="button"
             onClick={() => setSidebarOpen(false)}
-            className="rounded-lg p-2 text-[#9D98B3] transition hover:bg-white/10 hover:text-white lg:hidden"
+            className="rounded-lg p-2 text-faint transition hover:bg-white/10 hover:text-white lg:hidden"
             aria-label={t("nav.closeMenu")}
           >
             <CloseIcon />
@@ -149,7 +150,7 @@ export default function AdminLayout() {
         {/* User footer */}
         <div className="border-t border-white/10 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] lg:pb-3">
           <div className="flex items-center gap-3 rounded-xl px-2 py-2">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#6D4AFF]/30 text-xs font-bold text-[#B4A8FF]">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/30 text-xs font-bold text-[#B4A8FF]">
               {user.email[0].toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
@@ -186,21 +187,22 @@ export default function AdminLayout() {
       {/* Main content */}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {/* Top header */}
-        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-[#E5E3EE] bg-white px-4 pt-[env(safe-area-inset-top)] sm:h-16 sm:gap-3 sm:px-5 lg:pt-0">
+        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-edge bg-surface px-4 pt-[env(safe-area-inset-top)] sm:h-16 sm:gap-3 sm:px-5 lg:pt-0">
           <button
             type="button"
             onClick={() => setSidebarOpen(true)}
-            className="-ml-1 rounded-lg p-2 text-[#6B6480] hover:bg-[#F4F3F8] lg:hidden"
+            className="-ml-1 rounded-lg p-2 text-muted hover:bg-page lg:hidden"
             aria-label={t("nav.openMenu")}
             aria-expanded={sidebarOpen}
           >
             <HamburgerIcon />
           </button>
           <div className="flex-1" />
+          <ThemeSwitcher compact />
           <LanguageSwitcher compact />
-          <div className="flex items-center gap-2 rounded-full bg-[#F4F3F8] px-2.5 py-1.5 sm:px-3">
+          <div className="flex items-center gap-2 rounded-full bg-page px-2.5 py-1.5 sm:px-3">
             <div className="h-2 w-2 rounded-full bg-emerald-500" />
-            <span className="hidden text-xs font-medium text-[#6B6480] sm:inline">
+            <span className="hidden text-xs font-medium text-muted sm:inline">
               {t("nav.backendOnline")}
             </span>
           </div>
@@ -241,8 +243,8 @@ function SidebarLink({
         [
           "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
           isActive
-            ? "bg-[#6D4AFF]/20 text-white"
-            : "text-[#9D98B3] hover:bg-white/[0.07] hover:text-white",
+            ? "bg-accent/20 text-white"
+            : "text-faint hover:bg-white/[0.07] hover:text-white",
         ].join(" ")
       }
     >

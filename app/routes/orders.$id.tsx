@@ -4,6 +4,8 @@ import {
   type Order,
   type OrderItem,
   type OrderStatus,
+  type ShipCarrier,
+  SHIP_CARRIERS,
   getOrder,
   orderHasFulfillment,
   productImageSrc,
@@ -64,6 +66,25 @@ function actionKey(a: OrderAction): string {
   return a.kind === "ship" ? "ship" : a.status;
 }
 
+function carrierLabelKey(carrier: string): string {
+  switch (carrier) {
+    case "cj":
+      return "orderDetail.carrierCj";
+    case "hanjin":
+      return "orderDetail.carrierHanjin";
+    case "lotte":
+      return "orderDetail.carrierLotte";
+    case "logen":
+      return "orderDetail.carrierLogen";
+    case "epost":
+      return "orderDetail.carrierEpost";
+    case "other":
+      return "orderDetail.carrierOther";
+    default:
+      return "orderDetail.carrier";
+  }
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function formatPhoneDisplay(phone: string): string {
@@ -85,6 +106,10 @@ export default function OrderDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatingAction, setUpdatingAction] = useState<string | null>(null);
+  const [shipOpen, setShipOpen] = useState(false);
+  const [carrier, setCarrier] = useState<ShipCarrier>("cj");
+  const [trackingNumber, setTrackingNumber] = useState("");
+  const [carrierNote, setCarrierNote] = useState("");
 
   useEffect(() => {
     if (!id) return;
@@ -111,14 +136,60 @@ export default function OrderDetail() {
 
   async function handleAction(action: OrderAction) {
     if (!order) return;
+    if (action.kind === "ship") {
+      setShipOpen(true);
+      return;
+    }
     const key = actionKey(action);
+    if (action.status === "canceled") {
+      const paidWithCapture =
+        order.status === "paid" && Boolean(order.payment_id);
+      const ok = window.confirm(
+        paidWithCapture
+          ? t("orderDetail.confirmCancelPaid")
+          : t("orderDetail.confirmCancel")
+      );
+      if (!ok) return;
+    }
     setUpdatingAction(key);
     try {
-      const updated =
-        action.kind === "ship"
-          ? await shipOrder(order.id)
-          : await updateOrderStatus(order.id, action.status);
+      const updated = await updateOrderStatus(order.id, action.status);
       setOrder(updated);
+    } catch (err) {
+      notify(
+        err instanceof Error
+          ? err.message
+          : t("orderDetail.failedToUpdateStatus"),
+        "error"
+      );
+    } finally {
+      setUpdatingAction(null);
+    }
+  }
+
+  async function confirmShip() {
+    if (!order) return;
+    const tracking = trackingNumber.trim();
+    if (!tracking) {
+      notify(t("orderDetail.shipHint"), "error");
+      return;
+    }
+    if (carrier === "other" && !carrierNote.trim()) {
+      notify(t("orderDetail.carrierNoteHint"), "error");
+      return;
+    }
+    setUpdatingAction("ship");
+    try {
+      const updated = await shipOrder(order.id, {
+        carrier,
+        tracking_number: tracking,
+        carrier_note: carrier === "other" ? carrierNote.trim() : undefined,
+      });
+      setOrder(updated);
+      setShipOpen(false);
+      setTrackingNumber("");
+      setCarrierNote("");
+      setCarrier("cj");
     } catch (err) {
       notify(
         err instanceof Error
@@ -134,7 +205,7 @@ export default function OrderDetail() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-32">
-        <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#6D4AFF] border-t-transparent" />
+        <div className="h-7 w-7 animate-spin rounded-full border-2 border-accent border-t-transparent" />
       </div>
     );
   }
@@ -142,10 +213,10 @@ export default function OrderDetail() {
   if (error || !order) {
     return (
       <div className="space-y-4">
-        <Link to="/orders" className="text-sm text-[#6D4AFF] hover:underline">
+        <Link to="/orders" className="text-sm text-accent hover:underline">
           {t("orderDetail.backToOrders")}
         </Link>
-        <div className="rounded-2xl border border-[#E5E3EE] bg-white p-10 text-center text-[#6B6480]">
+        <div className="rounded-2xl border border-edge bg-surface p-10 text-center text-muted">
           {error ?? t("orderDetail.notFound")}
         </div>
       </div>
@@ -156,21 +227,21 @@ export default function OrderDetail() {
 
   return (
     <div className="space-y-6">
-      <Link to="/orders" className="text-sm text-[#6D4AFF] hover:underline">
+      <Link to="/orders" className="text-sm text-accent hover:underline">
         {t("orderDetail.backToOrders")}
       </Link>
 
       {/* Header */}
-      <div className="rounded-2xl border border-[#E5E3EE] bg-white p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)] sm:p-8">
+      <div className="rounded-2xl border border-edge bg-surface p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)] sm:p-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+            <p className="text-xs font-semibold uppercase tracking-wide text-faint">
               {t("orderDetail.orderId")}
             </p>
-            <h1 className="mt-1 break-all font-mono text-lg font-bold text-[#1C1B1F]">
+            <h1 className="mt-1 break-all font-mono text-lg font-bold text-ink">
               {order.id}
             </h1>
-            <p className="mt-2 text-sm text-[#6B6480]">
+            <p className="mt-2 text-sm text-muted">
               {t("orderDetail.customer")}:{" "}
               <span className="font-mono">{order.customer_id}</span>
             </p>
@@ -191,8 +262,8 @@ export default function OrderDetail() {
                       className={[
                         "rounded-xl px-4 py-2 text-sm font-semibold transition disabled:opacity-50",
                         action.kind === "status" && action.status === "canceled"
-                          ? "border border-red-200 text-red-600 hover:bg-red-50"
-                          : "bg-[#6D4AFF] text-white hover:bg-[#5A38E8]",
+                          ? "border border-red-200 text-danger-fg hover:bg-danger-bg"
+                          : "bg-accent text-white hover:bg-accent-hover",
                       ].join(" ")}
                     >
                       {busy
@@ -222,6 +293,88 @@ export default function OrderDetail() {
           <MetaSection order={order} />
         </div>
       </div>
+
+      {shipOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="ship-dialog-title"
+            className="w-full max-w-md rounded-2xl border border-edge bg-surface p-6 shadow-xl"
+          >
+            <h2
+              id="ship-dialog-title"
+              className="text-lg font-semibold text-ink"
+            >
+              {t("orderDetail.shipTitle")}
+            </h2>
+            <p className="mt-1 text-sm text-muted">{t("orderDetail.shipHint")}</p>
+            <div className="mt-5 space-y-4">
+              <label className="block text-sm">
+                <span className="mb-1.5 block font-medium text-ink">
+                  {t("orderDetail.carrier")}
+                </span>
+                <select
+                  value={carrier}
+                  onChange={(e) => setCarrier(e.target.value as ShipCarrier)}
+                  className="w-full rounded-xl border border-edge bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-accent"
+                >
+                  {SHIP_CARRIERS.map((code) => (
+                    <option key={code} value={code}>
+                      {t(carrierLabelKey(code))}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block text-sm">
+                <span className="mb-1.5 block font-medium text-ink">
+                  {t("orderDetail.trackingNumber")}
+                </span>
+                <input
+                  value={trackingNumber}
+                  onChange={(e) => setTrackingNumber(e.target.value)}
+                  className="w-full rounded-xl border border-edge bg-white px-3 py-2.5 font-mono text-sm text-ink outline-none focus:border-accent"
+                  autoComplete="off"
+                />
+              </label>
+              {carrier === "other" && (
+                <label className="block text-sm">
+                  <span className="mb-1.5 block font-medium text-ink">
+                    {t("orderDetail.carrierNote")}
+                  </span>
+                  <input
+                    value={carrierNote}
+                    onChange={(e) => setCarrierNote(e.target.value)}
+                    placeholder={t("orderDetail.carrierNoteHint")}
+                    className="w-full rounded-xl border border-edge bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-accent"
+                    autoComplete="off"
+                  />
+                </label>
+              )}
+            </div>
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                type="button"
+                disabled={updatingAction === "ship"}
+                onClick={() => setShipOpen(false)}
+                className="rounded-xl border border-edge px-4 py-2 text-sm font-semibold text-muted hover:bg-page"
+              >
+                {t("orderDetail.cancelShip")}
+              </button>
+              <button
+                type="button"
+                disabled={updatingAction === "ship"}
+                onClick={() => void confirmShip()}
+                className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-hover disabled:opacity-50"
+              >
+                {updatingAction === "ship"
+                  ? t("common.loadingEllipsis")
+                  : t("orderDetail.confirmShip")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -243,43 +396,61 @@ function TimelineSection({ order }: { order: Order }) {
   };
 
   return (
-    <div className="rounded-2xl border border-[#E5E3EE] bg-white p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)] sm:p-6">
-      <h2 className="mb-4 font-semibold text-[#1C1B1F]">
+    <div className="rounded-2xl border border-edge bg-surface p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)] sm:p-6">
+      <h2 className="mb-4 font-semibold text-ink">
         {t("orderDetail.timeline")}
       </h2>
       <dl className="grid gap-4 sm:grid-cols-2">
         {hasPending && (
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-faint">
               {t("orders.paymentDue")}
             </dt>
-            <dd className="mt-1 font-medium text-amber-700">
+            <dd className="mt-1 font-medium text-warn-fg">
               {formatDate(order.payment_due_at!, dateOpts)}
             </dd>
           </div>
         )}
         {order.paid_at && (
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-faint">
               {t("orders.paidAt")}
             </dt>
-            <dd className="mt-1 font-medium text-[#1C1B1F]">
+            <dd className="mt-1 font-medium text-ink">
               {formatDate(order.paid_at, dateOpts)}
             </dd>
           </div>
         )}
         {order.shipped_at && (
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-faint">
               {t("orders.shippedAt")}
             </dt>
-            <dd className="mt-1 font-medium text-[#1C1B1F]">
+            <dd className="mt-1 font-medium text-ink">
               {formatDate(order.shipped_at, dateOpts)}
               {order.shipped_by && (
-                <span className="ml-1 text-[#6B6480]">
+                <span className="ml-1 text-muted">
                   {t("orders.shippedBy", { name: order.shipped_by })}
                 </span>
               )}
+            </dd>
+          </div>
+        )}
+        {order.tracking_number && (
+          <div className="sm:col-span-2">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-faint">
+              {t("orderDetail.tracking")}
+            </dt>
+            <dd className="mt-1 font-medium text-ink">
+              <span>
+                {order.carrier === "other" && order.carrier_note
+                  ? order.carrier_note
+                  : order.carrier
+                    ? t(carrierLabelKey(order.carrier))
+                    : null}
+              </span>
+              {order.carrier && <span className="mx-1.5 text-faint">·</span>}
+              <span className="font-mono">{order.tracking_number}</span>
             </dd>
           </div>
         )}
@@ -293,8 +464,8 @@ function TimelineSection({ order }: { order: Order }) {
 function ItemsSection({ order }: { order: Order }) {
   const { t } = useI18n();
   return (
-    <div className="rounded-2xl border border-[#E5E3EE] bg-white p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)] sm:p-6">
-      <h2 className="mb-4 font-semibold text-[#1C1B1F]">
+    <div className="rounded-2xl border border-edge bg-surface p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)] sm:p-6">
+      <h2 className="mb-4 font-semibold text-ink">
         {t("orders.orderItems")}
       </h2>
       <div className="space-y-3">
@@ -308,7 +479,7 @@ function ItemsSection({ order }: { order: Order }) {
 }
 
 function OrderItemRow({ item }: { item: OrderItem }) {
-  const { t, formatWon } = useI18n();
+  const { t, formatKrw } = useI18n();
   const imgSrc = item.image_url ? productImageSrc(item.image_url) : null;
   return (
     <div className="flex items-center justify-between gap-3 text-sm">
@@ -320,65 +491,72 @@ function OrderItemRow({ item }: { item: OrderItem }) {
             className="h-9 w-9 shrink-0 rounded-lg object-cover"
           />
         ) : (
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#F4F3F8] text-xs font-bold text-[#6D4AFF]">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-page text-xs font-bold text-accent">
             {item.sku.slice(0, 2).toUpperCase()}
           </div>
         )}
         <div className="min-w-0">
           {item.product_name && (
-            <span className="block truncate text-xs font-semibold text-[#1C1B1F]">
+            <span className="block truncate text-xs font-semibold text-ink">
               {item.product_name}
             </span>
           )}
-          <span className="block truncate font-mono text-xs text-[#6B6480]">
+          <span className="block truncate font-mono text-xs text-muted">
             {item.sku}
             {item.available === false && (
-              <span className="ml-1.5 rounded bg-red-100 px-1 py-0.5 text-[10px] font-semibold text-red-600">
+              <span className="ml-1.5 rounded bg-red-100 px-1 py-0.5 text-[10px] font-semibold text-danger-fg">
                 {t("orders.itemUnavailable")}
               </span>
             )}
           </span>
           {item.sku_id && (
-            <span className="block truncate font-mono text-[10px] text-[#9D98B3]">
+            <span className="block truncate font-mono text-[10px] text-faint">
               {item.sku_id}
             </span>
           )}
-          <span className="text-xs text-[#9D98B3]">
+          <span className="text-xs text-faint">
             {t("orders.quantityTimes", { quantity: item.quantity })}
           </span>
         </div>
       </div>
-      <span className="shrink-0 font-semibold text-[#1C1B1F]">
-        {formatWon(item.unit_price_won * item.quantity)}
+      <span className="shrink-0 font-semibold text-ink">
+        {formatKrw(item.unit_price_krw * item.quantity)}
       </span>
     </div>
   );
 }
 
 function OrderTotals({ order }: { order: Order }) {
-  const { t, formatWon } = useI18n();
-  const hasDiscount = order.discount_won > 0;
+  const { t, formatKrw } = useI18n();
+  const hasDiscount = order.discount_krw > 0;
+  const shipping = order.shipping_fee_krw ?? 0;
   return (
-    <div className="mt-4 space-y-1.5 border-t border-[#E5E3EE] pt-4 text-sm">
+    <div className="mt-4 space-y-1.5 border-t border-edge pt-4 text-sm">
+      <div className="flex items-center justify-between text-muted">
+        <span>{t("orders.subtotal")}</span>
+        <span>{formatKrw(order.subtotal_krw)}</span>
+      </div>
+      <div className="flex items-center justify-between text-muted">
+        <span>{t("orders.shippingFee")}</span>
+        <span>
+          {shipping === 0
+            ? t("orders.shippingFeeFree")
+            : formatKrw(shipping)}
+        </span>
+      </div>
       {hasDiscount && (
-        <>
-          <div className="flex items-center justify-between text-[#6B6480]">
-            <span>{t("orders.subtotal")}</span>
-            <span>{formatWon(order.subtotal_won)}</span>
-          </div>
-          <div className="flex items-center justify-between text-emerald-600">
-            <span>
-              {order.coupon_code
-                ? t("orders.discountWithCode", { code: order.coupon_code })
-                : t("orders.discount")}
-            </span>
-            <span>−{formatWon(order.discount_won)}</span>
-          </div>
-        </>
+        <div className="flex items-center justify-between text-success-fg">
+          <span>
+            {order.coupon_code
+              ? t("orders.discountWithCode", { code: order.coupon_code })
+              : t("orders.discount")}
+          </span>
+          <span>−{formatKrw(order.discount_krw)}</span>
+        </div>
       )}
-      <div className="flex items-center justify-between font-bold text-[#1C1B1F]">
+      <div className="flex items-center justify-between font-bold text-ink">
         <span>{t("orders.orderTotal")}</span>
-        <span>{formatWon(order.total_won)}</span>
+        <span>{formatKrw(order.total_krw)}</span>
       </div>
     </div>
   );
@@ -391,11 +569,11 @@ function FulfillmentSection({ order }: { order: Order }) {
 
   if (!orderHasFulfillment(order)) {
     return (
-      <div className="rounded-2xl border border-[#E5E3EE] bg-white p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
-        <h2 className="mb-3 font-semibold text-[#1C1B1F]">
+      <div className="rounded-2xl border border-edge bg-surface p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
+        <h2 className="mb-3 font-semibold text-ink">
           {t("orders.fulfillment")}
         </h2>
-        <p className="text-sm text-[#9D98B3]">{t("orders.noFulfillment")}</p>
+        <p className="text-sm text-faint">{t("orders.noFulfillment")}</p>
       </div>
     );
   }
@@ -411,37 +589,37 @@ function FulfillmentSection({ order }: { order: Order }) {
   ].filter((l): l is string => Boolean(l?.trim()));
 
   return (
-    <div className="rounded-2xl border border-[#E5E3EE] bg-white p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
-      <h2 className="mb-4 font-semibold text-[#1C1B1F]">
+    <div className="rounded-2xl border border-edge bg-surface p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
+      <h2 className="mb-4 font-semibold text-ink">
         {t("orders.fulfillment")}
       </h2>
       <dl className="space-y-3 text-sm">
         {order.recipient_name && (
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-faint">
               {t("orders.recipientName")}
             </dt>
-            <dd className="mt-1 font-medium text-[#1C1B1F]">
+            <dd className="mt-1 font-medium text-ink">
               {order.recipient_name}
             </dd>
           </div>
         )}
         {order.recipient_phone && (
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-faint">
               {t("orders.recipientPhone")}
             </dt>
-            <dd className="mt-1 font-medium text-[#1C1B1F]">
+            <dd className="mt-1 font-medium text-ink">
               {formatPhoneDisplay(order.recipient_phone)}
             </dd>
           </div>
         )}
         {addrLines.length > 0 && (
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-faint">
               {t("orders.shippingAddress")}
             </dt>
-            <dd className="mt-1 space-y-0.5 text-[#1C1B1F]">
+            <dd className="mt-1 space-y-0.5 text-ink">
               {addrLines.map((line) => (
                 <p key={line}>{line}</p>
               ))}
@@ -473,43 +651,43 @@ function MetaSection({ order }: { order: Order }) {
     minute: "2-digit",
   };
   return (
-    <div className="rounded-2xl border border-[#E5E3EE] bg-white p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
-      <h2 className="mb-4 font-semibold text-[#1C1B1F]">
+    <div className="rounded-2xl border border-edge bg-surface p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
+      <h2 className="mb-4 font-semibold text-ink">
         {t("orderDetail.meta")}
       </h2>
       <dl className="space-y-3 text-sm">
         <div>
-          <dt className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+          <dt className="text-xs font-semibold uppercase tracking-wide text-faint">
             {t("orderDetail.createdAt")}
           </dt>
-          <dd className="mt-1 text-[#1C1B1F]">
+          <dd className="mt-1 text-ink">
             {formatDate(order.created_at, dateOpts)}
           </dd>
         </div>
         <div>
-          <dt className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+          <dt className="text-xs font-semibold uppercase tracking-wide text-faint">
             {t("orderDetail.updatedAt")}
           </dt>
-          <dd className="mt-1 text-[#1C1B1F]">
+          <dd className="mt-1 text-ink">
             {formatDate(order.updated_at, dateOpts)}
           </dd>
         </div>
         {order.payment_id && (
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-faint">
               {t("orderDetail.paymentId")}
             </dt>
-            <dd className="mt-1 break-all font-mono text-xs text-[#6B6480]">
+            <dd className="mt-1 break-all font-mono text-xs text-muted">
               {order.payment_id}
             </dd>
           </div>
         )}
         {order.reservation_id && (
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-faint">
               {t("orderDetail.reservationId")}
             </dt>
-            <dd className="mt-1 break-all font-mono text-xs text-[#6B6480]">
+            <dd className="mt-1 break-all font-mono text-xs text-muted">
               {order.reservation_id}
             </dd>
           </div>

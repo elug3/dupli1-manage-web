@@ -96,47 +96,13 @@ export function translate(
   return interpolate(hit, vars);
 }
 
-/** Storefront / admin display currency — Dupli1 is KRW-only. */
-export const STORE_CURRENCY = "KRW" as const;
+import {
+  STORE_CURRENCY,
+  formatCurrency,
+  formatKrw,
+} from "~/lib/i18n/format";
 
-/**
- * Format a money amount. Always KRW; the optional `currency` argument is
- * ignored for API stability.
- *
- * Every money field on the Dupli1 API is in whole won — product `price` and
- * `officialPrice`, and the `*_won` fields alike. Nothing here scales.
- */
-export function formatCurrency(
-  locale: Locale,
-  amount: number,
-  _currency?: string,
-  options?: Intl.NumberFormatOptions
-): string {
-  return new Intl.NumberFormat(LOCALE_INTL[locale], {
-    style: "currency",
-    currency: STORE_CURRENCY,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-    ...options,
-  }).format(amount);
-}
-
-/**
- * Format an API `*_won` field (`total_won`, `unit_price_won`,
- * `shipping_fee_won`, …). Identical to {@link formatCurrency} — kept as a
- * separate name so call sites read in the same terms as the field they pass.
- *
- * These fields were once named `*_cents`, which led to a divide-by-100 here
- * that showed every order, revenue and analytics figure at a hundredth of its
- * real value. They always held whole won; the name now says so.
- */
-export function formatWon(
-  locale: Locale,
-  won: number,
-  options?: Intl.NumberFormatOptions
-): string {
-  return formatCurrency(locale, won, STORE_CURRENCY, options);
-}
+export { STORE_CURRENCY, formatCurrency, formatKrw };
 
 export function formatDate(
   locale: Locale,
@@ -171,8 +137,8 @@ interface I18nContextValue {
     currency?: string,
     options?: Intl.NumberFormatOptions
   ) => string;
-  formatWon: (
-    won: number,
+  formatKrw: (
+    krw: number,
     options?: Intl.NumberFormatOptions
   ) => string;
   formatDate: (
@@ -253,7 +219,7 @@ export function I18nProvider({
       t: (key, vars) => translate(locale, key, vars),
       formatCurrency: (amount, currency, options) =>
         formatCurrency(locale, amount, currency, options),
-      formatWon: (won, options) => formatWon(locale, won, options),
+      formatKrw: (krw, options) => formatKrw(locale, krw, options),
       formatDate: (date, options) => formatDate(locale, date, options),
       formatDateTime: (date, options) =>
         formatDateTime(locale, date, options),
