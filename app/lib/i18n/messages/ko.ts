@@ -493,6 +493,12 @@ export const ko: Messages = {
     ordersTotal_other: "총 {count}건의 주문",
     exportCsv: "CSV 내보내기",
     failedToLoad: "주문을 불러오지 못했습니다",
+    liveConnecting: "연결 중…",
+    liveOn: "실시간",
+    liveOff: "실시간 중단",
+    liveOffHint: "실시간 업데이트가 중단되었습니다. 새 주문을 보려면 새로고침하세요.",
+    liveNewOrder: "신규 주문 {id}",
+    liveOrderPaid: "주문 {id} 결제 완료 — 발송 대기",
     failedToUpdateStatus: "주문 상태를 업데이트하지 못했습니다",
     tabAll: "전체",
     tabPending: "대기 중",
@@ -518,6 +524,7 @@ export const ko: Messages = {
     recipientPhone: "전화번호",
     shippingAddress: "주소",
     postalCodeValue: "우편번호 {code}",
+    pccc: "개인통관고유부호",
     noFulfillment:
       "이 주문에는 배송 스냅샷이 없습니다 (직접 생성 또는 이전 체크아웃).",
     subtotal: "소계",
@@ -585,8 +592,7 @@ export const ko: Messages = {
   telegram: {
     metaTitle: "텔레그램 | Dupli1 Admin",
     title: "텔레그램",
-    subtitle:
-      "Dupli1 봇의 운영 알림 수신자를 승인합니다 (/notification/api/v1/notification/telegram)",
+    subtitle: "Dupli1 봇의 운영 알림 수신자를 승인합니다",
     serviceStatus: "서비스 상태",
     featureTelegramEnabled: "봇 토큰",
     featureTelegramWebhook: "웹훅",

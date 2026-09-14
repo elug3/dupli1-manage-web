@@ -96,37 +96,13 @@ export function translate(
   return interpolate(hit, vars);
 }
 
-/** Storefront / admin display currency — Dupli1 is KRW-only. */
-export const STORE_CURRENCY = "KRW" as const;
+import {
+  STORE_CURRENCY,
+  formatCurrency,
+  formatWon,
+} from "~/lib/i18n/format";
 
-/**
- * Format a major-unit money amount (product `price`, or whole-KRW `*_krw` /
- * `shipping_fee_krw` fields). Always KRW; the optional `currency` argument is
- * ignored for API stability.
- */
-export function formatCurrency(
-  locale: Locale,
-  amount: number,
-  _currency?: string,
-  options?: Intl.NumberFormatOptions
-): string {
-  return new Intl.NumberFormat(LOCALE_INTL[locale], {
-    style: "currency",
-    currency: STORE_CURRENCY,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-    ...options,
-  }).format(amount);
-}
-
-/** Format API money fields that are whole KRW won (zero-decimal; never ÷100). */
-export function formatKrw(
-  locale: Locale,
-  krw: number,
-  options?: Intl.NumberFormatOptions
-): string {
-  return formatCurrency(locale, krw, STORE_CURRENCY, options);
-}
+export { STORE_CURRENCY, formatCurrency, formatWon };
 
 export function formatDate(
   locale: Locale,
@@ -161,8 +137,8 @@ interface I18nContextValue {
     currency?: string,
     options?: Intl.NumberFormatOptions
   ) => string;
-  formatKrw: (
-    krw: number,
+  formatWon: (
+    won: number,
     options?: Intl.NumberFormatOptions
   ) => string;
   formatDate: (
@@ -243,7 +219,7 @@ export function I18nProvider({
       t: (key, vars) => translate(locale, key, vars),
       formatCurrency: (amount, currency, options) =>
         formatCurrency(locale, amount, currency, options),
-      formatKrw: (krw, options) => formatKrw(locale, krw, options),
+      formatWon: (won, options) => formatWon(locale, won, options),
       formatDate: (date, options) => formatDate(locale, date, options),
       formatDateTime: (date, options) =>
         formatDateTime(locale, date, options),

@@ -1,7 +1,12 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { type Order, type OrderStatus, getOrders } from "~/lib/api";
 import { useI18n } from "~/lib/i18n";
+import {
+  type OrderStreamStatus,
+  mergeOrder,
+  useOrderFeed,
+} from "~/lib/order-events";
 
 export function meta() {
   return [{ title: "Orders | Dupli1 Admin" }];
@@ -50,6 +55,9 @@ export default function Orders() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<OrderStatus | "all">("all");
   const [search, setSearch] = useState("");
+  // Hold the stream until the first list has loaded, so a streamed snapshot
+  // cannot land in an empty table and look like the only order there is.
+  const [streamReady, setStreamReady] = useState(false);
 
   useEffect(() => {
     setError(null);
@@ -58,8 +66,30 @@ export default function Orders() {
       .catch((err) =>
         setError(err instanceof Error ? err.message : t("orders.failedToLoad"))
       )
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        setStreamReady(true);
+      });
   }, [t]);
+
+  // Notifying is the feed provider's job — this only keeps the table in step.
+  const handleOrderEvent = useCallback((order: Order) => {
+    setOrders((current) => mergeOrder(current, order));
+  }, []);
+
+  // The stream could not prove what we missed; the list is the source of truth.
+  const handleResync = useCallback(() => {
+    getOrders()
+      .then(setOrders)
+      .catch(() => {
+        // Keep the rows already on screen; the indicator shows the stream state.
+      });
+  }, []);
+
+  const streamStatus = useOrderFeed(
+    { onOrder: handleOrderEvent, onResync: handleResync },
+    streamReady
+  );
 
   const q = search.trim().toLowerCase();
   const filtered = orders.filter((o) => {
@@ -95,13 +125,16 @@ export default function Orders() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold text-ink sm:text-2xl">
-          {t("orders.title")}
-        </h1>
-        <p className="mt-0.5 text-sm text-muted">
-          {t("orders.ordersTotal", { count: orders.length })}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-ink sm:text-2xl">
+            {t("orders.title")}
+          </h1>
+          <p className="mt-0.5 text-sm text-muted">
+            {t("orders.ordersTotal", { count: orders.length })}
+          </p>
+        </div>
+        <OrderStreamIndicator status={streamStatus} />
       </div>
 
       {error && (
@@ -252,8 +285,35 @@ function PolicyChips({ order }: { order: Order }) {
   );
 }
 
+/** Whether the page is receiving live order changes, or has gone stale. */
+function OrderStreamIndicator({ status }: { status: OrderStreamStatus }) {
+  const { t } = useI18n();
+  const label =
+    status === "live"
+      ? t("orders.liveOn")
+      : status === "connecting"
+        ? t("orders.liveConnecting")
+        : t("orders.liveOff");
+  const tone =
+    status === "live"
+      ? { pill: "bg-emerald-50 text-emerald-700", dot: "bg-emerald-500" }
+      : status === "connecting"
+        ? { pill: "bg-[#F4F3F8] text-[#6B6480]", dot: "animate-pulse bg-[#9D98B3]" }
+        : { pill: "bg-amber-50 text-amber-800", dot: "bg-amber-500" };
+
+  return (
+    <span
+      title={status === "offline" ? t("orders.liveOffHint") : undefined}
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${tone.pill}`}
+    >
+      <span aria-hidden="true" className={`size-1.5 rounded-full ${tone.dot}`} />
+      {label}
+    </span>
+  );
+}
+
 function OrderCard({ order }: { order: Order }) {
-  const { t, formatKrw, formatDate } = useI18n();
+  const { t, formatWon, formatDate } = useI18n();
   return (
     <Link
       to={`/orders/${encodeURIComponent(order.id)}`}
@@ -271,7 +331,7 @@ function OrderCard({ order }: { order: Order }) {
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
         <span className="font-semibold text-ink">
-          {formatKrw(order.total_krw)}
+          {formatWon(order.total_won)}
         </span>
         <span className="text-muted">
           {t("common.itemCount", { count: order.items.length })}
@@ -289,7 +349,7 @@ function OrderCard({ order }: { order: Order }) {
 }
 
 function OrderRow({ order }: { order: Order }) {
-  const { t, formatKrw, formatDate } = useI18n();
+  const { t, formatWon, formatDate } = useI18n();
   const navigate = useNavigate();
   return (
     <tr
@@ -306,7 +366,7 @@ function OrderRow({ order }: { order: Order }) {
         {t("common.itemCount", { count: order.items.length })}
       </td>
       <td className="px-5 py-3.5 font-semibold text-ink">
-        {formatKrw(order.total_krw)}
+        {formatWon(order.total_won)}
       </td>
       <td className="px-5 py-3.5">
         <div className="flex flex-col items-start gap-1">

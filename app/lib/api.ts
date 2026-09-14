@@ -2,7 +2,6 @@ import { authedFetch } from "./auth";
 import {
   authPath,
   inventoryPath,
-  notificationPath,
   orderPath,
   productPath,
 } from "./gateway";
@@ -490,7 +489,7 @@ export function mapProduct(
       hitNumber(hit, "price") ??
       hitNumber(hit, "priceFrom") ??
       hitNumber(hit, "price_from") ??
-      hitNumber(hit, "unit_price_krw"),
+      hitNumber(hit, "unit_price_won"),
     officialPrice:
       hitNumber(hit, "officialPrice") ??
       hitNumber(hit, "official_price") ??
@@ -1270,7 +1269,7 @@ export interface OrderItem {
   sku_id?: string;
   sku: string;
   quantity: number;
-  unit_price_krw: number;
+  unit_price_won: number;
   /** Captured at order creation from the product catalog. */
   product_name?: string;
   image_url?: string;
@@ -1285,6 +1284,8 @@ export interface ShippingAddress {
   address_line2?: string;
   city: string;
   province: string;
+  /** Korea Personal Customs Clearance Code ("P" + 12 digits); overseas-sourced shipments only. */
+  pccc?: string;
 }
 
 export interface Order {
@@ -1294,11 +1295,11 @@ export interface Order {
   items: OrderItem[];
   status: OrderStatus;
   coupon_code?: string;
-  subtotal_krw: number;
-  discount_krw: number;
+  subtotal_won: number;
+  discount_won: number;
   /** Flat delivery charge in whole KRW, snapshotted at order creation. */
-  shipping_fee_krw?: number;
-  total_krw: number;
+  shipping_fee_won?: number;
+  total_won: number;
   /** Recipient display name from checkout fulfillment snapshot. */
   recipient_name?: string;
   /** KR mobile digits from checkout fulfillment snapshot. */
@@ -1378,6 +1379,7 @@ async function fetchCustomerOrders(customerId: string): Promise<Order[]> {
 }
 
 async function fetchAllOrders(): Promise<Order[]> {
+  // No customer_id → backend lists every order (requires order.read.all).
   const res = await authedFetch(orderPath("/api/v1/orders"));
   if (!res.ok) throw new Error(await readError(res, "Failed to fetch orders"));
   const data = (await res.json()) as OrdersResponse;
@@ -1644,6 +1646,8 @@ export const PERMISSION_CATALOG = [
   "cart.read",
   "payment.create",
   "payment.read.all",
+  "payment.bypass",
+  "payment.cancel",
   "notification.telegram.read",
   "notification.telegram.manage",
 ] as const;
@@ -1839,7 +1843,7 @@ export async function getAnalytics(): Promise<AnalyticsSummary | null> {
     now - new Date(o.created_at).getTime() <= days * day;
 
   const sumRevenue = (list: Order[]) =>
-    list.reduce((sum, o) => sum + o.total_krw, 0);
+    list.reduce((sum, o) => sum + o.total_won, 0);
 
   const last7 = orders.filter(within(7));
   const last30 = orders.filter(within(30));
@@ -1853,6 +1857,9 @@ export async function getAnalytics(): Promise<AnalyticsSummary | null> {
 }
 
 // ── Notification (Telegram ops bot) ──────────────────────────────────────────
+// Wire types only — fetches live in `app/lib/server/notification.server.ts`
+// and are invoked from the `/telegram` route loader/action (SSR), so the
+// browser never calls `/notification/api/v1/notification/…`.
 
 export type TelegramSubscriptionStatus = "pending" | "accepted" | "rejected";
 
@@ -1890,86 +1897,4 @@ export interface NotificationSettings {
   service: string;
   api_version: string;
   features?: Record<string, boolean>;
-}
-
-function telegramSubscriptionPath(id?: string, action?: string): string {
-  const base = "/api/v1/notification/telegram/subscriptions";
-  if (!id) return notificationPath(base);
-  const suffix = action ? `/${action}` : "";
-  return notificationPath(`${base}/${encodeURIComponent(id)}${suffix}`);
-}
-
-export async function getTelegramSubscriptions(
-  status?: TelegramSubscriptionStatus
-): Promise<TelegramSubscription[]> {
-  const query = status ? `?status=${encodeURIComponent(status)}` : "";
-  const res = await authedFetch(`${telegramSubscriptionPath()}${query}`);
-  if (!res.ok) {
-    throw new Error(await readError(res, "Failed to load Telegram subscriptions"));
-  }
-  const data = (await res.json()) as { items?: TelegramSubscription[] | null };
-  return Array.isArray(data.items) ? data.items : [];
-}
-
-export async function createTelegramSubscription(
-  input: TelegramSubscriptionInput
-): Promise<TelegramSubscription> {
-  const res = await authedFetch(telegramSubscriptionPath(), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
-  if (!res.ok) {
-    throw new Error(await readError(res, "Failed to add Telegram subscription"));
-  }
-  return res.json() as Promise<TelegramSubscription>;
-}
-
-export async function acceptTelegramSubscription(
-  id: string,
-  alerts: TelegramAlertFlags
-): Promise<TelegramSubscription> {
-  const res = await authedFetch(telegramSubscriptionPath(id, "accept"), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(alerts),
-  });
-  if (!res.ok) {
-    throw new Error(await readError(res, "Failed to accept Telegram subscription"));
-  }
-  return res.json() as Promise<TelegramSubscription>;
-}
-
-export async function rejectTelegramSubscription(
-  id: string
-): Promise<TelegramSubscription> {
-  const res = await authedFetch(telegramSubscriptionPath(id, "reject"), {
-    method: "POST",
-  });
-  if (!res.ok) {
-    throw new Error(await readError(res, "Failed to reject Telegram subscription"));
-  }
-  return res.json() as Promise<TelegramSubscription>;
-}
-
-export async function deleteTelegramSubscription(id: string): Promise<void> {
-  const res = await authedFetch(telegramSubscriptionPath(id), {
-    method: "DELETE",
-  });
-  if (!res.ok) {
-    throw new Error(await readError(res, "Failed to remove Telegram subscription"));
-  }
-}
-
-/** Best-effort service status; the settings endpoint is public and may be absent. */
-export async function getNotificationSettings(): Promise<NotificationSettings | null> {
-  try {
-    const res = await authedFetch(
-      notificationPath("/api/v1/notification/settings")
-    );
-    if (!res.ok) return null;
-    return (await res.json()) as NotificationSettings;
-  } catch {
-    return null;
-  }
 }
