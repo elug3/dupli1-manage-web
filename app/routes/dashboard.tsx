@@ -453,13 +453,25 @@ export function OrderStatusBadge({ status }: { status: Order["status"] }) {
       label: t("common.orderStatusPaid"),
       class: "bg-blue-100 text-blue-800",
     },
+    confirmed: {
+      label: t("common.orderStatusConfirmed"),
+      class: "bg-sky-100 text-sky-800",
+    },
     in_transit: {
       label: t("common.orderStatusInTransit"),
       class: "bg-violet-100 text-violet-800",
     },
+    delivered: {
+      label: t("common.orderStatusDelivered"),
+      class: "bg-indigo-100 text-indigo-800",
+    },
     fulfilled: {
       label: t("common.orderStatusFulfilled"),
       class: "bg-emerald-100 text-emerald-800",
+    },
+    disputed: {
+      label: t("common.orderStatusDisputed"),
+      class: "bg-orange-100 text-orange-800",
     },
     canceled: {
       label: t("common.orderStatusCanceled"),
