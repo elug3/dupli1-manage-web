@@ -294,7 +294,7 @@ function OrderStreamIndicator({ status }: { status: OrderStreamStatus }) {
 }
 
 function OrderCard({ order }: { order: Order }) {
-  const { t, formatKrw, formatDate } = useI18n();
+  const { t, formatWon, formatDate } = useI18n();
   return (
     <Link
       to={`/orders/${encodeURIComponent(order.id)}`}
@@ -311,7 +311,7 @@ function OrderCard({ order }: { order: Order }) {
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
         <span className="font-semibold text-ink">
-          {formatKrw(order.total_krw)}
+          {formatWon(order.total_won)}
         </span>
         <span className="text-muted">
           {t("common.itemCount", { count: order.items.length })}
@@ -329,7 +329,7 @@ function OrderCard({ order }: { order: Order }) {
 }
 
 function OrderRow({ order }: { order: Order }) {
-  const { t, formatKrw, formatDate } = useI18n();
+  const { t, formatWon, formatDate } = useI18n();
   const navigate = useNavigate();
   return (
     <tr
@@ -346,7 +346,7 @@ function OrderRow({ order }: { order: Order }) {
         {t("common.itemCount", { count: order.items.length })}
       </td>
       <td className="px-5 py-3.5 font-semibold text-ink">
-        {formatKrw(order.total_krw)}
+        {formatWon(order.total_won)}
       </td>
       <td className="px-5 py-3.5">
         <OrderStatusBadge status={order.status} />

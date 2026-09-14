@@ -7,7 +7,7 @@ export function meta() {
 }
 
 export default function Analytics() {
-  const { t, formatKrw } = useI18n();
+  const { t, formatWon } = useI18n();
   const [data, setData] = useState<AnalyticsSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -75,9 +75,9 @@ export default function Analytics() {
     );
   }
 
-  const revenueKrw = period === "7d" ? data.revenue7d : data.revenue30d;
+  const revenueWon = period === "7d" ? data.revenue7d : data.revenue30d;
   const orders = period === "7d" ? data.orders7d : data.orders30d;
-  const aovKrw = orders > 0 ? revenueKrw / orders : 0;
+  const aovWon = orders > 0 ? revenueWon / orders : 0;
 
   return (
     <div className="space-y-8">
@@ -114,12 +114,12 @@ export default function Analytics() {
       <div className="grid gap-4 sm:grid-cols-3">
         <KpiCard
           label={t("analytics.kpiRevenue")}
-          value={formatKrw(revenueKrw)}
+          value={formatWon(revenueWon)}
         />
         <KpiCard label={t("analytics.kpiOrders")} value={String(orders)} />
         <KpiCard
           label={t("analytics.kpiAvgOrderValue")}
-          value={formatKrw(aovKrw)}
+          value={formatWon(aovWon)}
         />
       </div>
     </div>
