@@ -6,9 +6,14 @@ import {
   type OrderStatus,
   type ShipCarrier,
   SHIP_CARRIERS,
+  approveOrderCancel,
+  confirmOrder,
+  deliverOrder,
   getOrder,
   orderHasFulfillment,
   productImageSrc,
+  rejectOrderCancel,
+  resolveDisputeFulfilled,
   shipOrder,
   updateOrderStatus,
 } from "~/lib/api";
@@ -24,8 +29,11 @@ export function meta() {
 const STATUS_BADGE_CLASS: Record<OrderStatus, string> = {
   pending: "bg-amber-100 text-amber-800",
   paid: "bg-blue-100 text-blue-800",
+  confirmed: "bg-sky-100 text-sky-800",
   in_transit: "bg-violet-100 text-violet-800",
+  delivered: "bg-teal-100 text-teal-800",
   fulfilled: "bg-emerald-100 text-emerald-800",
+  disputed: "bg-red-100 text-red-800",
   canceled: "bg-slate-100 text-slate-600",
 };
 
@@ -34,8 +42,11 @@ function OrderStatusBadge({ status }: { status: OrderStatus }) {
   const labels: Record<OrderStatus, string> = {
     pending: t("common.orderStatusPending"),
     paid: t("common.orderStatusPaid"),
+    confirmed: t("common.orderStatusConfirmed"),
     in_transit: t("common.orderStatusInTransit"),
+    delivered: t("common.orderStatusDelivered"),
     fulfilled: t("common.orderStatusFulfilled"),
+    disputed: t("common.orderStatusDisputed"),
     canceled: t("common.orderStatusCanceled"),
   };
   const cls = STATUS_BADGE_CLASS[status] ?? "bg-slate-100 text-slate-600";
@@ -51,19 +62,89 @@ function OrderStatusBadge({ status }: { status: OrderStatus }) {
 // ── Actions ───────────────────────────────────────────────────────────────────
 
 type OrderAction =
+  | { kind: "confirm" }
   | { kind: "ship" }
+  | { kind: "deliver" }
+  | { kind: "approve_cancel" }
+  | { kind: "reject_cancel" }
+  | { kind: "resolve_dispute" }
   | { kind: "status"; status: "canceled" | "fulfilled" };
 
-const ORDER_ACTIONS: Record<OrderStatus, OrderAction[]> = {
-  pending: [{ kind: "status", status: "canceled" }],
-  paid: [{ kind: "ship" }, { kind: "status", status: "canceled" }],
-  in_transit: [{ kind: "status", status: "fulfilled" }],
-  fulfilled: [],
-  canceled: [],
-};
+/**
+ * Actions available at each stage of
+ * pending -> paid -> confirmed -> in_transit -> delivered -> fulfilled
+ * (or disputed, from delivered).
+ *
+ * A plain "Cancel" is the manager's own direct override (refunds
+ * immediately); it is replaced by Approve/Reject whenever the customer has
+ * an open cancel request the manager must answer instead.
+ */
+function orderActions(order: Order): OrderAction[] {
+  switch (order.status) {
+    case "pending":
+      return [{ kind: "status", status: "canceled" }];
+    case "paid":
+      return [{ kind: "confirm" }, { kind: "status", status: "canceled" }];
+    case "confirmed":
+      return withCancelOrRequest(order, [{ kind: "ship" }]);
+    case "in_transit":
+      return withCancelOrRequest(order, [{ kind: "deliver" }]);
+    case "delivered":
+      return withCancelOrRequest(order, [
+        { kind: "status", status: "fulfilled" },
+      ]);
+    case "disputed":
+      return [
+        { kind: "resolve_dispute" },
+        { kind: "status", status: "canceled" },
+      ];
+    case "fulfilled":
+    case "canceled":
+      return [];
+  }
+}
+
+function withCancelOrRequest(
+  order: Order,
+  leading: OrderAction[]
+): OrderAction[] {
+  return order.cancel_requested_at
+    ? [...leading, { kind: "approve_cancel" }, { kind: "reject_cancel" }]
+    : [...leading, { kind: "status", status: "canceled" }];
+}
 
 function actionKey(a: OrderAction): string {
-  return a.kind === "ship" ? "ship" : a.status;
+  return a.kind === "status" ? a.status : a.kind;
+}
+
+function actionLabel(a: OrderAction, t: (key: string) => string): string {
+  switch (a.kind) {
+    case "confirm":
+      return t("orderDetail.confirmOrder");
+    case "ship":
+      return t("orders.actionShip");
+    case "deliver":
+      return t("orderDetail.deliverOrder");
+    case "approve_cancel":
+      return t("orderDetail.approveCancel");
+    case "reject_cancel":
+      return t("orderDetail.rejectCancel");
+    case "resolve_dispute":
+      return t("orderDetail.resolveDispute");
+    case "status":
+      return a.status === "canceled"
+        ? t("orders.actionCancel")
+        : t("orders.actionFulfill");
+  }
+}
+
+/** Destructive-looking actions: refunds, or answering a cancel request. */
+function isDangerAction(a: OrderAction): boolean {
+  return (
+    (a.kind === "status" && a.status === "canceled") ||
+    a.kind === "approve_cancel" ||
+    a.kind === "reject_cancel"
+  );
 }
 
 function carrierLabelKey(carrier: string): string {
@@ -141,19 +222,47 @@ export default function OrderDetail() {
       return;
     }
     const key = actionKey(action);
-    if (action.status === "canceled") {
-      const paidWithCapture =
-        order.status === "paid" && Boolean(order.payment_id);
-      const ok = window.confirm(
-        paidWithCapture
+
+    if (action.kind === "status" && action.status === "canceled") {
+      const shipped =
+        order.status === "in_transit" ||
+        order.status === "delivered" ||
+        order.status === "disputed";
+      const paidWithCapture = order.status !== "pending" && Boolean(order.payment_id);
+      const message = shipped
+        ? t("orderDetail.confirmCancelShipped")
+        : paidWithCapture
           ? t("orderDetail.confirmCancelPaid")
-          : t("orderDetail.confirmCancel")
-      );
-      if (!ok) return;
+          : t("orderDetail.confirmCancel");
+      if (!window.confirm(message)) return;
     }
+    if (action.kind === "approve_cancel") {
+      if (!window.confirm(t("orderDetail.confirmApproveCancel"))) return;
+    }
+
     setUpdatingAction(key);
     try {
-      const updated = await updateOrderStatus(order.id, action.status);
+      let updated: Order;
+      switch (action.kind) {
+        case "confirm":
+          updated = await confirmOrder(order.id);
+          break;
+        case "deliver":
+          updated = await deliverOrder(order.id);
+          break;
+        case "approve_cancel":
+          updated = await approveOrderCancel(order.id);
+          break;
+        case "reject_cancel":
+          updated = await rejectOrderCancel(order.id);
+          break;
+        case "resolve_dispute":
+          updated = await resolveDisputeFulfilled(order.id);
+          break;
+        case "status":
+          updated = await updateOrderStatus(order.id, action.status);
+          break;
+      }
       setOrder(updated);
     } catch (err) {
       notify(
@@ -223,7 +332,7 @@ export default function OrderDetail() {
     );
   }
 
-  const actions = ORDER_ACTIONS[order.status] ?? [];
+  const actions = orderActions(order);
 
   return (
     <div className="space-y-6">
@@ -247,9 +356,16 @@ export default function OrderDetail() {
             </p>
           </div>
           <div className="flex flex-col items-end gap-3">
-            <OrderStatusBadge status={order.status} />
+            <div className="flex items-center gap-2">
+              {order.status === "paid" && !order.confirmed_at && (
+                <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+                  {t("orderDetail.unconfirmed")}
+                </span>
+              )}
+              <OrderStatusBadge status={order.status} />
+            </div>
             {actions.length > 0 && (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap justify-end gap-2">
                 {actions.map((action) => {
                   const key = actionKey(action);
                   const busy = updatingAction === key;
@@ -261,18 +377,12 @@ export default function OrderDetail() {
                       onClick={() => handleAction(action)}
                       className={[
                         "rounded-xl px-4 py-2 text-sm font-semibold transition disabled:opacity-50",
-                        action.kind === "status" && action.status === "canceled"
+                        isDangerAction(action)
                           ? "border border-red-200 text-danger-fg hover:bg-danger-bg"
                           : "bg-accent text-white hover:bg-accent-hover",
                       ].join(" ")}
                     >
-                      {busy
-                        ? t("common.loadingEllipsis")
-                        : action.kind === "ship"
-                          ? t("orders.actionShip")
-                          : action.status === "canceled"
-                            ? t("orders.actionCancel")
-                            : t("orders.actionFulfill")}
+                      {busy ? t("common.loadingEllipsis") : actionLabel(action, t)}
                     </button>
                   );
                 })}
@@ -280,6 +390,7 @@ export default function OrderDetail() {
             )}
           </div>
         </div>
+        <OrderPolicyBanner order={order} />
       </div>
 
       {/* Body */}
@@ -379,13 +490,106 @@ export default function OrderDetail() {
   );
 }
 
+// ── Policy banner ─────────────────────────────────────────────────────────────
+
+const BANNER_DATE_OPTS: Intl.DateTimeFormatOptions = {
+  month: "short",
+  day: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+};
+
+/**
+ * Surfaces whatever the operator needs to act on or be aware of: the 2-hour
+ * confirm SLA, a pending cancel request, a delivered order's auto-fulfill
+ * window, or an open non-receipt dispute. Hidden once the order reaches a
+ * final status (fulfilled/canceled clear all of these).
+ */
+function OrderPolicyBanner({ order }: { order: Order }) {
+  const { t, formatDate } = useI18n();
+
+  const showConfirmationDue =
+    order.status === "paid" &&
+    !order.confirmed_at &&
+    (order.confirmation_overdue || order.confirmation_due_at);
+  const showCancelRequest = Boolean(order.cancel_requested_at);
+  const showAutoFulfillDue =
+    order.status === "delivered" && Boolean(order.auto_fulfill_due_at);
+  const showDispute = order.status === "disputed";
+
+  if (
+    !showConfirmationDue &&
+    !showCancelRequest &&
+    !showAutoFulfillDue &&
+    !showDispute
+  ) {
+    return null;
+  }
+
+  return (
+    <div className="mt-5 space-y-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+      {showConfirmationDue && (
+        <p>
+          {order.confirmation_overdue
+            ? t("orderDetail.confirmationOverdue")
+            : t("orderDetail.confirmationDue", {
+                time: formatDate(order.confirmation_due_at ?? "", BANNER_DATE_OPTS),
+              })}
+        </p>
+      )}
+      {showCancelRequest && (
+        <div>
+          <p className="font-semibold">{t("orderDetail.cancelRequested")}</p>
+          {order.cancel_request_reason ? (
+            <p className="mt-0.5">
+              {t("orderDetail.cancelRequestedReason", {
+                reason: order.cancel_request_reason,
+              })}
+            </p>
+          ) : null}
+          <p className="mt-1">
+            {order.cancel_confirm_overdue
+              ? t("orderDetail.cancelConfirmOverdue")
+              : t("orderDetail.cancelConfirmDue", {
+                  time: formatDate(order.cancel_confirm_due_at ?? "", BANNER_DATE_OPTS),
+                })}
+          </p>
+        </div>
+      )}
+      {showAutoFulfillDue && (
+        <p>
+          {t("orderDetail.autoFulfillDue", {
+            time: formatDate(order.auto_fulfill_due_at ?? "", BANNER_DATE_OPTS),
+          })}
+        </p>
+      )}
+      {showDispute && (
+        <div>
+          <p className="font-semibold">{t("orderDetail.disputeReported")}</p>
+          {order.dispute_reason ? (
+            <p className="mt-0.5">
+              {t("orderDetail.disputeReason", { reason: order.dispute_reason })}
+            </p>
+          ) : null}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Timeline ──────────────────────────────────────────────────────────────────
 
 function TimelineSection({ order }: { order: Order }) {
   const { t, formatDate } = useI18n();
   const hasPending =
     order.status === "pending" && Boolean(order.payment_due_at);
-  if (!order.paid_at && !order.shipped_at && !hasPending) return null;
+  if (
+    !order.paid_at &&
+    !order.shipped_at &&
+    !order.delivered_at &&
+    !hasPending
+  )
+    return null;
 
   const dateOpts: Intl.DateTimeFormatOptions = {
     month: "short",
@@ -451,6 +655,31 @@ function TimelineSection({ order }: { order: Order }) {
               </span>
               {order.carrier && <span className="mx-1.5 text-faint">·</span>}
               <span className="font-mono">{order.tracking_number}</span>
+            </dd>
+          </div>
+        )}
+        {order.delivered_at && (
+          <div>
+            <dt className="text-xs font-semibold uppercase tracking-wide text-faint">
+              {t("orderDetail.deliveredAt")}
+            </dt>
+            <dd className="mt-1 font-medium text-ink">
+              {formatDate(order.delivered_at, dateOpts)}
+              {order.delivered_by && (
+                <span className="ml-1 text-muted">
+                  {t("orderDetail.deliveredBy", { name: order.delivered_by })}
+                </span>
+              )}
+            </dd>
+          </div>
+        )}
+        {order.receipt_confirmed_at && (
+          <div>
+            <dt className="text-xs font-semibold uppercase tracking-wide text-faint">
+              {t("orders.receiptConfirmedAt")}
+            </dt>
+            <dd className="mt-1 font-medium text-ink">
+              {formatDate(order.receipt_confirmed_at, dateOpts)}
             </dd>
           </div>
         )}

@@ -1261,8 +1261,11 @@ export async function deleteCoupon(code: string): Promise<void> {
 export type OrderStatus =
   | "pending"
   | "paid"
+  | "confirmed"
   | "in_transit"
+  | "delivered"
   | "fulfilled"
+  | "disputed"
   | "canceled";
 
 export interface OrderItem {
@@ -1317,6 +1320,26 @@ export interface Order {
   tracking_number?: string;
   /** Free-text carrier name when `carrier` is `other`. */
   carrier_note?: string;
+  /** Set when a manager accepts a paid order (`paid` → `confirmed`). */
+  confirmed_at?: string;
+  confirmation_due_at?: string;
+  confirmation_overdue?: boolean;
+  /** Set when the carrier/manager hands off the shipment (`in_transit` → `delivered`). */
+  delivered_at?: string;
+  delivered_by?: string;
+  /** Set when the customer confirms receipt (`delivered` → `fulfilled`). */
+  receipt_confirmed_at?: string;
+  /** Set when the customer reports non-receipt (`delivered` → `disputed`). */
+  disputed_at?: string;
+  dispute_reason?: string;
+  /** 14 days after `delivered_at`; the order auto-fulfills if untouched. */
+  auto_fulfill_due_at?: string;
+  cancel_requested_at?: string;
+  cancel_request_reason?: string;
+  cancel_confirm_due_at?: string;
+  cancel_confirm_overdue?: boolean;
+  immediate_cancel_allowed?: boolean;
+  cancel_request_allowed?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -1416,7 +1439,16 @@ export async function getOrder(id: string): Promise<Order> {
   return res.json() as Promise<Order>;
 }
 
-/** Ship a paid order (`paid` → `in_transit`). Requires `order.ship` + tracking. */
+/** Manager accepts a paid order (`paid` → `confirmed`). Required before ship. */
+export async function confirmOrder(id: string): Promise<Order> {
+  const res = await authedFetch(orderPath(`/api/v1/orders/${id}/confirm`), {
+    method: "POST",
+  });
+  if (!res.ok) throw new Error(await readError(res, "Failed to confirm order"));
+  return res.json() as Promise<Order>;
+}
+
+/** Ship a confirmed order (`confirmed` → `in_transit`). Requires `order.ship` + tracking. */
 export async function shipOrder(
   id: string,
   input: ShipOrderInput
@@ -1436,7 +1468,54 @@ export async function shipOrder(
   return res.json() as Promise<Order>;
 }
 
-/** Cancel or fulfill via status API. Use `shipOrder` for `in_transit`. */
+/** Carrier/manager marks a shipment delivered (`in_transit` → `delivered`). */
+export async function deliverOrder(id: string): Promise<Order> {
+  const res = await authedFetch(orderPath(`/api/v1/orders/${id}/deliver`), {
+    method: "POST",
+  });
+  if (!res.ok) throw new Error(await readError(res, "Failed to mark order delivered"));
+  return res.json() as Promise<Order>;
+}
+
+/** Approve a customer cancel request and refund. */
+export async function approveOrderCancel(id: string): Promise<Order> {
+  const res = await authedFetch(
+    orderPath(`/api/v1/orders/${id}/cancel/approve`),
+    { method: "POST" }
+  );
+  if (!res.ok) throw new Error(await readError(res, "Failed to approve cancel"));
+  return res.json() as Promise<Order>;
+}
+
+/** Reject a customer cancel request; the order stays in place. */
+export async function rejectOrderCancel(id: string): Promise<Order> {
+  const res = await authedFetch(
+    orderPath(`/api/v1/orders/${id}/cancel/reject`),
+    { method: "POST" }
+  );
+  if (!res.ok) throw new Error(await readError(res, "Failed to reject cancel"));
+  return res.json() as Promise<Order>;
+}
+
+/**
+ * Manager closes a customer's non-receipt dispute in the delivery's favor
+ * (`disputed` → `fulfilled`, no refund). A manager who instead believes the
+ * customer uses `updateOrderStatus(id, "canceled")`, which refunds.
+ */
+export async function resolveDisputeFulfilled(id: string): Promise<Order> {
+  const res = await authedFetch(
+    orderPath(`/api/v1/orders/${id}/dispute/resolve`),
+    { method: "POST" }
+  );
+  if (!res.ok) throw new Error(await readError(res, "Failed to resolve dispute"));
+  return res.json() as Promise<Order>;
+}
+
+/**
+ * Cancel (any non-final status; refunds a captured payment first) or fulfill
+ * (manager override for `delivered` / `disputed`) via the status API. Use
+ * `shipOrder` for `in_transit` and `deliverOrder` for `delivered`.
+ */
 export async function updateOrderStatus(
   id: string,
   status: Extract<OrderStatus, "canceled" | "fulfilled">
