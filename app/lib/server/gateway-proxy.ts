@@ -89,8 +89,8 @@ export async function proxyGatewayRequestForPath(
   headers.set("Accept", request.headers.get("Accept") ?? "application/json");
 
   // Server-sent event streams resume from their cursor after a reconnect. The
-  // header is rebuilt from scratch above, so without this the upstream cannot
-  // tell what the client already saw and replay is silently lost.
+  // header set is rebuilt from scratch above, so without this the upstream
+  // cannot tell what the client already saw and replay is silently lost.
   const lastEventId = request.headers.get("Last-Event-ID");
   if (lastEventId) headers.set("Last-Event-ID", lastEventId);
 

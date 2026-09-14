@@ -55,7 +55,7 @@ export default function Orders() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<OrderStatus | "all">("all");
   const [search, setSearch] = useState("");
-  // Hold the stream until the first list has loaded, so a streamed snapshot
+  // Hold the feed until the first list has loaded, so a streamed snapshot
   // cannot land in an empty table and look like the only order there is.
   const [streamReady, setStreamReady] = useState(false);
 
@@ -77,12 +77,12 @@ export default function Orders() {
     setOrders((current) => mergeOrder(current, order));
   }, []);
 
-  // The stream could not prove what we missed; the list is the source of truth.
+  // The feed could not prove what we missed; the list is the source of truth.
   const handleResync = useCallback(() => {
     getOrders()
       .then(setOrders)
       .catch(() => {
-        // Keep the rows already on screen; the indicator shows the stream state.
+        // Keep the rows on screen; the indicator shows the connection state.
       });
   }, []);
 
@@ -296,10 +296,10 @@ function OrderStreamIndicator({ status }: { status: OrderStreamStatus }) {
         : t("orders.liveOff");
   const tone =
     status === "live"
-      ? { pill: "bg-emerald-50 text-emerald-700", dot: "bg-emerald-500" }
+      ? { pill: "bg-success-bg text-success-fg", dot: "bg-success-fg" }
       : status === "connecting"
-        ? { pill: "bg-[#F4F3F8] text-[#6B6480]", dot: "animate-pulse bg-[#9D98B3]" }
-        : { pill: "bg-amber-50 text-amber-800", dot: "bg-amber-500" };
+        ? { pill: "bg-soft text-muted", dot: "animate-pulse bg-placeholder" }
+        : { pill: "bg-warn-bg text-warn-fg", dot: "bg-warn-fg" };
 
   return (
     <span
