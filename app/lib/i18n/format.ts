@@ -4,8 +4,8 @@ import { LOCALE_INTL, type Locale } from "~/lib/i18n/types";
 export const STORE_CURRENCY = "KRW" as const;
 
 /**
- * Format a major-unit money amount (product `price`, or whole-KRW `*_krw` /
- * `shipping_fee_krw` fields). Always KRW; the optional `currency` argument is
+ * Format a major-unit money amount (product `price`, or whole-KRW `*_won` /
+ * `shipping_fee_won` fields). Always KRW; the optional `currency` argument is
  * ignored for API stability.
  */
 export function formatCurrency(
@@ -24,10 +24,10 @@ export function formatCurrency(
 }
 
 /** Format API money fields that are whole KRW won (zero-decimal; never ÷100). */
-export function formatKrw(
+export function formatWon(
   locale: Locale,
-  krw: number,
+  won: number,
   options?: Intl.NumberFormatOptions
 ): string {
-  return formatCurrency(locale, krw, STORE_CURRENCY, options);
+  return formatCurrency(locale, won, STORE_CURRENCY, options);
 }

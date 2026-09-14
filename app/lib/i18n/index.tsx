@@ -99,10 +99,10 @@ export function translate(
 import {
   STORE_CURRENCY,
   formatCurrency,
-  formatKrw,
+  formatWon,
 } from "~/lib/i18n/format";
 
-export { STORE_CURRENCY, formatCurrency, formatKrw };
+export { STORE_CURRENCY, formatCurrency, formatWon };
 
 export function formatDate(
   locale: Locale,
@@ -137,8 +137,8 @@ interface I18nContextValue {
     currency?: string,
     options?: Intl.NumberFormatOptions
   ) => string;
-  formatKrw: (
-    krw: number,
+  formatWon: (
+    won: number,
     options?: Intl.NumberFormatOptions
   ) => string;
   formatDate: (
@@ -219,7 +219,7 @@ export function I18nProvider({
       t: (key, vars) => translate(locale, key, vars),
       formatCurrency: (amount, currency, options) =>
         formatCurrency(locale, amount, currency, options),
-      formatKrw: (krw, options) => formatKrw(locale, krw, options),
+      formatWon: (won, options) => formatWon(locale, won, options),
       formatDate: (date, options) => formatDate(locale, date, options),
       formatDateTime: (date, options) =>
         formatDateTime(locale, date, options),
