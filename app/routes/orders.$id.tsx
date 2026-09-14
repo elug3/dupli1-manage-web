@@ -6,9 +6,12 @@ import {
   type OrderStatus,
   type ShipCarrier,
   SHIP_CARRIERS,
+  confirmOrder,
+  deliverOrder,
   getOrder,
   orderHasFulfillment,
   productImageSrc,
+  resolveDispute,
   shipOrder,
   updateOrderStatus,
 } from "~/lib/api";
@@ -24,8 +27,11 @@ export function meta() {
 const STATUS_BADGE_CLASS: Record<OrderStatus, string> = {
   pending: "bg-amber-100 text-amber-800",
   paid: "bg-blue-100 text-blue-800",
+  confirmed: "bg-sky-100 text-sky-800",
   in_transit: "bg-violet-100 text-violet-800",
+  delivered: "bg-indigo-100 text-indigo-800",
   fulfilled: "bg-emerald-100 text-emerald-800",
+  disputed: "bg-orange-100 text-orange-800",
   canceled: "bg-slate-100 text-slate-600",
 };
 
@@ -34,8 +40,11 @@ function OrderStatusBadge({ status }: { status: OrderStatus }) {
   const labels: Record<OrderStatus, string> = {
     pending: t("common.orderStatusPending"),
     paid: t("common.orderStatusPaid"),
+    confirmed: t("common.orderStatusConfirmed"),
     in_transit: t("common.orderStatusInTransit"),
+    delivered: t("common.orderStatusDelivered"),
     fulfilled: t("common.orderStatusFulfilled"),
+    disputed: t("common.orderStatusDisputed"),
     canceled: t("common.orderStatusCanceled"),
   };
   const cls = STATUS_BADGE_CLASS[status] ?? "bg-slate-100 text-slate-600";
@@ -51,19 +60,62 @@ function OrderStatusBadge({ status }: { status: OrderStatus }) {
 // ── Actions ───────────────────────────────────────────────────────────────────
 
 type OrderAction =
+  | { kind: "confirm" }
   | { kind: "ship" }
+  | { kind: "deliver" }
+  | { kind: "resolveDispute" }
   | { kind: "status"; status: "canceled" | "fulfilled" };
 
 const ORDER_ACTIONS: Record<OrderStatus, OrderAction[]> = {
   pending: [{ kind: "status", status: "canceled" }],
-  paid: [{ kind: "ship" }, { kind: "status", status: "canceled" }],
-  in_transit: [{ kind: "status", status: "fulfilled" }],
+  paid: [{ kind: "confirm" }, { kind: "status", status: "canceled" }],
+  confirmed: [{ kind: "ship" }, { kind: "status", status: "canceled" }],
+  in_transit: [{ kind: "deliver" }, { kind: "status", status: "canceled" }],
+  delivered: [
+    { kind: "status", status: "fulfilled" },
+    { kind: "status", status: "canceled" },
+  ],
+  disputed: [
+    { kind: "resolveDispute" },
+    { kind: "status", status: "canceled" },
+  ],
   fulfilled: [],
   canceled: [],
 };
 
 function actionKey(a: OrderAction): string {
-  return a.kind === "ship" ? "ship" : a.status;
+  switch (a.kind) {
+    case "confirm":
+      return "confirm";
+    case "ship":
+      return "ship";
+    case "deliver":
+      return "deliver";
+    case "resolveDispute":
+      return "resolveDispute";
+    default:
+      return a.status;
+  }
+}
+
+function actionLabel(
+  action: OrderAction,
+  t: (key: string) => string
+): string {
+  switch (action.kind) {
+    case "confirm":
+      return t("orders.actionConfirm");
+    case "ship":
+      return t("orders.actionShip");
+    case "deliver":
+      return t("orders.actionDeliver");
+    case "resolveDispute":
+      return t("orders.actionResolveDispute");
+    case "status":
+      return action.status === "canceled"
+        ? t("orders.actionCancel")
+        : t("orders.actionFulfill");
+  }
 }
 
 function carrierLabelKey(carrier: string): string {
@@ -141,9 +193,24 @@ export default function OrderDetail() {
       return;
     }
     const key = actionKey(action);
-    if (action.status === "canceled") {
+    if (action.kind === "confirm") {
+      const ok = window.confirm(t("orderDetail.confirmAccept"));
+      if (!ok) return;
+    }
+    if (action.kind === "deliver") {
+      const ok = window.confirm(t("orderDetail.confirmDeliver"));
+      if (!ok) return;
+    }
+    if (action.kind === "resolveDispute") {
+      const ok = window.confirm(t("orderDetail.confirmResolveDispute"));
+      if (!ok) return;
+    }
+    if (action.kind === "status" && action.status === "canceled") {
       const paidWithCapture =
-        order.status === "paid" && Boolean(order.payment_id);
+        Boolean(order.payment_id) &&
+        order.status !== "pending" &&
+        order.status !== "canceled" &&
+        order.status !== "fulfilled";
       const ok = window.confirm(
         paidWithCapture
           ? t("orderDetail.confirmCancelPaid")
@@ -153,7 +220,23 @@ export default function OrderDetail() {
     }
     setUpdatingAction(key);
     try {
-      const updated = await updateOrderStatus(order.id, action.status);
+      let updated: Order;
+      switch (action.kind) {
+        case "confirm":
+          updated = await confirmOrder(order.id);
+          break;
+        case "deliver":
+          updated = await deliverOrder(order.id);
+          break;
+        case "resolveDispute":
+          updated = await resolveDispute(order.id);
+          break;
+        case "status":
+          updated = await updateOrderStatus(order.id, action.status);
+          break;
+        default:
+          return;
+      }
       setOrder(updated);
     } catch (err) {
       notify(
@@ -268,11 +351,7 @@ export default function OrderDetail() {
                     >
                       {busy
                         ? t("common.loadingEllipsis")
-                        : action.kind === "ship"
-                          ? t("orders.actionShip")
-                          : action.status === "canceled"
-                            ? t("orders.actionCancel")
-                            : t("orders.actionFulfill")}
+                        : actionLabel(action, t)}
                     </button>
                   );
                 })}

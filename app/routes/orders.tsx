@@ -16,7 +16,10 @@ const STATUS_TAB_VALUES: (OrderStatus | "all")[] = [
   "all",
   "pending",
   "paid",
+  "confirmed",
   "in_transit",
+  "delivered",
+  "disputed",
   "fulfilled",
   "canceled",
 ];
@@ -24,8 +27,11 @@ const STATUS_TAB_VALUES: (OrderStatus | "all")[] = [
 const STATUS_BADGE_CLASS: Record<OrderStatus, string> = {
   pending: "bg-amber-100 text-amber-800",
   paid: "bg-blue-100 text-blue-800",
+  confirmed: "bg-sky-100 text-sky-800",
   in_transit: "bg-violet-100 text-violet-800",
+  delivered: "bg-indigo-100 text-indigo-800",
   fulfilled: "bg-emerald-100 text-emerald-800",
+  disputed: "bg-orange-100 text-orange-800",
   canceled: "bg-slate-100 text-slate-600",
 };
 
@@ -34,8 +40,11 @@ function OrderStatusBadge({ status }: { status: OrderStatus }) {
   const labels: Record<OrderStatus, string> = {
     pending: t("common.orderStatusPending"),
     paid: t("common.orderStatusPaid"),
+    confirmed: t("common.orderStatusConfirmed"),
     in_transit: t("common.orderStatusInTransit"),
+    delivered: t("common.orderStatusDelivered"),
     fulfilled: t("common.orderStatusFulfilled"),
+    disputed: t("common.orderStatusDisputed"),
     canceled: t("common.orderStatusCanceled"),
   };
   const cls = STATUS_BADGE_CLASS[status] ?? "bg-slate-100 text-slate-600";
@@ -115,7 +124,10 @@ export default function Orders() {
       case "all": return t("orders.tabAll");
       case "pending": return t("orders.tabPending");
       case "paid": return t("orders.tabPaid");
+      case "confirmed": return t("orders.tabConfirmed");
       case "in_transit": return t("orders.tabInTransit");
+      case "delivered": return t("orders.tabDelivered");
+      case "disputed": return t("orders.tabDisputed");
       case "fulfilled": return t("orders.tabFulfilled");
       case "canceled": return t("orders.tabCanceled");
       default: return value;
