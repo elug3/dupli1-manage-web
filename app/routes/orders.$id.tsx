@@ -6,9 +6,12 @@ import {
   type OrderStatus,
   type ShipCarrier,
   SHIP_CARRIERS,
+  approveOrderCancel,
+  confirmOrder,
   getOrder,
   orderHasFulfillment,
   productImageSrc,
+  rejectOrderCancel,
   shipOrder,
   updateOrderStatus,
 } from "~/lib/api";
@@ -52,18 +55,41 @@ function OrderStatusBadge({ status }: { status: OrderStatus }) {
 
 type OrderAction =
   | { kind: "ship" }
+  | { kind: "confirm" }
+  | { kind: "approve_cancel" }
+  | { kind: "reject_cancel" }
   | { kind: "status"; status: "canceled" | "fulfilled" };
 
-const ORDER_ACTIONS: Record<OrderStatus, OrderAction[]> = {
-  pending: [{ kind: "status", status: "canceled" }],
-  paid: [{ kind: "ship" }, { kind: "status", status: "canceled" }],
-  in_transit: [{ kind: "status", status: "fulfilled" }],
-  fulfilled: [],
-  canceled: [],
-};
+function orderActions(order: Order): OrderAction[] {
+  if (order.status === "pending") {
+    return [{ kind: "status", status: "canceled" }];
+  }
+  if (order.status === "paid") {
+    const actions: OrderAction[] = [];
+    if (!order.confirmed_at) actions.push({ kind: "confirm" });
+    actions.push({ kind: "ship" });
+    if (order.cancel_requested_at) {
+      actions.push({ kind: "approve_cancel" }, { kind: "reject_cancel" });
+    } else {
+      actions.push({ kind: "status", status: "canceled" });
+    }
+    return actions;
+  }
+  if (order.status === "in_transit") {
+    const actions: OrderAction[] = [{ kind: "status", status: "fulfilled" }];
+    if (order.cancel_requested_at) {
+      actions.push({ kind: "approve_cancel" }, { kind: "reject_cancel" });
+    } else {
+      actions.push({ kind: "status", status: "canceled" });
+    }
+    return actions;
+  }
+  return [];
+}
 
 function actionKey(a: OrderAction): string {
-  return a.kind === "ship" ? "ship" : a.status;
+  if (a.kind === "status") return a.status;
+  return a.kind;
 }
 
 function carrierLabelKey(carrier: string): string {
@@ -100,7 +126,7 @@ function formatPhoneDisplay(phone: string): string {
 
 export default function OrderDetail() {
   const { id } = useParams();
-  const { t } = useI18n();
+  const { t, formatDate } = useI18n();
   const { notify } = useNotify();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
@@ -141,19 +167,30 @@ export default function OrderDetail() {
       return;
     }
     const key = actionKey(action);
-    if (action.status === "canceled") {
+    if (action.kind === "status" && action.status === "canceled") {
       const paidWithCapture =
-        order.status === "paid" && Boolean(order.payment_id);
-      const ok = window.confirm(
-        paidWithCapture
-          ? t("orderDetail.confirmCancelPaid")
-          : t("orderDetail.confirmCancel")
-      );
-      if (!ok) return;
+        (order.status === "paid" || order.status === "in_transit") &&
+        Boolean(order.payment_id);
+      const message =
+        order.status === "in_transit"
+          ? t("orderDetail.confirmCancelInTransit")
+          : paidWithCapture
+            ? t("orderDetail.confirmCancelPaid")
+            : t("orderDetail.confirmCancel");
+      if (!window.confirm(message)) return;
     }
     setUpdatingAction(key);
     try {
-      const updated = await updateOrderStatus(order.id, action.status);
+      let updated: Order;
+      if (action.kind === "confirm") {
+        updated = await confirmOrder(order.id);
+      } else if (action.kind === "approve_cancel") {
+        updated = await approveOrderCancel(order.id);
+      } else if (action.kind === "reject_cancel") {
+        updated = await rejectOrderCancel(order.id);
+      } else {
+        updated = await updateOrderStatus(order.id, action.status);
+      }
       setOrder(updated);
     } catch (err) {
       notify(
@@ -223,7 +260,7 @@ export default function OrderDetail() {
     );
   }
 
-  const actions = ORDER_ACTIONS[order.status] ?? [];
+  const actions = orderActions(order);
 
   return (
     <div className="space-y-6">
@@ -248,11 +285,32 @@ export default function OrderDetail() {
           </div>
           <div className="flex flex-col items-end gap-3">
             <OrderStatusBadge status={order.status} />
+            {!order.confirmed_at && order.status === "paid" && (
+              <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+                {t("orderDetail.unconfirmed")}
+              </span>
+            )}
             {actions.length > 0 && (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap justify-end gap-2">
                 {actions.map((action) => {
                   const key = actionKey(action);
                   const busy = updatingAction === key;
+                  const danger =
+                    (action.kind === "status" && action.status === "canceled") ||
+                    action.kind === "approve_cancel" ||
+                    action.kind === "reject_cancel";
+                  const label =
+                    action.kind === "ship"
+                      ? t("orders.actionShip")
+                      : action.kind === "confirm"
+                        ? t("orderDetail.confirmOrder")
+                        : action.kind === "approve_cancel"
+                          ? t("orderDetail.approveCancel")
+                          : action.kind === "reject_cancel"
+                            ? t("orderDetail.rejectCancel")
+                            : action.status === "canceled"
+                              ? t("orders.actionCancel")
+                              : t("orders.actionFulfill");
                   return (
                     <button
                       key={key}
@@ -261,18 +319,12 @@ export default function OrderDetail() {
                       onClick={() => handleAction(action)}
                       className={[
                         "rounded-xl px-4 py-2 text-sm font-semibold transition disabled:opacity-50",
-                        action.kind === "status" && action.status === "canceled"
+                        danger
                           ? "border border-red-200 text-danger-fg hover:bg-danger-bg"
                           : "bg-accent text-white hover:bg-accent-hover",
                       ].join(" ")}
                     >
-                      {busy
-                        ? t("common.loadingEllipsis")
-                        : action.kind === "ship"
-                          ? t("orders.actionShip")
-                          : action.status === "canceled"
-                            ? t("orders.actionCancel")
-                            : t("orders.actionFulfill")}
+                      {busy ? t("common.loadingEllipsis") : label}
                     </button>
                   );
                 })}
@@ -280,6 +332,52 @@ export default function OrderDetail() {
             )}
           </div>
         </div>
+        {((order.status === "paid" &&
+          !order.confirmed_at &&
+          (order.confirmation_overdue || order.confirmation_due_at)) ||
+          ((order.status === "paid" || order.status === "in_transit") &&
+            order.cancel_requested_at)) && (
+          <div className="mt-5 space-y-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+            {order.status === "paid" && !order.confirmed_at && (
+              <p>
+                {order.confirmation_overdue
+                  ? t("orderDetail.confirmationOverdue")
+                  : t("orderDetail.confirmationDue", {
+                      time: formatDate(order.confirmation_due_at ?? "", {
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      }),
+                    })}
+              </p>
+            )}
+            {order.cancel_requested_at && (
+              <div>
+                <p className="font-semibold">{t("orderDetail.cancelRequested")}</p>
+                {order.cancel_request_reason ? (
+                  <p className="mt-0.5">
+                    {t("orderDetail.cancelRequestedReason", {
+                      reason: order.cancel_request_reason,
+                    })}
+                  </p>
+                ) : null}
+                <p className="mt-1">
+                  {order.cancel_confirm_overdue
+                    ? t("orderDetail.cancelConfirmOverdue")
+                    : t("orderDetail.cancelConfirmDue", {
+                        time: formatDate(order.cancel_confirm_due_at ?? "", {
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        }),
+                      })}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Body */}
@@ -479,7 +577,7 @@ function ItemsSection({ order }: { order: Order }) {
 }
 
 function OrderItemRow({ item }: { item: OrderItem }) {
-  const { t, formatKrw } = useI18n();
+  const { t, formatWon } = useI18n();
   const imgSrc = item.image_url ? productImageSrc(item.image_url) : null;
   return (
     <div className="flex items-center justify-between gap-3 text-sm">
@@ -520,28 +618,28 @@ function OrderItemRow({ item }: { item: OrderItem }) {
         </div>
       </div>
       <span className="shrink-0 font-semibold text-ink">
-        {formatKrw(item.unit_price_krw * item.quantity)}
+        {formatWon(item.unit_price_won * item.quantity)}
       </span>
     </div>
   );
 }
 
 function OrderTotals({ order }: { order: Order }) {
-  const { t, formatKrw } = useI18n();
-  const hasDiscount = order.discount_krw > 0;
-  const shipping = order.shipping_fee_krw ?? 0;
+  const { t, formatWon } = useI18n();
+  const hasDiscount = order.discount_won > 0;
+  const shipping = order.shipping_fee_won ?? 0;
   return (
     <div className="mt-4 space-y-1.5 border-t border-edge pt-4 text-sm">
       <div className="flex items-center justify-between text-muted">
         <span>{t("orders.subtotal")}</span>
-        <span>{formatKrw(order.subtotal_krw)}</span>
+        <span>{formatWon(order.subtotal_won)}</span>
       </div>
       <div className="flex items-center justify-between text-muted">
         <span>{t("orders.shippingFee")}</span>
         <span>
           {shipping === 0
             ? t("orders.shippingFeeFree")
-            : formatKrw(shipping)}
+            : formatWon(shipping)}
         </span>
       </div>
       {hasDiscount && (
@@ -551,12 +649,12 @@ function OrderTotals({ order }: { order: Order }) {
               ? t("orders.discountWithCode", { code: order.coupon_code })
               : t("orders.discount")}
           </span>
-          <span>−{formatKrw(order.discount_krw)}</span>
+          <span>−{formatWon(order.discount_won)}</span>
         </div>
       )}
       <div className="flex items-center justify-between font-bold text-ink">
         <span>{t("orders.orderTotal")}</span>
-        <span>{formatKrw(order.total_krw)}</span>
+        <span>{formatWon(order.total_won)}</span>
       </div>
     </div>
   );
@@ -624,6 +722,14 @@ function FulfillmentSection({ order }: { order: Order }) {
                 <p key={line}>{line}</p>
               ))}
             </dd>
+          </div>
+        )}
+        {addr?.pccc && (
+          <div>
+            <dt className="text-xs font-semibold uppercase tracking-wide text-[#9D98B3]">
+              {t("orders.pccc")}
+            </dt>
+            <dd className="mt-1 font-medium text-[#1C1B1F]">{addr.pccc}</dd>
           </div>
         )}
       </dl>

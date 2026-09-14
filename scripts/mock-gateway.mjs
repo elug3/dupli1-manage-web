@@ -64,18 +64,19 @@ const orders = new Map();
 function makeOrder(overrides = {}) {
   const now = new Date().toISOString();
   const items = overrides.items ?? [
-    { sku: "BAG-BLK-M", quantity: 1, unit_price_krw: 250000 },
+    { sku: "BAG-BLK-M", quantity: 1, unit_price_won: 250000 },
   ];
-  const subtotal = items.reduce((sum, i) => sum + i.unit_price_krw * i.quantity, 0);
+  const subtotal = items.reduce((sum, i) => sum + i.unit_price_won * i.quantity, 0);
   return {
     id: `ord_${Math.random().toString(36).slice(2, 10)}`,
     customer_id: "cust-1",
     reservation_id: "res-1",
     items,
     status: "pending",
-    subtotal_krw: subtotal,
-    discount_krw: 0,
-    total_krw: subtotal,
+    subtotal_won: subtotal,
+    discount_won: 0,
+    shipping_fee_won: 0,
+    total_won: subtotal,
     recipient_name: "Seed Recipient",
     created_at: now,
     updated_at: now,

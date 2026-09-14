@@ -266,6 +266,25 @@ export default function Orders() {
   );
 }
 
+function PolicyChips({ order }: { order: Order }) {
+  const { t } = useI18n();
+  return (
+    <>
+      {order.status === "paid" && !order.confirmed_at ? (
+        <span className="mt-1 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-800">
+          {t("orderDetail.unconfirmed")}
+        </span>
+      ) : null}
+      {order.cancel_requested_at &&
+      (order.status === "paid" || order.status === "in_transit") ? (
+        <span className="mt-1 inline-flex rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-medium text-red-800">
+          {t("orderDetail.cancelRequested")}
+        </span>
+      ) : null}
+    </>
+  );
+}
+
 /** Whether the page is receiving live order changes, or has gone stale. */
 function OrderStreamIndicator({ status }: { status: OrderStreamStatus }) {
   const { t } = useI18n();
@@ -294,7 +313,7 @@ function OrderStreamIndicator({ status }: { status: OrderStreamStatus }) {
 }
 
 function OrderCard({ order }: { order: Order }) {
-  const { t, formatKrw, formatDate } = useI18n();
+  const { t, formatWon, formatDate } = useI18n();
   return (
     <Link
       to={`/orders/${encodeURIComponent(order.id)}`}
@@ -306,12 +325,13 @@ function OrderCard({ order }: { order: Order }) {
             {order.id}
           </p>
           <p className="mt-1 text-sm text-muted">{order.customer_id}</p>
+          <PolicyChips order={order} />
         </div>
         <OrderStatusBadge status={order.status} />
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
         <span className="font-semibold text-ink">
-          {formatKrw(order.total_krw)}
+          {formatWon(order.total_won)}
         </span>
         <span className="text-muted">
           {t("common.itemCount", { count: order.items.length })}
@@ -329,7 +349,7 @@ function OrderCard({ order }: { order: Order }) {
 }
 
 function OrderRow({ order }: { order: Order }) {
-  const { t, formatKrw, formatDate } = useI18n();
+  const { t, formatWon, formatDate } = useI18n();
   const navigate = useNavigate();
   return (
     <tr
@@ -346,10 +366,13 @@ function OrderRow({ order }: { order: Order }) {
         {t("common.itemCount", { count: order.items.length })}
       </td>
       <td className="px-5 py-3.5 font-semibold text-ink">
-        {formatKrw(order.total_krw)}
+        {formatWon(order.total_won)}
       </td>
       <td className="px-5 py-3.5">
-        <OrderStatusBadge status={order.status} />
+        <div className="flex flex-col items-start gap-1">
+          <OrderStatusBadge status={order.status} />
+          <PolicyChips order={order} />
+        </div>
       </td>
       <td className="px-5 py-3.5 text-xs text-faint">
         {formatDate(order.created_at, {

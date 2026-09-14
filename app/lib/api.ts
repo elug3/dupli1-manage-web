@@ -489,7 +489,7 @@ export function mapProduct(
       hitNumber(hit, "price") ??
       hitNumber(hit, "priceFrom") ??
       hitNumber(hit, "price_from") ??
-      hitNumber(hit, "unit_price_krw"),
+      hitNumber(hit, "unit_price_won"),
     officialPrice:
       hitNumber(hit, "officialPrice") ??
       hitNumber(hit, "official_price") ??
@@ -1269,7 +1269,7 @@ export interface OrderItem {
   sku_id?: string;
   sku: string;
   quantity: number;
-  unit_price_krw: number;
+  unit_price_won: number;
   /** Captured at order creation from the product catalog. */
   product_name?: string;
   image_url?: string;
@@ -1284,6 +1284,8 @@ export interface ShippingAddress {
   address_line2?: string;
   city: string;
   province: string;
+  /** Korea Personal Customs Clearance Code ("P" + 12 digits); overseas-sourced shipments only. */
+  pccc?: string;
 }
 
 export interface Order {
@@ -1293,11 +1295,11 @@ export interface Order {
   items: OrderItem[];
   status: OrderStatus;
   coupon_code?: string;
-  subtotal_krw: number;
-  discount_krw: number;
+  subtotal_won: number;
+  discount_won: number;
   /** Flat delivery charge in whole KRW, snapshotted at order creation. */
-  shipping_fee_krw?: number;
-  total_krw: number;
+  shipping_fee_won?: number;
+  total_won: number;
   /** Recipient display name from checkout fulfillment snapshot. */
   recipient_name?: string;
   /** KR mobile digits from checkout fulfillment snapshot. */
@@ -1310,6 +1312,16 @@ export interface Order {
   payment_due_at?: string;
   shipped_at?: string;
   shipped_by?: string;
+  /** Set when a manager accepts a paid order (or when it ships). */
+  confirmed_at?: string;
+  confirmation_due_at?: string;
+  confirmation_overdue?: boolean;
+  cancel_requested_at?: string;
+  cancel_request_reason?: string;
+  cancel_confirm_due_at?: string;
+  cancel_confirm_overdue?: boolean;
+  immediate_cancel_allowed?: boolean;
+  cancel_request_allowed?: boolean;
   /** Fixed KR carrier code set at ship time (`cj`, `hanjin`, …, `other`). */
   carrier?: string;
   tracking_number?: string;
@@ -1367,6 +1379,7 @@ async function fetchCustomerOrders(customerId: string): Promise<Order[]> {
 }
 
 async function fetchAllOrders(): Promise<Order[]> {
+  // No customer_id → backend lists every order (requires order.read.all).
   const res = await authedFetch(orderPath("/api/v1/orders"));
   if (!res.ok) throw new Error(await readError(res, "Failed to fetch orders"));
   const data = (await res.json()) as OrdersResponse;
@@ -1444,6 +1457,35 @@ export async function updateOrderStatus(
     body: JSON.stringify({ status }),
   });
   if (!res.ok) throw new Error(await readError(res, "Failed to update order"));
+  return res.json() as Promise<Order>;
+}
+
+/** Manager accepts a paid order. After this, customer cancel needs approval. */
+export async function confirmOrder(id: string): Promise<Order> {
+  const res = await authedFetch(orderPath(`/api/v1/orders/${id}/confirm`), {
+    method: "POST",
+  });
+  if (!res.ok) throw new Error(await readError(res, "Failed to confirm order"));
+  return res.json() as Promise<Order>;
+}
+
+/** Approve a customer cancel request and refund. */
+export async function approveOrderCancel(id: string): Promise<Order> {
+  const res = await authedFetch(
+    orderPath(`/api/v1/orders/${id}/cancel/approve`),
+    { method: "POST" }
+  );
+  if (!res.ok) throw new Error(await readError(res, "Failed to approve cancel"));
+  return res.json() as Promise<Order>;
+}
+
+/** Reject a customer cancel request; the order stays in place. */
+export async function rejectOrderCancel(id: string): Promise<Order> {
+  const res = await authedFetch(
+    orderPath(`/api/v1/orders/${id}/cancel/reject`),
+    { method: "POST" }
+  );
+  if (!res.ok) throw new Error(await readError(res, "Failed to reject cancel"));
   return res.json() as Promise<Order>;
 }
 
@@ -1801,7 +1843,7 @@ export async function getAnalytics(): Promise<AnalyticsSummary | null> {
     now - new Date(o.created_at).getTime() <= days * day;
 
   const sumRevenue = (list: Order[]) =>
-    list.reduce((sum, o) => sum + o.total_krw, 0);
+    list.reduce((sum, o) => sum + o.total_won, 0);
 
   const last7 = orders.filter(within(7));
   const last30 = orders.filter(within(30));

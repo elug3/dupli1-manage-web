@@ -104,7 +104,7 @@ async function main() {
   await page.waitForSelector('tbody tr:has-text("ord_seed_paid")', { timeout: 15000 });
   console.log("\nInitial load");
   check("seeded rows rendered", (await page.locator("tbody tr").count()) === 2);
-  // `*_krw` fields are whole won: a ₩250,000 item arrives as 250000. This
+  // `*_won` fields are whole won: a ₩250,000 item arrives as 250000. This
   // guards the divide-by-100 that the old `*_cents` naming invited.
   const seededRow = await page.textContent('tbody tr:has-text("ord_seed_paid")');
   check(
