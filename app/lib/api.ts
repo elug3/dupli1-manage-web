@@ -1717,6 +1717,8 @@ export const PERMISSION_CATALOG = [
   "promotion.create",
   "promotion.update",
   "promotion.delete",
+  // Service-to-service: order holds this to move the redemption ledger.
+  "promotion.redeem",
   "coupon.read",
   "coupon.create",
   "coupon.update",
