@@ -49,6 +49,8 @@ Local Docker embeds browser URLs as `{S3_PUBLIC_ENDPOINT}/product-images/{key}` 
 
 Admin UI is **KRW-only**. `formatCurrency` / `formatWon` (`app/lib/i18n`) always format as Korean Won; settings does not offer other currencies. Aligns with backend `domain.DefaultCurrency = "krw"`.
 
+Money fields on the wire are **`*_won`** (`total_won`, `subtotal_won`, `discount_won`, `shipping_fee_won`, `unit_price_won`). `*_krw` and `*_cents` are dead names from earlier renames — the backend emits neither, so a fixture, mock gateway, or client written with one reads as `undefined` here and renders an empty total. `*_krw` was canonical only between 2026-09-09 and 09-14, so anything cut in that window still says it.
+
 ### Auth (`/auth`)
 
 - `POST /auth/api/v1/auth/register` — create account (Bearer; `user.create`)
