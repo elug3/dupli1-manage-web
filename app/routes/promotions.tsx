@@ -28,6 +28,10 @@ export default function Promotions() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [code, setCode] = useState("");
+  // A shared campaign code anyone may use once, or one bound to an account and
+  // granted by issue. WELCOME50 is the latter.
+  const [scope, setScope] = useState<"global" | "single_user">("global");
+  const [ttlDays, setTtlDays] = useState("30");
   // A code gives either a percentage of the cart or a flat won amount. The
   // sign-up campaign is the flat kind, which the pre-Phase-2 form could not
   // express at all.
@@ -92,6 +96,10 @@ export default function Promotions() {
     try {
       const created = await createPromotion({
         code: code.trim(),
+        scope,
+        // Only meaningful for single_user: how long each issued entitlement
+        // lasts, counted from when it is issued rather than from launch.
+        entitlement_ttl_days: scope === "single_user" ? Number(ttlDays) || 0 : undefined,
         benefit,
         conditions: minSpend > 0 ? minSpendCondition(minSpend) : undefined,
         description: description.trim() || undefined,
@@ -103,6 +111,8 @@ export default function Promotions() {
       });
       setPromotions((prev) => [...prev, created]);
       setCode("");
+      setScope("global");
+      setTtlDays("30");
       setDiscountPct("");
       setDiscountWon("");
       setMinSpendWon("");
@@ -157,6 +167,7 @@ export default function Promotions() {
 
   const headers = [
     t("promotions.colCode"),
+    t("promotions.colScope"),
     t("promotions.colDiscount"),
     t("promotions.colMinSpend"),
     t("promotions.colDescription"),
@@ -189,6 +200,34 @@ export default function Promotions() {
             required
           />
         </Field>
+        <Field label={t("promotions.scope")} id="scope" required>
+          <select
+            id="scope"
+            value={scope}
+            onChange={(e) => setScope(e.target.value as "global" | "single_user")}
+            className={inputCls}
+          >
+            <option value="global">{t("promotions.scopeGlobal")}</option>
+            <option value="single_user">{t("promotions.scopeSingleUser")}</option>
+          </select>
+          <p className="text-xs text-faint">
+            {scope === "single_user" ? t("promotions.scopeSingleUserHint") : t("promotions.scopeGlobalHint")}
+          </p>
+        </Field>
+        {scope === "single_user" && (
+          <Field label={t("promotions.ttlDays")} id="ttlDays">
+            <input
+              id="ttlDays"
+              type="number"
+              min="0"
+              step="1"
+              value={ttlDays}
+              onChange={(e) => setTtlDays(e.target.value)}
+              className={inputCls}
+            />
+            <p className="text-xs text-faint">{t("promotions.ttlDaysHint")}</p>
+          </Field>
+        )}
         <Field label={t("promotions.benefitKind")} id="benefitKind" required>
           <select
             id="benefitKind"
@@ -319,6 +358,18 @@ export default function Promotions() {
                   >
                     <td className="px-5 py-3.5 font-mono font-semibold text-ink">
                       {promotion.code}
+                    </td>
+                    <td className="px-5 py-3.5 text-muted">
+                      {promotion.scope === "single_user" ? (
+                        <span title={t("promotions.scopeSingleUserHint")}>
+                          {t("promotions.scopeSingleUserShort")}
+                          {promotion.entitlement_ttl_days
+                            ? ` · ${t("promotions.ttlDaysShort", { days: String(promotion.entitlement_ttl_days) })}`
+                            : ""}
+                        </span>
+                      ) : (
+                        t("promotions.scopeGlobalShort")
+                      )}
                     </td>
                     <td className="px-5 py-3.5 text-muted">
                       {describeDiscount(promotion, locale)}

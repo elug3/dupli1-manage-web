@@ -5,7 +5,10 @@ import {
   ALL_PERMISSIONS,
   type AuthUser,
   formatPermissions,
+  getPromotions,
   getUserById,
+  issuePromotion,
+  type Promotion,
   setUserPassword,
   setUserPermissions,
   setUserStatus,
@@ -19,7 +22,7 @@ export function meta() {
   return [{ title: "User | Dupli1 Admin" }];
 }
 
-type DetailTab = "state" | "credentials" | "permissions";
+type DetailTab = "state" | "credentials" | "permissions" | "promotions";
 
 const inputCls =
   "w-full rounded-xl border border-edge bg-panel px-4 py-2.5 text-sm text-ink outline-none transition placeholder:text-soft focus:border-accent focus:ring-2 focus:ring-accent/20";
@@ -91,12 +94,14 @@ export default function UserDetail() {
     labelKey:
       | "userDetail.tabState"
       | "userDetail.tabCredentials"
-      | "userDetail.tabPermissions";
+      | "userDetail.tabPermissions"
+      | "userDetail.tabPromotions";
     value: DetailTab;
   }[] = [
     { labelKey: "userDetail.tabState", value: "state" },
     { labelKey: "userDetail.tabCredentials", value: "credentials" },
     { labelKey: "userDetail.tabPermissions", value: "permissions" },
+    { labelKey: "userDetail.tabPromotions", value: "promotions" },
   ];
 
   return (
@@ -140,6 +145,7 @@ export default function UserDetail() {
           {activeTab === "permissions" && (
             <PermissionsTab user={user} onUpdated={setUser} />
           )}
+          {activeTab === "promotions" && <PromotionsTab userId={user.user_id} />}
         </div>
       </div>
     </div>
@@ -424,6 +430,117 @@ function PermissionsTab({
         className="rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-accent-hover disabled:opacity-60"
       >
         {saving ? t("common.saving") : t("userDetail.savePermissions")}
+      </button>
+    </form>
+  );
+}
+
+
+/**
+ * Grants this customer a single-user promotional code — a goodwill gesture, or
+ * one the automatic issuer missed.
+ *
+ * Only single-user codes are offered. A shared campaign code needs no
+ * entitlement, so issuing one would imply a limit that does not exist; the
+ * backend refuses it, and there is no reason to let a manager try.
+ *
+ * Issuing is idempotent per customer, so a second attempt returns what they
+ * already hold rather than doubling the discount.
+ */
+function PromotionsTab({ userId }: { userId: string }) {
+  const { t } = useI18n();
+  const { notify } = useNotify();
+  const [promotions, setPromotions] = useState<Promotion[] | null>(null);
+  const [selected, setSelected] = useState("");
+  const [issuing, setIssuing] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    getPromotions()
+      .then((all) => {
+        if (cancelled) return;
+        const issuable = all.filter((p) => p.scope === "single_user");
+        setPromotions(issuable);
+        setSelected((current) => current || issuable[0]?.code || "");
+      })
+      .catch(() => {
+        if (!cancelled) setPromotions([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function handleIssue(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selected) return;
+    setIssuing(true);
+    try {
+      const entitlement = await issuePromotion(selected, userId);
+      notify(
+        entitlement.expires_at
+          ? t("userDetail.promotionIssuedUntil", {
+              code: selected,
+              date: new Date(entitlement.expires_at).toLocaleDateString("ko-KR", {
+                timeZone: "Asia/Seoul",
+              }),
+            })
+          : t("userDetail.promotionIssued", { code: selected })
+      );
+    } catch (err) {
+      notify(
+        err instanceof Error ? err.message : t("userDetail.promotionIssueFailed"),
+        "error"
+      );
+    } finally {
+      setIssuing(false);
+    }
+  }
+
+  if (promotions === null) {
+    return <p className="text-sm text-muted">{t("nav.loading")}</p>;
+  }
+  if (promotions.length === 0) {
+    return <p className="text-sm text-muted">{t("userDetail.noIssuablePromotions")}</p>;
+  }
+
+  const chosen = promotions.find((p) => p.code === selected);
+
+  return (
+    <form onSubmit={handleIssue} className="max-w-lg space-y-4">
+      <p className="text-sm text-muted">{t("userDetail.promotionIssueIntro")}</p>
+      <div className="space-y-1.5">
+        <label
+          htmlFor="promotion"
+          className="text-xs font-semibold uppercase tracking-wide text-muted"
+        >
+          {t("userDetail.promotionToIssue")}
+        </label>
+        <select
+          id="promotion"
+          value={selected}
+          onChange={(e) => setSelected(e.target.value)}
+          className={inputCls}
+        >
+          {promotions.map((promotion) => (
+            <option key={promotion.code} value={promotion.code}>
+              {promotion.code}
+              {promotion.description ? ` — ${promotion.description}` : ""}
+              {promotion.active ? "" : ` (${t("promotions.inactive")})`}
+            </option>
+          ))}
+        </select>
+        {chosen && !chosen.active && (
+          <p className="text-xs text-faint">{t("userDetail.promotionInactiveWarning")}</p>
+        )}
+        {chosen?.terms && <p className="text-xs text-faint">{chosen.terms}</p>}
+      </div>
+      <button
+        type="submit"
+        disabled={issuing || !selected}
+        className="rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-accent-hover disabled:opacity-60"
+      >
+        {issuing ? t("common.saving") : t("userDetail.issuePromotion")}
       </button>
     </form>
   );

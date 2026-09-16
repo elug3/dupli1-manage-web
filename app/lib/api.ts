@@ -1239,6 +1239,11 @@ export interface Promotion {
   expires_at?: string | null;
   max_redemptions?: number | null;
   max_per_customer?: number;
+  /**
+   * How long an issued entitlement lasts, in days. Only meaningful for
+   * single_user codes; 0 means it does not expire on its own.
+   */
+  entitlement_ttl_days?: number;
   /** Paid uses so far, from the redemption ledger. */
   redemption_count?: number;
   /** Customer-facing conditions copy, shown at redeem and checkout. */
@@ -1264,6 +1269,7 @@ export interface PromotionInput {
   expires_on?: string;
   max_redemptions?: number | null;
   max_per_customer?: number;
+  entitlement_ttl_days?: number;
   terms?: string;
 }
 
@@ -1984,4 +1990,60 @@ export interface NotificationSettings {
   service: string;
   api_version: string;
   features?: Record<string, boolean>;
+}
+
+
+// ── Single-user entitlements ─────────────────────────────────────────────────
+
+/**
+ * One account's right to use a single-user promotional code.
+ *
+ * Note what it does not carry: whether the code has been spent. That is the
+ * redemption ledger's answer, so there is one source of truth for it.
+ */
+export interface PromotionEntitlement {
+  id: string;
+  customer_id: string;
+  code: string;
+  source: string;
+  trigger_key?: string;
+  issued_by?: string;
+  expires_at?: string | null;
+  revoked_at?: string | null;
+  created_at: string;
+}
+
+/**
+ * Grants a customer a single-user code.
+ *
+ * Idempotent on the trigger key, so re-issuing to the same customer returns
+ * what they already hold rather than handing them a second one.
+ */
+export async function issuePromotion(
+  code: string,
+  customerId: string,
+  triggerKey?: string
+): Promise<PromotionEntitlement> {
+  const res = await authedFetch(
+    productPath(`/api/v1/products/promotions/by-code/${encodeURIComponent(code)}/issue`),
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ customer_id: customerId, trigger_key: triggerKey }),
+    }
+  );
+  if (!res.ok) throw new Error(await readError(res, "Failed to issue promotional code"));
+  return res.json() as Promise<PromotionEntitlement>;
+}
+
+/**
+ * Withdraws an entitlement issued by mistake. It never rewrites an order that
+ * already used the code.
+ */
+export async function revokePromotionEntitlement(id: string): Promise<void> {
+  const res = await authedFetch(
+    productPath(`/api/v1/products/promotions/entitlements/${encodeURIComponent(id)}`),
+    { method: "DELETE" }
+  );
+  if (!res.ok) throw new Error(await readError(res, "Failed to revoke entitlement"));
 }
