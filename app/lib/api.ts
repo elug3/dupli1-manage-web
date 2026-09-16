@@ -1192,27 +1192,106 @@ export async function deleteEdition(code: string): Promise<void> {
 
 // ── Promotional codes ────────────────────────────────────────────────────────
 
+/** Comparison operators the backend condition engine accepts. */
+export type PromotionOp = "eq" | "neq" | "in" | "nin" | "gte" | "lte" | "gt" | "lt";
+
+/**
+ * One eligibility rule. `attr` is drawn from a backend allowlist — an unknown
+ * attribute is rejected on save, not silently ignored.
+ */
+export interface PromotionPredicate {
+  attr: string;
+  op: PromotionOp;
+  value: unknown;
+}
+
+export interface PromotionConditions {
+  version: number;
+  all?: PromotionPredicate[];
+  line_match?: "any" | "all" | "eligible_only";
+  exclude?: PromotionPredicate[];
+}
+
+/**
+ * What the code gives. Only `goods` is implemented; the other targets are
+ * defined backend-side but rejected on save until Phase 4.
+ */
+export interface PromotionBenefit {
+  target: "goods" | "shipping" | "goods_and_shipping" | "none";
+  discount_type: "percent" | "fixed" | "none";
+  /** Set for a percent benefit; strictly between 0 and 1. */
+  discount_fraction?: number;
+  /** Set for a fixed benefit; whole KRW. */
+  discount_fixed_won?: number;
+  /** Optional ceiling on a percentage. */
+  max_discount_won?: number | null;
+  apply_to?: "entire_subtotal" | "eligible_lines" | "shipping_fee";
+}
+
 export interface Promotion {
   code: string;
-  discount: number;
+  scope?: "global" | "single_user";
   description: string;
-  expires: string;
   active: boolean;
+  conditions?: PromotionConditions;
+  benefit?: PromotionBenefit;
+  /** Enforced expiry, UTC. Absent means the code never expires. */
+  expires_at?: string | null;
+  max_redemptions?: number | null;
+  max_per_customer?: number;
+  /** Paid uses so far, from the redemption ledger. */
+  redemption_count?: number;
+  /** Customer-facing conditions copy, shown at redeem and checkout. */
+  terms?: string;
+  updated_at?: string;
+  /**
+   * Pre-Phase-2 columns. `discount` is a fraction and `expires` is free text
+   * that was never enforced; both are still read so older rows display, but
+   * new codes should set `benefit` and `expires_at` instead.
+   */
+  discount: number;
+  expires: string;
 }
 
 export interface PromotionInput {
   code: string;
-  discount: number;
   description?: string;
-  expires?: string;
   active?: boolean;
+  scope?: "global" | "single_user";
+  conditions?: PromotionConditions;
+  benefit?: PromotionBenefit;
+  /** A date like "2026-08-31", meaning the end of that day in Seoul. */
+  expires_on?: string;
+  max_redemptions?: number | null;
+  max_per_customer?: number;
+  terms?: string;
 }
 
-export interface PromotionUpdate {
-  discount?: number;
-  description?: string;
-  expires?: string;
-  active?: boolean;
+export type PromotionUpdate = Partial<Omit<PromotionInput, "code">>;
+
+/** Minimum-spend rule, the one condition the sign-up campaign needs. */
+export function minSpendCondition(won: number): PromotionConditions {
+  return { version: 1, all: [{ attr: "subtotal_won", op: "gte", value: won }] };
+}
+
+/** Reads the minimum spend back out of a stored document, if it has one. */
+export function minSpendOf(conditions?: PromotionConditions): number | null {
+  const found = conditions?.all?.find((p) => p.attr === "subtotal_won" && p.op === "gte");
+  return typeof found?.value === "number" ? found.value : null;
+}
+
+/**
+ * Describes a benefit for the list view, falling back to the legacy fraction
+ * for rows written before Phase 2.
+ */
+export function describeBenefit(promotion: Promotion): PromotionBenefit {
+  if (promotion.benefit && promotion.benefit.discount_type) return promotion.benefit;
+  return {
+    target: "goods",
+    discount_type: "percent",
+    discount_fraction: promotion.discount,
+    apply_to: "entire_subtotal",
+  };
 }
 
 export async function getPromotions(): Promise<Promotion[]> {

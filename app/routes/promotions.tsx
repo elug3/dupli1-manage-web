@@ -1,11 +1,16 @@
 import { useEffect, useState } from "react";
 import {
   type Promotion,
+  type PromotionBenefit,
   createPromotion,
   deletePromotion,
+  describeBenefit,
   getPromotions,
+  minSpendCondition,
+  minSpendOf,
   updatePromotion,
 } from "~/lib/api";
+import { formatWon } from "~/lib/i18n/format";
 import { useI18n } from "~/lib/i18n";
 import { useNotify } from "~/lib/notifications";
 
@@ -18,14 +23,21 @@ const inputCls =
 
 export default function Promotions() {
   const { notify } = useNotify();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [code, setCode] = useState("");
+  // A code gives either a percentage of the cart or a flat won amount. The
+  // sign-up campaign is the flat kind, which the pre-Phase-2 form could not
+  // express at all.
+  const [benefitKind, setBenefitKind] = useState<"percent" | "fixed">("percent");
   const [discountPct, setDiscountPct] = useState("");
+  const [discountWon, setDiscountWon] = useState("");
+  const [minSpendWon, setMinSpendWon] = useState("");
   const [description, setDescription] = useState("");
-  const [expires, setExpires] = useState("");
+  const [terms, setTerms] = useState("");
+  const [expiresOn, setExpiresOn] = useState("");
   const [creating, setCreating] = useState(false);
   const [busyCode, setBusyCode] = useState<string | null>(null);
 
@@ -45,11 +57,34 @@ export default function Promotions() {
     loadPromotions();
   }, []);
 
+  function buildBenefit(): PromotionBenefit | null {
+    if (benefitKind === "fixed") {
+      const won = Number(discountWon);
+      if (!Number.isFinite(won) || won <= 0 || !Number.isInteger(won)) return null;
+      return { target: "goods", discount_type: "fixed", discount_fixed_won: won, apply_to: "entire_subtotal" };
+    }
+    const pct = Number(discountPct);
+    if (!Number.isFinite(pct) || pct <= 0 || pct >= 100) return null;
+    return {
+      target: "goods",
+      discount_type: "percent",
+      // The backend requires a fraction strictly between 0 and 1, so 100% is
+      // not expressible — a code cannot make the goods free.
+      discount_fraction: pct / 100,
+      apply_to: "entire_subtotal",
+    };
+  }
+
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    const discount = Number(discountPct) / 100;
-    if (!code.trim() || Number.isNaN(discount) || discount <= 0 || discount > 1) {
+    const benefit = buildBenefit();
+    if (!code.trim() || !benefit) {
       notify(t("promotions.invalidCodeOrDiscount"), "error");
+      return;
+    }
+    const minSpend = minSpendWon.trim() ? Number(minSpendWon) : 0;
+    if (minSpendWon.trim() && (!Number.isInteger(minSpend) || minSpend <= 0)) {
+      notify(t("promotions.invalidMinSpend"), "error");
       return;
     }
 
@@ -57,16 +92,23 @@ export default function Promotions() {
     try {
       const created = await createPromotion({
         code: code.trim(),
-        discount,
+        benefit,
+        conditions: minSpend > 0 ? minSpendCondition(minSpend) : undefined,
         description: description.trim() || undefined,
-        expires: expires.trim() || undefined,
+        terms: terms.trim() || undefined,
+        // A date here means the end of that day in Seoul; the backend does the
+        // conversion so every client agrees on the boundary.
+        expires_on: expiresOn.trim() || undefined,
         active: true,
       });
       setPromotions((prev) => [...prev, created]);
       setCode("");
       setDiscountPct("");
+      setDiscountWon("");
+      setMinSpendWon("");
       setDescription("");
-      setExpires("");
+      setTerms("");
+      setExpiresOn("");
       notify(t("promotions.promotionCreated", { code: created.code }));
     } catch (err) {
       notify(
@@ -116,8 +158,10 @@ export default function Promotions() {
   const headers = [
     t("promotions.colCode"),
     t("promotions.colDiscount"),
+    t("promotions.colMinSpend"),
     t("promotions.colDescription"),
     t("promotions.colExpires"),
+    t("promotions.colUsed"),
     t("promotions.colActive"),
     "",
   ];
@@ -145,18 +189,57 @@ export default function Promotions() {
             required
           />
         </Field>
-        <Field label={t("promotions.discountPercent")} id="discount" required>
-          <input
-            id="discount"
-            type="number"
-            min="1"
-            max="100"
-            step="1"
-            value={discountPct}
-            onChange={(e) => setDiscountPct(e.target.value)}
+        <Field label={t("promotions.benefitKind")} id="benefitKind" required>
+          <select
+            id="benefitKind"
+            value={benefitKind}
+            onChange={(e) => setBenefitKind(e.target.value as "percent" | "fixed")}
             className={inputCls}
-            placeholder={t("promotions.discountPlaceholder")}
-            required
+          >
+            <option value="percent">{t("promotions.benefitPercent")}</option>
+            <option value="fixed">{t("promotions.benefitFixed")}</option>
+          </select>
+        </Field>
+        {benefitKind === "percent" ? (
+          <Field label={t("promotions.discountPercent")} id="discount" required>
+            <input
+              id="discount"
+              type="number"
+              min="1"
+              max="99"
+              step="1"
+              value={discountPct}
+              onChange={(e) => setDiscountPct(e.target.value)}
+              className={inputCls}
+              placeholder={t("promotions.discountPlaceholder")}
+              required
+            />
+          </Field>
+        ) : (
+          <Field label={t("promotions.discountWon")} id="discountWon" required>
+            <input
+              id="discountWon"
+              type="number"
+              min="1"
+              step="1"
+              value={discountWon}
+              onChange={(e) => setDiscountWon(e.target.value)}
+              className={inputCls}
+              placeholder={t("promotions.discountWonPlaceholder")}
+              required
+            />
+          </Field>
+        )}
+        <Field label={t("promotions.minSpend")} id="minSpend">
+          <input
+            id="minSpend"
+            type="number"
+            min="0"
+            step="1"
+            value={minSpendWon}
+            onChange={(e) => setMinSpendWon(e.target.value)}
+            className={inputCls}
+            placeholder={t("promotions.minSpendPlaceholder")}
           />
         </Field>
         <Field label={t("promotions.description")} id="description">
@@ -168,13 +251,23 @@ export default function Promotions() {
             placeholder={t("promotions.descriptionPlaceholder")}
           />
         </Field>
-        <Field label={t("promotions.expires")} id="expires">
+        <Field label={t("promotions.expiresOn")} id="expiresOn">
           <input
-            id="expires"
-            value={expires}
-            onChange={(e) => setExpires(e.target.value)}
+            id="expiresOn"
+            type="date"
+            value={expiresOn}
+            onChange={(e) => setExpiresOn(e.target.value)}
             className={inputCls}
-            placeholder={t("promotions.expiresPlaceholder")}
+          />
+          <p className="text-xs text-faint">{t("promotions.expiresOnHint")}</p>
+        </Field>
+        <Field label={t("promotions.terms")} id="terms">
+          <input
+            id="terms"
+            value={terms}
+            onChange={(e) => setTerms(e.target.value)}
+            className={inputCls}
+            placeholder={t("promotions.termsPlaceholder")}
           />
         </Field>
         <div className="sm:col-span-2">
@@ -228,13 +321,21 @@ export default function Promotions() {
                       {promotion.code}
                     </td>
                     <td className="px-5 py-3.5 text-muted">
-                      {Math.round(promotion.discount * 100)}%
+                      {describeDiscount(promotion, locale)}
+                    </td>
+                    <td className="px-5 py-3.5 text-muted">
+                      {minSpendOf(promotion.conditions) !== null
+                        ? formatWon(locale, minSpendOf(promotion.conditions) as number)
+                        : t("common.emptyValue")}
                     </td>
                     <td className="px-5 py-3.5 text-muted">
                       {promotion.description || t("common.emptyValue")}
                     </td>
                     <td className="px-5 py-3.5 text-muted">
-                      {promotion.expires || t("common.emptyValue")}
+                      {formatExpiry(promotion, locale) || t("common.emptyValue")}
+                    </td>
+                    <td className="px-5 py-3.5 text-muted">
+                      {promotion.redemption_count ?? 0}
                     </td>
                     <td className="px-5 py-3.5">
                       <button
@@ -297,4 +398,32 @@ function Field({
       {children}
     </div>
   );
+}
+
+/**
+ * Renders the discount a code gives, whichever shape it is, falling back to
+ * the legacy fraction for rows written before Phase 2.
+ */
+function describeDiscount(promotion: Promotion, locale: Parameters<typeof formatWon>[0]): string {
+  const benefit = describeBenefit(promotion);
+  if (benefit.discount_type === "fixed" && benefit.discount_fixed_won) {
+    return formatWon(locale, benefit.discount_fixed_won);
+  }
+  if (benefit.discount_fraction) {
+    return `${Math.round(benefit.discount_fraction * 100)}%`;
+  }
+  return "";
+}
+
+/**
+ * Shows the enforced expiry as the Seoul date it means. The legacy free-text
+ * column is displayed only when there is no real expiry, and is marked so an
+ * operator does not mistake it for something the backend enforces — it never
+ * was.
+ */
+function formatExpiry(promotion: Promotion, locale: string): string {
+  if (promotion.expires_at) {
+    return new Date(promotion.expires_at).toLocaleDateString(locale, { timeZone: "Asia/Seoul" });
+  }
+  return promotion.expires ? `${promotion.expires} (not enforced)` : "";
 }
