@@ -80,13 +80,14 @@ SKU identity: each variant has immutable `skuId` (ULID) and human `sku` composed
 
 - `GET /order/api/v1/orders?customer_id=` — list orders (admin aggregates across users)
 - `GET /order/api/v1/orders/{id}`
-- `POST /order/api/v1/orders/{id}/ship` — `paid` → `in_transit` (`order.ship`); sets `confirmed_at`
-- `POST /order/api/v1/orders/{id}/confirm` — set `confirmed_at` (`order.status.update`, 2-hour SLA)
+- `POST /order/api/v1/orders/{id}/confirm` — `paid` → `confirmed` (`order.status.update`, 2-hour SLA)
+- `POST /order/api/v1/orders/{id}/ship` — `confirmed` → `in_transit` (`order.ship`; commits stock)
+- `POST /order/api/v1/orders/{id}/deliver` — `in_transit` → `delivered` (`order.ship`)
 - `POST /order/api/v1/orders/{id}/cancel/approve` and `…/reject` — customer cancel request (`order.status.update`)
-- `PUT /order/api/v1/orders/{id}/status` — `canceled` or `fulfilled` (`order.status.update`). Cancel refunds the captured payment first (including `in_transit`); a PG rejection leaves the order unchanged.
-- `GET /order/api/v1/orders/events` — **live order feed (SSE)**, `order.read.all`
+- `PUT /order/api/v1/orders/{id}/status` — `canceled` or `fulfilled` (`order.status.update`). Cancel refunds the captured payment first (including `in_transit` / `delivered`); a PG rejection leaves the order unchanged.
+- `GET /order/api/v1/orders/events` — **live order feed (SSE)**, `order.read.all` (backend route pending — mock gateway for tests)
 
-Statuses: `pending` → `paid` → `in_transit` → `fulfilled` (or `canceled` from pending/paid/in_transit). Manager confirmation is `confirmed_at` on `paid`, not a separate status. Customer cancel before confirm is immediate; after confirm or in transit it is a request the manager must confirm within 2 hours.
+Statuses: `pending` → `paid` → `confirmed` → `in_transit` → `delivered` → `fulfilled` (or `disputed` / `canceled`). Customer cancel before confirm is immediate; from `confirmed` through `delivered` it is a manager-approved request (2-hour SLA). Full lifecycle: backend [docs/order-service.md](../dupli1/docs/order-service.md).
 
 Orders from checkout complete include an immutable fulfillment snapshot (`recipient_name`, `recipient_phone`, `shipping_address`) shown in the order expand panel.
 
