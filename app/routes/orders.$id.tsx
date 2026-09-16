@@ -645,8 +645,8 @@ function OrderTotals({ order }: { order: Order }) {
       {hasDiscount && (
         <div className="flex items-center justify-between text-success-fg">
           <span>
-            {order.coupon_code
-              ? t("orders.discountWithCode", { code: order.coupon_code })
+            {order.promotion_code
+              ? t("orders.discountWithCode", { code: order.promotion_code })
               : t("orders.discount")}
           </span>
           <span>−{formatWon(order.discount_won)}</span>

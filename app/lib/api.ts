@@ -1190,9 +1190,9 @@ export async function deleteEdition(code: string): Promise<void> {
   if (!res.ok) throw new Error(await readError(res, "Failed to delete edition"));
 }
 
-// ── Coupons ──────────────────────────────────────────────────────────────────
+// ── Promotional codes ────────────────────────────────────────────────────────
 
-export interface Coupon {
+export interface Promotion {
   code: string;
   discount: number;
   description: string;
@@ -1200,7 +1200,7 @@ export interface Coupon {
   active: boolean;
 }
 
-export interface CouponInput {
+export interface PromotionInput {
   code: string;
   discount: number;
   description?: string;
@@ -1208,52 +1208,52 @@ export interface CouponInput {
   active?: boolean;
 }
 
-export interface CouponUpdate {
+export interface PromotionUpdate {
   discount?: number;
   description?: string;
   expires?: string;
   active?: boolean;
 }
 
-export async function getCoupons(): Promise<Coupon[]> {
-  const res = await authedFetch(productPath("/api/v1/coupons"));
-  if (!res.ok) throw new Error(await readError(res, "Failed to fetch coupons"));
-  const data = (await res.json()) as { total?: number; results?: Coupon[] };
+export async function getPromotions(): Promise<Promotion[]> {
+  const res = await authedFetch(productPath("/api/v1/products/promotions"));
+  if (!res.ok) throw new Error(await readError(res, "Failed to fetch promotional codes"));
+  const data = (await res.json()) as { total?: number; results?: Promotion[] };
   return Array.isArray(data.results) ? data.results : [];
 }
 
-export async function createCoupon(input: CouponInput): Promise<Coupon> {
-  const res = await authedFetch(productPath("/api/v1/coupons"), {
+export async function createPromotion(input: PromotionInput): Promise<Promotion> {
+  const res = await authedFetch(productPath("/api/v1/products/promotions"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
-  if (!res.ok) throw new Error(await readError(res, "Failed to create coupon"));
-  return res.json() as Promise<Coupon>;
+  if (!res.ok) throw new Error(await readError(res, "Failed to create promotional code"));
+  return res.json() as Promise<Promotion>;
 }
 
-export async function updateCoupon(
+export async function updatePromotion(
   code: string,
-  input: CouponUpdate
-): Promise<Coupon> {
+  input: PromotionUpdate
+): Promise<Promotion> {
   const res = await authedFetch(
-    productPath(`/api/v1/coupons/${encodeURIComponent(code)}`),
+    productPath(`/api/v1/products/promotions/by-code/${encodeURIComponent(code)}`),
     {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
     }
   );
-  if (!res.ok) throw new Error(await readError(res, "Failed to update coupon"));
-  return res.json() as Promise<Coupon>;
+  if (!res.ok) throw new Error(await readError(res, "Failed to update promotional code"));
+  return res.json() as Promise<Promotion>;
 }
 
-export async function deleteCoupon(code: string): Promise<void> {
+export async function deletePromotion(code: string): Promise<void> {
   const res = await authedFetch(
-    productPath(`/api/v1/coupons/${encodeURIComponent(code)}`),
+    productPath(`/api/v1/products/promotions/by-code/${encodeURIComponent(code)}`),
     { method: "DELETE" }
   );
-  if (!res.ok) throw new Error(await readError(res, "Failed to delete coupon"));
+  if (!res.ok) throw new Error(await readError(res, "Failed to delete promotional code"));
 }
 
 // ── Orders ───────────────────────────────────────────────────────────────────
@@ -1294,7 +1294,7 @@ export interface Order {
   reservation_id: string;
   items: OrderItem[];
   status: OrderStatus;
-  coupon_code?: string;
+  promotion_code?: string;
   subtotal_won: number;
   discount_won: number;
   /** Flat delivery charge in whole KRW, snapshotted at order creation. */
@@ -1611,6 +1611,8 @@ export const PERMISSION_WILDCARDS = [
   "*",
   "admin.*",
   "product.*",
+  "promotion.*",
+  // Pre-rename; still accepted on every promotion route for one release.
   "coupon.*",
   "user.*",
 ] as const;
@@ -1632,6 +1634,10 @@ export const PERMISSION_CATALOG = [
   "product.image.upload",
   "product.master.read",
   "product.master.write",
+  "promotion.read",
+  "promotion.create",
+  "promotion.update",
+  "promotion.delete",
   "coupon.read",
   "coupon.create",
   "coupon.update",

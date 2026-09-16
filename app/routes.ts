@@ -28,7 +28,7 @@ export default [
     route("catalog", "routes/catalog.tsx"),
     route("orders", "routes/orders.tsx"),
     route("orders/:id", "routes/orders.$id.tsx"),
-    route("coupons", "routes/coupons.tsx"),
+    route("promotions", "routes/promotions.tsx"),
     route("analytics", "routes/analytics.tsx"),
     route("telegram", "routes/telegram.tsx"),
     route("users", "routes/users.tsx"),
