@@ -70,7 +70,7 @@ Admin UI is **KRW-only**. `formatCurrency` / `formatWon` (`app/lib/i18n`) always
 - `POST /product/api/v1/products/{id}/images` — upload to default variant
 - `POST /product/api/v1/products/{id}/variants/{sku}/images`
 - `GET|POST|PATCH|DELETE /product/api/v1/catalog/brands|colors|sizes|editions` (+ styles under brands) — master data (`product.master.read|write`)
-- `GET|POST /product/api/v1/coupons`, `PUT|DELETE /product/api/v1/coupons/{code}`
+- `GET|POST /product/api/v1/coupons`, `PUT|DELETE /product/api/v1/coupons/{code}` — **promotional codes.** UI copy and new prose say "promotional code" / 프로모션 코드, never "coupon"; the paths, `coupon.*` permissions and the `coupons.*` i18n block are being renamed to `promotion*` (backend [docs/product-promotion-rename.md](../dupli1/docs/product-promotion-rename.md)). These are also still the **legacy** prefix — canonical is `/product/api/v1/products/promotions`. Feature plan: [docs/product-promo-referral-code-plan.md](../dupli1/docs/product-promo-referral-code-plan.md)
 
 SKU identity: each variant has immutable `skuId` (ULID) and human `sku` composed from master codes. Parent `attributes` is a display-only string map — see backend [docs/product-attributes.md](../dupli1/docs/product-attributes.md). Parent pricing: [docs/product-price-on-parent.md](../dupli1/docs/product-price-on-parent.md). Optional variant `dimensions` (`widthMm` / `heightMm` / `depthMm` in mm) is edited on SKU detail and variant create/edit — see [docs/product-sku-dimensions.md](../dupli1/docs/product-sku-dimensions.md).
 
@@ -141,7 +141,7 @@ app/
 
 Route modules use React Router 7 conventions: `loader` for data fetching, `action` for mutations, `default` export for the component.
 
-Admin surfaces: products (parent + variants with inline **price**, **officialPrice**, **attributes** key-value editor, and catalog master fields on PDP), **SKU detail** (`/products/:id/SKU/:skuId`), **catalog masters** (`/catalog`), orders, coupons, users (**Customers / Managers / Services** tabs by `account_type`), **Telegram** (`/telegram` — ops alert subscriptions), settings (local UI; manager settings API still sketch on backend).
+Admin surfaces: products (parent + variants with inline **price**, **officialPrice**, **attributes** key-value editor, and catalog master fields on PDP), **SKU detail** (`/products/:id/SKU/:skuId`), **catalog masters** (`/catalog`), orders, promotional codes (`/coupons`, renaming to `/promotions`), users (**Customers / Managers / Services** tabs by `account_type`), **Telegram** (`/telegram` — ops alert subscriptions), settings (local UI; manager settings API still sketch on backend).
 
 ## Production access
 
