@@ -101,6 +101,17 @@ Each `event: order` frame carries the full order snapshot, so no follow-up fetch
 
 `npm run test:orders:browser` drives all of this in a real browser against `npm run mock:gateway`.
 
+### Support (`/api/v1/support`)
+
+Customer consultation inbox, served by `dupli1-support` — the **customer** Telegram bot, a different bot from the ops one behind `/telegram`.
+
+- `GET /api/v1/support/inquiries?queue=waiting|…&assigned_to=me&status=closed` — inbox lists (`support.read`)
+- `GET /api/v1/support/inquiries/{id}` — one inquiry with its transcript (`support.read`)
+- `POST …/{id}/assign|reply|close` — claim, answer, finish (`support.reply`)
+- `GET|PUT /api/v1/support/answers` — the bot's canned copy (`support.manage`)
+
+UI: `/support` loads and mutates via **SSR** `loader`/`action` (`app/lib/server/support.server.ts`), like `/telegram`. A shopper's transcript is customer data, so it is fetched with the operator's own token and rendered server-side — never exposed as a browser-callable endpoint. A reply the shopper never received comes back `delivered: false` and is shown as **미전송** rather than reported as sent.
+
 ### Inventory (`/inventory`)
 
 `/inventory/api/v1/inventory/{sku}` and `/by-sku-id/{skuId}`, adjust, reservations (served by product).
@@ -143,7 +154,7 @@ app/
 
 Route modules use React Router 7 conventions: `loader` for data fetching, `action` for mutations, `default` export for the component.
 
-Admin surfaces: products (parent + variants with inline **price**, **officialPrice**, **attributes** key-value editor, and catalog master fields on PDP), **SKU detail** (`/products/:id/SKU/:skuId`), **catalog masters** (`/catalog`), orders, coupons, users (**Customers / Managers / Services** tabs by `account_type`), **Telegram** (`/telegram` — ops alert subscriptions), settings (local UI; manager settings API still sketch on backend).
+Admin surfaces: products (parent + variants with inline **price**, **officialPrice**, **attributes** key-value editor, and catalog master fields on PDP), **SKU detail** (`/products/:id/SKU/:skuId`), **catalog masters** (`/catalog`), orders, coupons, users (**Customers / Managers / Services** tabs by `account_type`), **Telegram** (`/telegram` — ops alert subscriptions), **Support** (`/support` — customer consultation inbox), settings (local UI; manager settings API still sketch on backend).
 
 ## Production access
 
