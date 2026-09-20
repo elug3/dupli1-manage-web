@@ -17,6 +17,7 @@ export const en = {
     analytics: "Analytics",
     users: "Users",
     telegram: "Telegram",
+    support: "Support",
     settings: "Settings",
     signOut: "Sign out",
     administratorFallback: "Administrator",
