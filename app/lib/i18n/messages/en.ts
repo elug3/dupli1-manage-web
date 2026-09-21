@@ -13,7 +13,7 @@ export const en = {
     products: "Products",
     catalog: "Catalog",
     orders: "Orders",
-    coupons: "Coupons",
+    promotions: "Promotional codes",
     analytics: "Analytics",
     users: "Users",
     telegram: "Telegram",
@@ -539,10 +539,11 @@ export const en = {
     noMatchingOrders: "No orders match your search",
   },
 
-  coupons: {
-    metaTitle: "Coupons | Dupli1 Admin",
-    title: "Coupons",
-    subtitle: "Managed via the product service at /product/api/v1/coupons",
+  promotions: {
+    metaTitle: "Promotional codes | Dupli1 Admin",
+    title: "Promotional codes",
+    subtitle:
+      "Managed via the product service at /product/api/v1/products/promotions",
     code: "Code",
     codePlaceholder: "SUMMER30",
     discountPercent: "Discount (%)",
@@ -551,10 +552,10 @@ export const en = {
     descriptionPlaceholder: "Summer sale",
     expires: "Expires",
     expiresPlaceholder: "Aug 31, 2026",
-    createCoupon: "Create coupon",
+    createPromotion: "Create promotional code",
     creating: "Creating…",
-    failedToLoad: "Failed to load coupons",
-    noCouponsYet: "No coupons yet",
+    failedToLoad: "Failed to load promotional codes",
+    noPromotionsYet: "No promotional codes yet",
     colCode: "Code",
     colDiscount: "Discount",
     colDescription: "Description",
@@ -565,11 +566,11 @@ export const en = {
     delete: "Delete",
     invalidCodeOrDiscount:
       "Enter a valid code and discount between 1 and 100%",
-    couponCreated: "Coupon created: {code}",
-    failedToCreate: "Failed to create coupon",
-    failedToUpdate: "Failed to update coupon",
-    couponDeleted: "Coupon deleted: {code}",
-    failedToDelete: "Failed to delete coupon",
+    promotionCreated: "Promotional code created: {code}",
+    failedToCreate: "Failed to create promotional code",
+    failedToUpdate: "Failed to update promotional code",
+    promotionDeleted: "Promotional code deleted: {code}",
+    failedToDelete: "Failed to delete promotional code",
   },
 
   analytics: {

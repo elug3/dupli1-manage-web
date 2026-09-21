@@ -136,7 +136,7 @@ export default function AdminLayout() {
             <SidebarLink to="/products" icon={<ProductsIcon />} label={t("nav.products")} onNavigate={() => setSidebarOpen(false)} />
             <SidebarLink to="/catalog" icon={<CatalogIcon />} label={t("nav.catalog")} onNavigate={() => setSidebarOpen(false)} />
             <SidebarLink to="/orders" icon={<OrdersIcon />} label={t("nav.orders")} onNavigate={() => setSidebarOpen(false)} />
-            <SidebarLink to="/coupons" icon={<CouponsIcon />} label={t("nav.coupons")} onNavigate={() => setSidebarOpen(false)} />
+            <SidebarLink to="/promotions" icon={<PromotionsIcon />} label={t("nav.promotions")} onNavigate={() => setSidebarOpen(false)} />
             <SidebarLink to="/analytics" icon={<AnalyticsIcon />} label={t("nav.analytics")} onNavigate={() => setSidebarOpen(false)} />
             <SidebarLink to="/users" icon={<UsersIcon />} label={t("nav.users")} onNavigate={() => setSidebarOpen(false)} />
             <SidebarLink to="/telegram" icon={<TelegramIcon />} label={t("nav.telegram")} onNavigate={() => setSidebarOpen(false)} />
@@ -349,7 +349,7 @@ function UsersIcon() {
   );
 }
 
-function CouponsIcon() {
+function PromotionsIcon() {
   return (
     <svg className="size-[18px]" viewBox="0 0 24 24" fill="none">
       <path d="M12.5 3H7a2 2 0 0 0-2 2v5.5l9.5 9.5a2 2 0 0 0 2.83 0l4.17-4.17a2 2 0 0 0 0-2.83L12.5 3Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />

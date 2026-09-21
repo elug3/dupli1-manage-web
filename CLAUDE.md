@@ -33,7 +33,7 @@ Upstream nginx (dupli1) serves versioned paths under `/api/v1/...` with **no** s
 | Browser prefix | Upstream path example | Service |
 |---|---|---|
 | `/auth/` | `/api/v1/auth/...` | dupli1-auth |
-| `/product/` | `/api/v1/products`, `/api/v1/catalog`, `/api/v1/coupons`, … | dupli1-product |
+| `/product/` | `/api/v1/products`, `/api/v1/catalog`, `/api/v1/products/promotions`, … | dupli1-product |
 | `/inventory/` | `/api/v1/inventory/...` | dupli1-product (inventory merged) |
 | `/order/` | `/api/v1/orders`, `/api/v1/checkout`, … | dupli1-order |
 
@@ -72,7 +72,7 @@ Money fields on the wire are **`*_won`** (`total_won`, `subtotal_won`, `discount
 - `POST /product/api/v1/products/{id}/images` — upload to default variant
 - `POST /product/api/v1/products/{id}/variants/{sku}/images`
 - `GET|POST|PATCH|DELETE /product/api/v1/catalog/brands|colors|sizes|editions` (+ styles under brands) — master data (`product.master.read|write`)
-- `GET|POST /product/api/v1/coupons`, `PUT|DELETE /product/api/v1/coupons/{code}`
+- `GET|POST /product/api/v1/products/promotions`, `PUT|DELETE /product/api/v1/products/promotions/by-code/{code}` — **promotional codes**, renamed from `coupon` on 2026-09-16 (backend [docs/product-promotion-rename.md](../dupli1/docs/product-promotion-rename.md)). The pre-rename `/api/v1/coupons…` paths and the `coupon.*` permissions stay accepted for one release; this repo calls only the canonical ones
 
 SKU identity: each variant has immutable `skuId` (ULID) and human `sku` composed from master codes. Parent `attributes` is a display-only string map — see backend [docs/product-attributes.md](../dupli1/docs/product-attributes.md). Parent pricing: [docs/product-price-on-parent.md](../dupli1/docs/product-price-on-parent.md). Optional variant `dimensions` (`widthMm` / `heightMm` / `depthMm` in mm) is edited on SKU detail and variant create/edit — see [docs/product-sku-dimensions.md](../dupli1/docs/product-sku-dimensions.md).
 
@@ -154,7 +154,7 @@ app/
 
 Route modules use React Router 7 conventions: `loader` for data fetching, `action` for mutations, `default` export for the component.
 
-Admin surfaces: products (parent + variants with inline **price**, **officialPrice**, **attributes** key-value editor, and catalog master fields on PDP), **SKU detail** (`/products/:id/SKU/:skuId`), **catalog masters** (`/catalog`), orders, coupons, users (**Customers / Managers / Services** tabs by `account_type`), **Telegram** (`/telegram` — ops alert subscriptions), **Support** (`/support` — customer consultation inbox), settings (local UI; manager settings API still sketch on backend).
+Admin surfaces: products (parent + variants with inline **price**, **officialPrice**, **attributes** key-value editor, and catalog master fields on PDP), **SKU detail** (`/products/:id/SKU/:skuId`), **catalog masters** (`/catalog`), orders, **promotional codes** (`/promotions`), users (**Customers / Managers / Services** tabs by `account_type`), **Telegram** (`/telegram` — ops alert subscriptions), **Support** (`/support` — customer consultation inbox), settings (local UI; manager settings API still sketch on backend).
 
 ## Production access
 
