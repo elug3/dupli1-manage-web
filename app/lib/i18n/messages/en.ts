@@ -586,9 +586,6 @@ export const en = {
     valuePlaceholder: "bags",
     valueListPlaceholder: "bags, wallets",
     excludeOnSale: "Exclude items already on sale",
-    attrNotEnforced: "(not read at checkout yet)",
-    unenforcedWarning:
-      "One or more rules use a value checkout does not send yet, so this code will be refused on every cart until that lands. Save it if you are staging it ahead of the change.",
     lineMatch: "Line conditions must match",
     lineMatchAny: "at least one item",
     lineMatchAll: "every item",
@@ -596,7 +593,6 @@ export const en = {
     attrSubtotal: "Cart subtotal (₩)",
     attrShippingFee: "Shipping fee (₩)",
     attrItemCount: "Item count",
-    attrPaidOrders: "Customer's paid orders",
     attrCategory: "Item category",
     attrBrand: "Item brand code",
     attrUnitPrice: "Item unit price (₩)",

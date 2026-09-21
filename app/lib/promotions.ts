@@ -31,48 +31,27 @@ export interface ConditionAttr {
   labelKey: string;
   /** True for `line.*` attributes, which are read per cart line. */
   line: boolean;
-  /**
-   * False when checkout cannot supply the value yet.
-   *
-   * Catalog attributes (category, brand, parent, sale state) are resolved by
-   * the promotion service from its own catalog, so they hold regardless of
-   * what a checkout sends. What remains unsupplied is the customer's paid
-   * order count: order sends none, and the evaluator fails a predicate on it
-   * closed rather than guessing, so a code carrying one is refused at every
-   * checkout. Offered anyway — a definition can be staged ahead of the
-   * plumbing — but the form says so.
-   */
-  enforced: boolean;
 }
 
 /**
  * The attributes a predicate may address, mirroring the service's allowlist.
  * A manager cannot reach a field the evaluator does not know how to read, so
- * this list only grows when the backend's does.
+ * this list only grows when the backend's does — and every entry here is one
+ * the evaluator can actually satisfy. `customer.paid_order_count` was dropped
+ * from both on 2026-09-21: only order knows that number, it sends none, and a
+ * rule on it was refused on every cart.
  */
 export const CONDITION_ATTRS: ConditionAttr[] = [
-  { attr: "subtotal_won", kind: "number", labelKey: "promotions.attrSubtotal", line: false, enforced: true },
-  { attr: "shipping_fee_won", kind: "number", labelKey: "promotions.attrShippingFee", line: false, enforced: true },
-  { attr: "item_count", kind: "number", labelKey: "promotions.attrItemCount", line: false, enforced: true },
-  {
-    attr: "customer.paid_order_count",
-    kind: "number",
-    labelKey: "promotions.attrPaidOrders",
-    line: false,
-    enforced: false,
-  },
-  { attr: "line.category", kind: "string", labelKey: "promotions.attrCategory", line: true, enforced: true },
-  { attr: "line.brandCode", kind: "string", labelKey: "promotions.attrBrand", line: true, enforced: true },
-  { attr: "line.unit_price_won", kind: "number", labelKey: "promotions.attrUnitPrice", line: true, enforced: true },
-  { attr: "line.skuId", kind: "string", labelKey: "promotions.attrSkuId", line: true, enforced: true },
-  { attr: "line.productId", kind: "string", labelKey: "promotions.attrProductId", line: true, enforced: true },
-  { attr: "line.on_sale", kind: "boolean", labelKey: "promotions.attrOnSale", line: true, enforced: true },
+  { attr: "subtotal_won", kind: "number", labelKey: "promotions.attrSubtotal", line: false },
+  { attr: "shipping_fee_won", kind: "number", labelKey: "promotions.attrShippingFee", line: false },
+  { attr: "item_count", kind: "number", labelKey: "promotions.attrItemCount", line: false },
+  { attr: "line.category", kind: "string", labelKey: "promotions.attrCategory", line: true },
+  { attr: "line.brandCode", kind: "string", labelKey: "promotions.attrBrand", line: true },
+  { attr: "line.unit_price_won", kind: "number", labelKey: "promotions.attrUnitPrice", line: true },
+  { attr: "line.skuId", kind: "string", labelKey: "promotions.attrSkuId", line: true },
+  { attr: "line.productId", kind: "string", labelKey: "promotions.attrProductId", line: true },
+  { attr: "line.on_sale", kind: "boolean", labelKey: "promotions.attrOnSale", line: true },
 ];
-
-/** True when checkout can actually read this attribute today. */
-export function isEnforcedAttr(attr: string): boolean {
-  return CONDITION_ATTRS.find((a) => a.attr === attr)?.enforced ?? true;
-}
 
 export function attrKind(attr: string): AttrKind {
   return CONDITION_ATTRS.find((a) => a.attr === attr)?.kind ?? "string";

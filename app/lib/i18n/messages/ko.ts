@@ -588,9 +588,6 @@ export const ko: Messages = {
     valuePlaceholder: "bags",
     valueListPlaceholder: "bags, wallets",
     excludeOnSale: "이미 세일 중인 상품 제외",
-    attrNotEnforced: "(결제 단계에서 아직 확인하지 않음)",
-    unenforcedWarning:
-      "결제 단계에서 아직 전달하지 않는 값을 사용하는 조건이 있습니다. 해당 기능이 반영되기 전까지 이 코드는 모든 장바구니에서 거부됩니다. 미리 등록해 두려는 경우에만 저장하세요.",
     lineMatch: "상품 조건 충족 범위",
     lineMatchAny: "하나 이상",
     lineMatchAll: "모든 상품",
@@ -598,7 +595,6 @@ export const ko: Messages = {
     attrSubtotal: "장바구니 소계 (₩)",
     attrShippingFee: "배송비 (₩)",
     attrItemCount: "상품 수량",
-    attrPaidOrders: "고객의 결제 완료 주문 수",
     attrCategory: "상품 카테고리",
     attrBrand: "상품 브랜드 코드",
     attrUnitPrice: "상품 단가 (₩)",

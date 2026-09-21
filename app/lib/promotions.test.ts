@@ -4,8 +4,8 @@ import {
   buildPromotionInput,
   effectiveBenefit,
   emptyPromotionForm,
+  CONDITION_ATTRS,
   expiresOnFromISO,
-  isEnforcedAttr,
   isLivePromotion,
   opsForKind,
   promotionToForm,
@@ -275,23 +275,13 @@ describe("isLivePromotion", () => {
   });
 });
 
-describe("isEnforcedAttr", () => {
-  // The promotion service resolves a line's catalog attributes itself, so a
-  // brand or category rule holds even though no checkout sends those fields.
-  it("treats catalog attributes as enforced", () => {
-    for (const attr of [
-      "line.category",
-      "line.brandCode",
-      "line.productId",
-      "line.on_sale",
-    ]) {
-      expect(isEnforcedAttr(attr)).toBe(true);
-    }
-  });
-
-  // Order sends no paid-order count, and the evaluator fails that predicate
-  // closed rather than guessing at a customer's history.
-  it("still flags the customer's paid order count", () => {
-    expect(isEnforcedAttr("customer.paid_order_count")).toBe(false);
+describe("CONDITION_ATTRS", () => {
+  // The picker used to offer customer.paid_order_count, which no checkout
+  // supplies: a code carrying it was refused on every cart. Dropped from the
+  // service's allowlist and from here on 2026-09-21.
+  it("offers only attributes the evaluator can satisfy", () => {
+    expect(CONDITION_ATTRS.map((a) => a.attr)).not.toContain(
+      "customer.paid_order_count"
+    );
   });
 });

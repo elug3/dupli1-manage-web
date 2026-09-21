@@ -16,7 +16,6 @@ import {
   conditionCount,
   effectiveBenefit,
   emptyPromotionForm,
-  isEnforcedAttr,
   isLineAttr,
   isLivePromotion,
   isSetOp,
@@ -628,14 +627,6 @@ function ConditionsEditor({
     () => form.conditions.some((row) => isLineAttr(row.attr)),
     [form.conditions]
   );
-  // Checkout cannot read every allowlisted attribute yet, and a code carrying
-  // one is refused at every checkout rather than ignored — so say it here
-  // rather than letting a manager ship a rule that always fails.
-  const unenforced = useMemo(
-    () => form.conditions.filter((row) => !isEnforcedAttr(row.attr)).length,
-    [form.conditions]
-  );
-
   function setRow(index: number, next: ConditionRow) {
     const conditions = form.conditions.map((row, i) =>
       i === index ? next : row
@@ -696,9 +687,7 @@ function ConditionsEditor({
             >
               {CONDITION_ATTRS.map((a) => (
                 <option key={a.attr} value={a.attr}>
-                  {a.enforced
-                    ? t(a.labelKey)
-                    : `${t(a.labelKey)} ${t("promotions.attrNotEnforced")}`}
+                  {t(a.labelKey)}
                 </option>
               ))}
             </select>
@@ -755,12 +744,6 @@ function ConditionsEditor({
           </div>
         );
       })}
-
-      {unenforced > 0 && (
-        <p className="rounded-xl bg-warn-bg px-4 py-3 text-[11px] text-warn-fg">
-          {t("promotions.unenforcedWarning")}
-        </p>
-      )}
 
       <div className="flex flex-wrap items-center gap-4">
         <button

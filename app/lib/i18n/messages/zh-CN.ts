@@ -584,9 +584,6 @@ export const zhCN: Messages = {
     valuePlaceholder: "bags",
     valueListPlaceholder: "bags, wallets",
     excludeOnSale: "排除已在促销的商品",
-    attrNotEnforced: "（结账时尚未读取）",
-    unenforcedWarning:
-      "有条件使用了结账流程尚未传递的字段，在该功能上线前，此代码会在所有购物车中被拒绝。如果只是提前配置，可以先保存。",
     lineMatch: "商品条件需满足",
     lineMatchAny: "至少一件",
     lineMatchAll: "全部商品",
@@ -594,7 +591,6 @@ export const zhCN: Messages = {
     attrSubtotal: "购物车小计（₩）",
     attrShippingFee: "运费（₩）",
     attrItemCount: "商品件数",
-    attrPaidOrders: "客户已付款订单数",
     attrCategory: "商品类目",
     attrBrand: "商品品牌代码",
     attrUnitPrice: "商品单价（₩）",
