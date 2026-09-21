@@ -34,12 +34,12 @@ export interface ConditionAttr {
   /**
    * False when checkout cannot supply the value yet.
    *
-   * The service allows the attribute, but order builds its evaluation lines
-   * from priced order items and fills only `sku_id`, `sku`, `quantity` and
-   * `unit_price_won` (dupli1 `order/pkg/service/checkout.go` promotionContextFor),
-   * and sends no paid-order count at all. A predicate on anything else is read
-   * as an empty value and never matches, so a code carrying one is refused at
-   * every checkout. Offered anyway — a definition can be staged ahead of the
+   * Catalog attributes (category, brand, parent, sale state) are resolved by
+   * the promotion service from its own catalog, so they hold regardless of
+   * what a checkout sends. What remains unsupplied is the customer's paid
+   * order count: order sends none, and the evaluator fails a predicate on it
+   * closed rather than guessing, so a code carrying one is refused at every
+   * checkout. Offered anyway — a definition can be staged ahead of the
    * plumbing — but the form says so.
    */
   enforced: boolean;
@@ -61,12 +61,12 @@ export const CONDITION_ATTRS: ConditionAttr[] = [
     line: false,
     enforced: false,
   },
-  { attr: "line.category", kind: "string", labelKey: "promotions.attrCategory", line: true, enforced: false },
-  { attr: "line.brandCode", kind: "string", labelKey: "promotions.attrBrand", line: true, enforced: false },
+  { attr: "line.category", kind: "string", labelKey: "promotions.attrCategory", line: true, enforced: true },
+  { attr: "line.brandCode", kind: "string", labelKey: "promotions.attrBrand", line: true, enforced: true },
   { attr: "line.unit_price_won", kind: "number", labelKey: "promotions.attrUnitPrice", line: true, enforced: true },
   { attr: "line.skuId", kind: "string", labelKey: "promotions.attrSkuId", line: true, enforced: true },
-  { attr: "line.productId", kind: "string", labelKey: "promotions.attrProductId", line: true, enforced: false },
-  { attr: "line.on_sale", kind: "boolean", labelKey: "promotions.attrOnSale", line: true, enforced: false },
+  { attr: "line.productId", kind: "string", labelKey: "promotions.attrProductId", line: true, enforced: true },
+  { attr: "line.on_sale", kind: "boolean", labelKey: "promotions.attrOnSale", line: true, enforced: true },
 ];
 
 /** True when checkout can actually read this attribute today. */
@@ -149,8 +149,9 @@ export function emptyPromotionForm(): PromotionFormState {
 }
 
 /**
- * Excludes lines already marked down. Checkout does not fill `on_sale` yet
- * (see ConditionAttr.enforced), so this currently excludes nothing.
+ * Excludes lines already marked down. The evaluator reads a line's sale state
+ * from the catalog — a parent whose official price stands above its selling
+ * price — so this holds without checkout sending anything.
  */
 const ON_SALE_EXCLUSION: PromotionPredicate = {
   attr: "line.on_sale",

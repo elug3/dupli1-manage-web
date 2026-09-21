@@ -632,10 +632,8 @@ function ConditionsEditor({
   // one is refused at every checkout rather than ignored — so say it here
   // rather than letting a manager ship a rule that always fails.
   const unenforced = useMemo(
-    () =>
-      form.conditions.filter((row) => !isEnforcedAttr(row.attr)).length +
-      (form.excludeOnSale ? 1 : 0),
-    [form.conditions, form.excludeOnSale]
+    () => form.conditions.filter((row) => !isEnforcedAttr(row.attr)).length,
+    [form.conditions]
   );
 
   function setRow(index: number, next: ConditionRow) {

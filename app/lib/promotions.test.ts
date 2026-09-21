@@ -5,6 +5,7 @@ import {
   effectiveBenefit,
   emptyPromotionForm,
   expiresOnFromISO,
+  isEnforcedAttr,
   isLivePromotion,
   opsForKind,
   promotionToForm,
@@ -271,5 +272,26 @@ describe("isLivePromotion", () => {
     expect(isLivePromotion(promotion({ code: "X", redemption_count: 2 }))).toBe(
       true
     );
+  });
+});
+
+describe("isEnforcedAttr", () => {
+  // The promotion service resolves a line's catalog attributes itself, so a
+  // brand or category rule holds even though no checkout sends those fields.
+  it("treats catalog attributes as enforced", () => {
+    for (const attr of [
+      "line.category",
+      "line.brandCode",
+      "line.productId",
+      "line.on_sale",
+    ]) {
+      expect(isEnforcedAttr(attr)).toBe(true);
+    }
+  });
+
+  // Order sends no paid-order count, and the evaluator fails that predicate
+  // closed rather than guessing at a customer's history.
+  it("still flags the customer's paid order count", () => {
+    expect(isEnforcedAttr("customer.paid_order_count")).toBe(false);
   });
 });
