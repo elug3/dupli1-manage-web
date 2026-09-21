@@ -611,6 +611,18 @@ export const ko: Messages = {
     op_gt: "초과",
     op_lt: "미만",
 
+    issue: "발급",
+    issueTitle: "고객에게 발급",
+    issueHint:
+      "이 코드를 한 계정에 발급합니다. 같은 고객에게 다시 발급하면 기존 권한이 그대로 반환됩니다.",
+    customerEmail: "고객 이메일",
+    issued: "{email} 님에게 {code} 코드를 발급했습니다",
+    issuedExpires: "만료 {date}",
+    revoke: "회수",
+    revoked: "{code} 권한을 회수했습니다",
+    errNoSuchCustomer: "해당 이메일의 고객 계정이 없습니다",
+    errIssue: "프로모션 코드를 발급하지 못했습니다",
+    errRevoke: "권한을 회수하지 못했습니다",
     createPromotion: "프로모션 코드 생성",
     creating: "생성 중…",
     save: "변경 사항 저장",

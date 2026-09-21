@@ -1317,6 +1317,63 @@ export async function updatePromotion(
   return res.json() as Promise<Promotion>;
 }
 
+/**
+ * One account's right to use a `single_user` code.
+ *
+ * The entitlement grants access; the redemption ledger still decides whether
+ * it has been spent. Issued automatically on `user.registered`, by a manager
+ * here, or in bulk by the backfill command.
+ */
+export interface PromotionEntitlement {
+  id: string;
+  customer_id: string;
+  code: string;
+  /** `system` (registration), `backfill`, or `issue` (a manager). */
+  source: string;
+  trigger_key?: string;
+  issued_by?: string;
+  /** Per entitlement, so an account issued late gets the same window. */
+  expires_at?: string | null;
+  revoked_at?: string | null;
+  created_at: string;
+}
+
+/**
+ * Grants a customer a single-user code.
+ *
+ * Idempotent on the trigger key, which defaults to one manager issue per
+ * customer per code — re-issuing the same code to the same customer returns
+ * the entitlement they already have rather than a second one.
+ */
+export async function issuePromotion(
+  code: string,
+  customerId: string
+): Promise<PromotionEntitlement> {
+  const res = await authedFetch(
+    productPath(
+      `/api/v1/products/promotions/by-code/${encodeURIComponent(code)}/issue`
+    ),
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ customer_id: customerId }),
+    }
+  );
+  if (!res.ok)
+    throw new Error(await readError(res, "Failed to issue promotional code"));
+  return res.json() as Promise<PromotionEntitlement>;
+}
+
+/** Withdraws an entitlement. Never rewrites an order that already used it. */
+export async function revokePromotionEntitlement(id: string): Promise<void> {
+  const res = await authedFetch(
+    productPath(`/api/v1/products/promotions/entitlements/${encodeURIComponent(id)}`),
+    { method: "DELETE" }
+  );
+  if (!res.ok)
+    throw new Error(await readError(res, "Failed to revoke the entitlement"));
+}
+
 export async function deletePromotion(code: string): Promise<void> {
   const res = await authedFetch(
     productPath(
@@ -1714,6 +1771,10 @@ export const PERMISSION_CATALOG = [
   "promotion.create",
   "promotion.update",
   "promotion.delete",
+  // Moves the usage ledger; held by order's service account, not by people.
+  "promotion.redeem",
+  // Grants and revokes a single-user entitlement.
+  "promotion.issue",
   // Pre-rename, dropped when the compatibility window closes.
   "coupon.read",
   "coupon.create",

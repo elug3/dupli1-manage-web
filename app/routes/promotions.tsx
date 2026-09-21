@@ -1,10 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  type AuthUser,
   type Promotion,
+  type PromotionEntitlement,
   type PromotionInput,
   createPromotion,
   deletePromotion,
   getPromotions,
+  isCustomerUser,
+  issuePromotion,
+  listUsers,
+  revokePromotionEntitlement,
   updatePromotion,
 } from "~/lib/api";
 import {
@@ -44,6 +50,17 @@ export default function Promotions() {
   const [busyCode, setBusyCode] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
+  const [issuing, setIssuing] = useState<string | null>(null);
+  // Customers, for resolving an email to the id the issue API wants. Loaded
+  // once, and only when a manager first opens an issue panel.
+  const [customers, setCustomers] = useState<AuthUser[] | null>(null);
+
+  useEffect(() => {
+    if (issuing === null || customers !== null) return;
+    listUsers()
+      .then((users) => setCustomers(users.filter(isCustomerUser)))
+      .catch(() => setCustomers([]));
+  }, [issuing, customers]);
 
   function loadPromotions() {
     setLoading(true);
@@ -223,6 +240,13 @@ export default function Promotions() {
                     }
                     onToggleActive={() => handleToggleActive(promotion)}
                     onSave={(input) => handleSaveEdit(promotion.code, input)}
+                    issuing={issuing === promotion.code}
+                    customers={customers}
+                    onToggleIssue={() =>
+                      setIssuing((current) =>
+                        current === promotion.code ? null : promotion.code
+                      )
+                    }
                     onAskDelete={() => setConfirmingDelete(promotion.code)}
                     onCancelDelete={() => setConfirmingDelete(null)}
                     onConfirmDelete={() => handleDelete(promotion.code)}
@@ -243,9 +267,12 @@ function PromotionRows({
   busy,
   editing,
   confirmingDelete,
+  issuing,
+  customers,
   onToggleEdit,
   onToggleActive,
   onSave,
+  onToggleIssue,
   onAskDelete,
   onCancelDelete,
   onConfirmDelete,
@@ -255,9 +282,12 @@ function PromotionRows({
   busy: boolean;
   editing: boolean;
   confirmingDelete: boolean;
+  issuing: boolean;
+  customers: AuthUser[] | null;
   onToggleEdit: () => void;
   onToggleActive: () => void;
   onSave: (input: PromotionInput) => void;
+  onToggleIssue: () => void;
   onAskDelete: () => void;
   onCancelDelete: () => void;
   onConfirmDelete: () => void;
@@ -321,6 +351,17 @@ function PromotionRows({
           >
             {editing ? t("promotions.close") : t("promotions.edit")}
           </button>
+          {/* Only a single-user code is held by an account; the service
+              refuses an issue against a global one. */}
+          {promotion.scope === "single_user" && (
+            <button
+              type="button"
+              onClick={onToggleIssue}
+              className="ml-3 text-xs font-semibold text-accent hover:underline"
+            >
+              {issuing ? t("promotions.close") : t("promotions.issue")}
+            </button>
+          )}
           {confirmingDelete ? (
             <>
               <button
@@ -360,6 +401,14 @@ function PromotionRows({
                   count: promotion.redemption_count ?? 0,
                 })
               : t("promotions.deleteWarning")}
+          </td>
+        </tr>
+      )}
+
+      {issuing && (
+        <tr className="border-b border-edge-soft bg-subtle">
+          <td colSpan={7} className="px-5 py-5">
+            <IssuePanel code={promotion.code} customers={customers} />
           </td>
         </tr>
       )}
@@ -436,6 +485,125 @@ function EditPanel({
           {t("promotions.cancel")}
         </button>
       </div>
+    </form>
+  );
+}
+
+/**
+ * Grants one account a single-user code, and undoes it.
+ *
+ * Issuing is idempotent per customer per code, so a manager re-issuing after a
+ * support call hands back the entitlement that already exists rather than a
+ * second one. Revoke is offered on the result because the service has no way
+ * to list what an account holds — the id it just returned is the only handle
+ * there is.
+ */
+function IssuePanel({
+  code,
+  customers,
+}: {
+  code: string;
+  customers: AuthUser[] | null;
+}) {
+  const { t } = useI18n();
+  const { notify } = useNotify();
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [issued, setIssued] = useState<PromotionEntitlement | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    const needle = email.trim().toLowerCase();
+    const customer = (customers ?? []).find(
+      (user) => user.email.toLowerCase() === needle
+    );
+    if (!customer) {
+      setError(t("promotions.errNoSuchCustomer"));
+      return;
+    }
+    setError(null);
+    setBusy(true);
+    try {
+      const entitlement = await issuePromotion(code, customer.user_id);
+      setIssued(entitlement);
+      notify(t("promotions.issued", { email: customer.email, code }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("promotions.errIssue"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function revoke() {
+    if (!issued) return;
+    setBusy(true);
+    try {
+      await revokePromotionEntitlement(issued.id);
+      setIssued(null);
+      setEmail("");
+      notify(t("promotions.revoked", { code }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("promotions.errRevoke"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-3">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+          {t("promotions.issueTitle")}
+        </p>
+        <p className="mt-0.5 text-[11px] text-faint">
+          {t("promotions.issueHint")}
+        </p>
+      </div>
+      <div className="flex flex-wrap gap-3">
+        <input
+          list="promotion-issue-customers"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className={`${inputCls} max-w-sm`}
+          placeholder={t("promotions.customerEmail")}
+          aria-label={t("promotions.customerEmail")}
+          disabled={customers === null}
+        />
+        <datalist id="promotion-issue-customers">
+          {(customers ?? []).map((user) => (
+            <option key={user.user_id} value={user.email} />
+          ))}
+        </datalist>
+        <button
+          type="submit"
+          disabled={busy || customers === null}
+          className="rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-accent-hover disabled:opacity-60"
+        >
+          {busy ? t("common.saving") : t("promotions.issue")}
+        </button>
+      </div>
+      {error && <p className="text-sm text-danger-fg">{error}</p>}
+      {issued && (
+        <p className="flex flex-wrap items-center gap-3 text-xs text-muted">
+          <span className="font-mono">{issued.id}</span>
+          <span>
+            {issued.expires_at
+              ? t("promotions.issuedExpires", {
+                  date: formatExpiry(issued.expires_at),
+                })
+              : t("promotions.neverExpires")}
+          </span>
+          <button
+            type="button"
+            onClick={revoke}
+            disabled={busy}
+            className="font-semibold text-danger-fg hover:underline disabled:opacity-50"
+          >
+            {t("promotions.revoke")}
+          </button>
+        </p>
+      )}
     </form>
   );
 }

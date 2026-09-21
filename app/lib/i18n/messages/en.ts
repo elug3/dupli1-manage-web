@@ -609,6 +609,18 @@ export const en = {
     op_gt: "is more than",
     op_lt: "is less than",
 
+    issue: "Issue",
+    issueTitle: "Issue to a customer",
+    issueHint:
+      "Grants this code to one account. Issuing the same code to the same customer again returns the entitlement they already have.",
+    customerEmail: "Customer email",
+    issued: "{code} issued to {email}",
+    issuedExpires: "Expires {date}",
+    revoke: "Revoke",
+    revoked: "{code} entitlement revoked",
+    errNoSuchCustomer: "No customer account with that email",
+    errIssue: "Failed to issue the promotional code",
+    errRevoke: "Failed to revoke the entitlement",
     createPromotion: "Create promotional code",
     creating: "Creating…",
     save: "Save changes",

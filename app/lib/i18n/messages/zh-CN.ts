@@ -607,6 +607,18 @@ export const zhCN: Messages = {
     op_gt: "大于",
     op_lt: "小于",
 
+    issue: "发放",
+    issueTitle: "发放给客户",
+    issueHint:
+      "将该代码发放给一个账户。对同一客户重复发放会返回其已有的权益，不会重复发放。",
+    customerEmail: "客户邮箱",
+    issued: "已将 {code} 发放给 {email}",
+    issuedExpires: "到期 {date}",
+    revoke: "收回",
+    revoked: "已收回 {code} 权益",
+    errNoSuchCustomer: "没有使用该邮箱的客户账户",
+    errIssue: "发放促销码失败",
+    errRevoke: "收回权益失败",
     createPromotion: "创建促销码",
     creating: "创建中…",
     save: "保存更改",
