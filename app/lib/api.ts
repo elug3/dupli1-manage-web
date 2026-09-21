@@ -1197,28 +1197,85 @@ export async function deleteEdition(code: string): Promise<void> {
 // also still answers on the pre-rename `/api/v1/coupons…` prefix for one
 // release, which is what lets this repo deploy either side of the backend.
 
+/** Audience. `single_user` needs an entitlement the customer was issued. */
+export type PromotionScope = "global" | "single_user";
+
+/**
+ * What the code gives. `target` names the Phase 4 shapes too, but the service
+ * rejects anything but `goods` on write rather than saving a definition that
+ * would silently discount nothing.
+ */
+export interface PromotionBenefit {
+  target: "goods" | "shipping" | "goods_and_shipping" | "none";
+  discount_type: "percent" | "fixed" | "none";
+  /** 0 < fraction < 1 for a percent benefit. */
+  discount_fraction?: number;
+  /** Whole KRW for a fixed benefit; clamped to the eligible base at checkout. */
+  discount_fixed_won?: number;
+  /** Caps a percentage on a large cart. Absent means uncapped. */
+  max_discount_won?: number;
+  apply_to?: "entire_subtotal" | "eligible_lines" | "shipping_fee";
+}
+
+export type ConditionOp = "eq" | "neq" | "in" | "nin" | "gte" | "lte" | "gt" | "lt";
+
+/** One comparison: attr op value. Attributes come from a service allowlist. */
+export interface PromotionPredicate {
+  attr: string;
+  op: ConditionOp;
+  value: string | number | boolean | string[] | number[];
+}
+
+/** Versioned eligibility document. `version: 0` with no rules = always eligible. */
+export interface PromotionConditions {
+  version: number;
+  all?: PromotionPredicate[];
+  exclude?: PromotionPredicate[];
+  line_match?: "any" | "all" | "eligible_only";
+}
+
 export interface Promotion {
   code: string;
-  discount: number;
+  scope: PromotionScope;
   description: string;
-  expires: string;
   active: boolean;
-}
-
-export interface PromotionInput {
-  code: string;
+  conditions: PromotionConditions;
+  benefit: PromotionBenefit;
+  /** RFC3339; enforced. A manager authors a date meaning end-of-day KST. */
+  expires_at?: string | null;
+  /** Campaign-wide cap on paid uses. Absent means uncapped. */
+  max_redemptions?: number | null;
+  max_per_customer: number;
+  /** Paid uses so far, denormalised from the ledger. */
+  redemption_count: number;
+  /** How long an issued single-user entitlement lasts. */
+  entitlement_ttl_days?: number;
+  /** Customer-facing copy stating what the code requires. */
+  terms?: string;
+  updated_at?: string;
+  /** Pre-Phase-2 columns. Still read so an old row prices correctly; nothing writes them. */
   discount: number;
-  description?: string;
-  expires?: string;
-  active?: boolean;
+  expires: string;
 }
 
-export interface PromotionUpdate {
-  discount?: number;
+/**
+ * Create/update body. `expires_on` is a `yyyy-mm-dd` date the service reads as
+ * the end of that day in Seoul; `""` clears the expiry.
+ */
+export interface PromotionInput {
+  code?: string;
+  scope?: PromotionScope;
   description?: string;
-  expires?: string;
+  terms?: string;
   active?: boolean;
+  benefit?: PromotionBenefit;
+  conditions?: PromotionConditions;
+  expires_on?: string;
+  max_redemptions?: number;
+  max_per_customer?: number;
 }
+
+export type PromotionUpdate = PromotionInput;
 
 export async function getPromotions(): Promise<Promotion[]> {
   const res = await authedFetch(productPath("/api/v1/products/promotions"));
