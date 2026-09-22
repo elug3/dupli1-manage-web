@@ -25,6 +25,9 @@ export const zhCN: Messages = {
     administratorFallback: "管理员",
     backendOnline: "后端在线",
     loading: "加载中…",
+    authUnavailable:
+      "无法连接登录服务。您的会话仍然有效，通常几秒内即可恢复。",
+    retry: "重试",
     language: "语言",
     theme: "主题",
     themeSystem: "系统",

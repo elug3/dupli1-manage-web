@@ -23,6 +23,9 @@ export const en = {
     administratorFallback: "Administrator",
     backendOnline: "Backend online",
     loading: "Loading…",
+    authUnavailable:
+      "Cannot reach the sign-in service. Your session is still valid — this is usually over in a few seconds.",
+    retry: "Try again",
     language: "Language",
     theme: "Theme",
     themeSystem: "System",

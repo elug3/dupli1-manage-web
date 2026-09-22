@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
-import { type User, getMe, logout } from "~/lib/auth";
+import { AuthUnavailableError, type User, getMe, logout } from "~/lib/auth";
 import { useI18n } from "~/lib/i18n";
 import { LanguageSwitcher } from "~/lib/i18n/LanguageSwitcher";
 import { OrderFeedProvider } from "~/lib/order-events";
@@ -13,6 +13,9 @@ export default function AdminLayout() {
   const { t } = useI18n();
   const [user, setUser] = useState<User | null>(null);
   const [checking, setChecking] = useState(true);
+  // Set when auth could not be reached at all. Distinct from "no user": the
+  // session is probably fine, so this must not become a trip to /login.
+  const [unreachable, setUnreachable] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
@@ -20,6 +23,7 @@ export default function AdminLayout() {
 
     async function checkAuth() {
       setChecking(true);
+      setUnreachable(false);
       const pendingUser = (location.state as { user?: User } | null)?.user;
 
       try {
@@ -32,10 +36,15 @@ export default function AdminLayout() {
         } else {
           navigate("/login", { replace: true });
         }
-      } catch {
+      } catch (error) {
         if (cancelled) return;
         if (pendingUser) {
           setUser(pendingUser);
+        } else if (error instanceof AuthUnavailableError) {
+          // getMe already rode out a few seconds of it. Offer a retry instead
+          // of /login, which would look like a sign-out for an outage that
+          // never touched this session.
+          setUnreachable(true);
         } else {
           navigate("/login", { replace: true });
         }
@@ -73,6 +82,23 @@ export default function AdminLayout() {
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
           <span className="text-sm text-muted">{t("nav.loading")}</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (unreachable) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-page px-6">
+        <div className="flex max-w-sm flex-col items-center gap-4 text-center">
+          <p className="text-sm text-muted">{t("nav.authUnavailable")}</p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white"
+          >
+            {t("nav.retry")}
+          </button>
         </div>
       </div>
     );

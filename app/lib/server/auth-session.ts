@@ -52,6 +52,20 @@ function jsonResponse(
   return new Response(JSON.stringify(body), { ...init, headers });
 }
 
+/**
+ * Auth could not be reached, so the session's standing is unknown.
+ *
+ * Deliberately not a 401: the cookie stays, the stored session stays, and the
+ * browser is told to retry. `code` lets the client distinguish this from a
+ * real sign-out without parsing prose.
+ */
+function unavailableResponse(): Response {
+  return jsonResponse(
+    { error: "Auth service unavailable", code: "auth_unavailable" },
+    { status: 503, headers: { "Retry-After": "2" } }
+  );
+}
+
 async function readError(res: Response, fallback: string): Promise<string> {
   try {
     const body = (await res.json()) as { error?: string };
@@ -60,6 +74,22 @@ async function readError(res: Response, fallback: string): Promise<string> {
     return fallback;
   }
 }
+
+/**
+ * What an exchange attempt actually established.
+ *
+ * `rejected` is auth's verdict on the token: spent, revoked, expired, or the
+ * account is gone. The session is over and the cookie should go.
+ *
+ * `unavailable` means we never got a verdict — auth is down, its session
+ * ledger is unreachable, the gateway timed out. The token is probably fine,
+ * so the session must survive. Conflating the two is what made a few seconds
+ * of Redis downtime sign out every operator: auth's session ledger lives in
+ * Redis, and the task is replaced stop-before-start on every deploy.
+ */
+type ExchangeResult =
+  | { ok: true; accessToken: string; refreshToken: string }
+  | { ok: false; reason: "rejected" | "unavailable" };
 
 /**
  * Exchange a refresh token for an access token, returning the refresh token to
@@ -75,13 +105,35 @@ async function readError(res: Response, fallback: string): Promise<string> {
  */
 async function exchangeRefreshToken(
   refreshToken: string
-): Promise<{ accessToken: string; refreshToken: string } | null> {
-  const res = await backendPost("auth", "/api/v1/auth/refresh", {
-    refresh_token: refreshToken,
-  });
-  if (!res.ok) return null;
-  const body = (await res.json()) as RefreshResponse;
+): Promise<ExchangeResult> {
+  let res: Response;
+  try {
+    res = await backendPost("auth", "/api/v1/auth/refresh", {
+      refresh_token: refreshToken,
+    });
+  } catch {
+    // Never reached auth. We know nothing about the token.
+    return { ok: false, reason: "unavailable" };
+  }
+
+  if (!res.ok) {
+    // 401 is auth rejecting the token; 403 is a locked or deactivated
+    // account. Anything else — 503 when auth cannot reach its own session
+    // store, 502 from the gateway, 429 — is about auth, not the token.
+    const rejected = res.status === 401 || res.status === 403;
+    return { ok: false, reason: rejected ? "rejected" : "unavailable" };
+  }
+
+  let body: RefreshResponse;
+  try {
+    body = (await res.json()) as RefreshResponse;
+  } catch {
+    return { ok: false, reason: "unavailable" };
+  }
+  if (!body.token) return { ok: false, reason: "unavailable" };
+
   return {
+    ok: true,
     accessToken: body.token,
     refreshToken: body.refresh_token?.trim() || refreshToken,
   };
@@ -119,8 +171,13 @@ function accessTokenExpiry(accessToken: string): number {
  */
 const exchangesInFlight = new Map<
   string,
-  Promise<{ accessToken: string } | null>
+  Promise<CachedExchangeResult>
 >();
+
+/** As ExchangeResult, minus the rotated token the caller has already stored. */
+type CachedExchangeResult =
+  | { ok: true; accessToken: string }
+  | { ok: false; reason: "rejected" | "unavailable" };
 
 /**
  * Exchange the session's refresh token for an access token, reusing a cached
@@ -134,27 +191,34 @@ async function cachedAccessTokenExchange(
   sessionId: string,
   refreshToken: string,
   options: { forceRefresh?: boolean } = {}
-): Promise<{ accessToken: string } | null> {
+): Promise<CachedExchangeResult> {
   if (options.forceRefresh) {
     await clearCachedAccessToken(sessionId);
   } else {
     const cached = await getCachedAccessToken(sessionId);
-    if (cached) return { accessToken: cached };
+    if (cached) return { ok: true, accessToken: cached };
   }
 
   const joined = exchangesInFlight.get(sessionId);
   if (joined) return joined;
 
-  const exchange = (async () => {
+  const exchange = (async (): Promise<CachedExchangeResult> => {
     const exchanged = await exchangeRefreshToken(refreshToken);
-    if (exchanged) {
+    if (exchanged.ok) {
       await commitTokenExchange(
         sessionId,
         exchanged.refreshToken,
         exchanged.accessToken,
         accessTokenExpiry(exchanged.accessToken)
       );
-      return { accessToken: exchanged.accessToken };
+      return { ok: true, accessToken: exchanged.accessToken };
+    }
+
+    // Auth never answered, so the token is not known to be bad. Say so and
+    // leave the session alone; retrying against the store would only read the
+    // same token back and ask the same unreachable service again.
+    if (exchanged.reason === "unavailable") {
+      return { ok: false, reason: "unavailable" };
     }
 
     // Auth rejected our token. With a shared store that does not prove the
@@ -165,21 +229,21 @@ async function cachedAccessTokenExchange(
     const current = await getSession(sessionId);
     if (!current || current.refreshToken === refreshToken) {
       // Unchanged: the token really is spent or revoked.
-      return null;
+      return { ok: false, reason: "rejected" };
     }
 
     const fresh = await getCachedAccessToken(sessionId);
-    if (fresh) return { accessToken: fresh };
+    if (fresh) return { ok: true, accessToken: fresh };
 
     const retried = await exchangeRefreshToken(current.refreshToken);
-    if (!retried) return null;
+    if (!retried.ok) return { ok: false, reason: retried.reason };
     await commitTokenExchange(
       sessionId,
       retried.refreshToken,
       retried.accessToken,
       accessTokenExpiry(retried.accessToken)
     );
-    return { accessToken: retried.accessToken };
+    return { ok: true, accessToken: retried.accessToken };
   })();
 
   exchangesInFlight.set(sessionId, exchange);
@@ -225,8 +289,14 @@ export async function handleSessionLogin(request: Request): Promise<Response> {
 
   const { refresh_token } = (await res.json()) as LoginResponse;
   const exchanged = await exchangeRefreshToken(refresh_token);
-  if (!exchanged) {
-    return jsonResponse({ error: "Failed to establish session" }, { status: 502 });
+  if (!exchanged.ok) {
+    // Login just succeeded, so a rejection here means auth contradicted
+    // itself; unavailable means it went away between the two calls. Either
+    // way there is no session yet to preserve — only the status differs, so
+    // the browser can tell "try again" from "something is wrong".
+    return exchanged.reason === "unavailable"
+      ? jsonResponse({ error: "Auth service unavailable" }, { status: 503 })
+      : jsonResponse({ error: "Failed to establish session" }, { status: 502 });
   }
 
   const profile =
@@ -302,12 +372,15 @@ export async function handleSessionMe(request: Request): Promise<Response> {
   }
 
   // Access token may be stale; exchange via refresh_token (or reuse cache).
-  // If refresh fails the session is no longer usable — clear cookie.
+  // Only auth's own verdict ends the session — see ExchangeResult.
   const exchanged = await cachedAccessTokenExchange(
     sessionId,
     session.refreshToken
   );
-  if (!exchanged) {
+  if (!exchanged.ok) {
+    if (exchanged.reason === "unavailable") {
+      return unavailableResponse();
+    }
     await deleteSession(sessionId);
     return jsonResponse({ error: "Session expired" }, {
       status: 401,
@@ -390,7 +463,13 @@ export async function accessTokenFromSession(
     refreshToken,
     options
   );
-  if (!exchanged) {
+  if (!exchanged.ok) {
+    // Auth is unreachable rather than refusing us: keep the session and the
+    // cookie. A 503 tells the browser to back off and retry, where a 401
+    // would send it to /login and destroy a session that is perfectly good.
+    if (exchanged.reason === "unavailable") {
+      return unavailableResponse();
+    }
     await deleteSession(sessionId);
     return jsonResponse({ error: "Session expired" }, {
       status: 401,
@@ -398,7 +477,7 @@ export async function accessTokenFromSession(
     });
   }
 
-  return exchanged;
+  return { accessToken: exchanged.accessToken };
 }
 
 /** Browser gateway prefixes that hit the auth service (source of truth for login). */

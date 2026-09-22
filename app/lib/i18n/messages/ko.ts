@@ -25,6 +25,9 @@ export const ko: Messages = {
     administratorFallback: "관리자",
     backendOnline: "백엔드 연결됨",
     loading: "로딩 중…",
+    authUnavailable:
+      "인증 서비스에 연결할 수 없습니다. 세션은 아직 유효하며, 보통 몇 초 안에 복구됩니다.",
+    retry: "다시 시도",
     language: "언어",
     theme: "테마",
     themeSystem: "시스템",

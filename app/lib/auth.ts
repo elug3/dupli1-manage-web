@@ -65,8 +65,34 @@ function parseMe(body: {
   };
 }
 
+/**
+ * The session's standing could not be established — auth (or its session
+ * ledger) is unreachable. Distinct from "not signed in": the cookie and the
+ * server-side session are intact, so the caller must not send anyone to
+ * /login over it.
+ */
+export class AuthUnavailableError extends Error {
+  constructor() {
+    super("Auth service unavailable");
+    this.name = "AuthUnavailableError";
+  }
+}
+
+/** Short, bounded wait — a Redis task replacement is seconds, not minutes. */
+const UNAVAILABLE_RETRY_DELAYS_MS = [400, 1200, 2500];
+
 export async function getMe(): Promise<User | null> {
-  const res = await fetch("/auth/session/me", SESSION_FETCH);
+  let res = await fetch("/auth/session/me", SESSION_FETCH);
+
+  // 503 means the BFF could not reach auth, not that we are signed out. Ride
+  // out a brief outage rather than reporting it as a dead session.
+  for (const delay of UNAVAILABLE_RETRY_DELAYS_MS) {
+    if (res.status !== 503) break;
+    await new Promise((resolve) => setTimeout(resolve, delay));
+    res = await fetch("/auth/session/me", SESSION_FETCH);
+  }
+  if (res.status === 503) throw new AuthUnavailableError();
+
   if (res.ok) {
     return parseMe(
       (await res.json()) as {
