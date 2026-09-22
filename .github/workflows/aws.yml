@@ -18,8 +18,6 @@ env:
   ECR_REPOSITORY: manage-web
   ECS_SERVICE: dupli1-manage-web
   ECS_CLUSTER: production
-  ECS_TASK_DEFINITION: .aws/task-definition.json
-  CONTAINER_NAME: manage-web-container
 
 jobs:
   deploy:
@@ -64,20 +62,32 @@ jobs:
             .
           docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
           docker push "$ECR_REGISTRY/$ECR_REPOSITORY:v$APP_VERSION-b$APP_BUILD_NUMBER"
+          # latest is what the Terraform-managed task definition points at
+          # (dupli1 infra/terraform/ecs_frontends.tf). The deploy below re-pulls
+          # it; the two tags above stay for identifying and rolling back to a
+          # specific build.
+          docker tag "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" "$ECR_REGISTRY/$ECR_REPOSITORY:latest"
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:latest"
           echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> "$GITHUB_OUTPUT"
 
-      - name: Render Amazon ECS task definition
-        id: task-def
-        uses: aws-actions/amazon-ecs-render-task-definition@v1
-        with:
-          task-definition: ${{ env.ECS_TASK_DEFINITION }}
-          container-name: ${{ env.CONTAINER_NAME }}
-          image: ${{ steps.build-image.outputs.image }}
+      # The task definition belongs to Terraform (dupli1
+      # infra/terraform/ecs_frontends.tf, aws_ecs_task_definition.manage_web).
+      # This repo used to render and deploy its own .aws/task-definition.json,
+      # which declared a second family and a FARGATE launch type for the same
+      # service — two systems owning one service, whichever ran last winning.
+      # Now the pipeline only supplies the image and asks ECS to re-pull it,
+      # the same way the backend services deploy.
+      - name: Force ECS service redeployment
+        run: |
+          aws ecs update-service \
+            --cluster "$ECS_CLUSTER" \
+            --service "$ECS_SERVICE" \
+            --force-new-deployment \
+            --no-cli-pager
 
-      - name: Deploy Amazon ECS task definition
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
-        with:
-          task-definition: ${{ steps.task-def.outputs.task-definition }}
-          service: ${{ env.ECS_SERVICE }}
-          cluster: ${{ env.ECS_CLUSTER }}
-          wait-for-service-stability: true
+      - name: Wait for the service to stabilise
+        run: |
+          aws ecs wait services-stable \
+            --cluster "$ECS_CLUSTER" \
+            --services "$ECS_SERVICE" \
+            --no-cli-pager
