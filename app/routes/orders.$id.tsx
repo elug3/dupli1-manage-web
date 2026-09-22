@@ -627,6 +627,9 @@ function OrderItemRow({ item }: { item: OrderItem }) {
 function OrderTotals({ order }: { order: Order }) {
   const { t, formatWon } = useI18n();
   const hasDiscount = order.discount_won > 0;
+  // `coupon_code` is the pre-rename alias order still emits for one release
+  // (dupli1 docs/product-promotion-rename.md); drop it when the window closes.
+  const promotionCode = order.promotion_code || order.coupon_code;
   const shipping = order.shipping_fee_won ?? 0;
   return (
     <div className="mt-4 space-y-1.5 border-t border-edge pt-4 text-sm">
@@ -645,8 +648,8 @@ function OrderTotals({ order }: { order: Order }) {
       {hasDiscount && (
         <div className="flex items-center justify-between text-success-fg">
           <span>
-            {order.coupon_code
-              ? t("orders.discountWithCode", { code: order.coupon_code })
+            {promotionCode
+              ? t("orders.discountWithCode", { code: promotionCode })
               : t("orders.discount")}
           </span>
           <span>−{formatWon(order.discount_won)}</span>

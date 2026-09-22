@@ -205,3 +205,109 @@ describe("refresh token rotation", () => {
     expect(auth.refreshCalls() - before).toBe(1);
   });
 });
+
+/**
+ * Auth answers 503 when it cannot reach its own session ledger — that ledger
+ * lives in Redis, and the Redis task is replaced stop-before-start on every
+ * deploy. Before this, any non-ok refresh was read as a spent token, so those
+ * few seconds signed out every operator holding a perfectly good session.
+ */
+describe("auth unavailable is not a dead session", () => {
+  function stubAuthThen(
+    afterLogin: (url: string) => Response
+  ): () => Promise<string> {
+    return async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async (url: unknown) => {
+          const target = String(url);
+          if (target.endsWith("/api/v1/auth/login")) {
+            return json({ refresh_token: "rt-1" });
+          }
+          if (target.endsWith("/api/v1/auth/refresh")) {
+            return json({ token: "access-1", refresh_token: "rt-2" });
+          }
+          if (target.endsWith("/api/v1/auth/me")) {
+            return json({ user_id: "u", email: "a@b.c", account_type: "manager" });
+          }
+          throw new Error(`unexpected fetch: ${target}`);
+        })
+      );
+      const cookie = await signIn();
+      vi.stubGlobal("fetch", vi.fn(async (url: unknown) => afterLogin(String(url))));
+      return cookie;
+    };
+  }
+
+  it("keeps the session and the cookie when auth returns 503", async () => {
+    const cookie = await stubAuthThen(() =>
+      json({ error: "refresh unavailable" }, 503)
+    )();
+
+    const response = await refresh(cookie);
+
+    expect(response.status).toBe(503);
+    // The cookie must survive: clearing it is the logout we are preventing.
+    expect(response.headers.get("Set-Cookie") ?? "").not.toContain("Max-Age=0");
+  });
+
+  it("recovers on the next call once auth is back", async () => {
+    const cookie = await stubAuthThen(() =>
+      json({ error: "refresh unavailable" }, 503)
+    )();
+
+    expect((await refresh(cookie)).status).toBe(503);
+
+    // Auth returns, still holding the token the session stored. If the 503 had
+    // been treated as a rejection the session would be gone by now.
+    let issued = 1;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: unknown) => {
+        const target = String(url);
+        if (target.endsWith("/api/v1/auth/refresh")) {
+          issued += 1;
+          return json({ token: `access-${issued}`, refresh_token: `rt-${issued + 1}` });
+        }
+        if (target.includes("/api/v1/orders")) return json({ total: 0, orders: [] });
+        throw new Error(`unexpected fetch: ${target}`);
+      })
+    );
+
+    expect((await refresh(cookie)).status).toBe(200);
+    expect((await listOrders(cookie)).status).toBe(200);
+  });
+
+  it("does not sign the operator out when auth cannot be dialled at all", async () => {
+    const cookie = await stubAuthThen(() => {
+      throw new Error("ECONNREFUSED");
+    })();
+
+    const response = await refresh(cookie);
+
+    expect(response.status).toBe(503);
+    expect(response.headers.get("Set-Cookie") ?? "").not.toContain("Max-Age=0");
+  });
+
+  it("still ends the session on a 401, which is auth's own verdict", async () => {
+    const cookie = await stubAuthThen(() =>
+      json({ error: "invalid refresh token" }, 401)
+    )();
+
+    const response = await refresh(cookie);
+
+    expect(response.status).toBe(401);
+    expect(response.headers.get("Set-Cookie")).toContain("Max-Age=0");
+  });
+
+  it("passes 503 through the API gateway without a logout", async () => {
+    const cookie = await stubAuthThen(() =>
+      json({ error: "refresh unavailable" }, 503)
+    )();
+
+    const response = await listOrders(cookie);
+
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({ code: "auth_unavailable" });
+  });
+});

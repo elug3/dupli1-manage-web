@@ -1190,70 +1190,199 @@ export async function deleteEdition(code: string): Promise<void> {
   if (!res.ok) throw new Error(await readError(res, "Failed to delete edition"));
 }
 
-// ── Coupons ──────────────────────────────────────────────────────────────────
+// ── Promotional codes ────────────────────────────────────────────────────────
+//
+// Renamed from "coupon" on 2026-09-16 (dupli1 docs/product-promotion-rename.md).
+// These call the canonical `/api/v1/products/promotions…` paths; the backend
+// also still answers on the pre-rename `/api/v1/coupons…` prefix for one
+// release, which is what lets this repo deploy either side of the backend.
 
-export interface Coupon {
+/** Audience. `single_user` needs an entitlement the customer was issued. */
+export type PromotionScope = "global" | "single_user";
+
+/**
+ * What the code gives. `target` names the Phase 4 shapes too, but the service
+ * rejects anything but `goods` on write rather than saving a definition that
+ * would silently discount nothing.
+ */
+export interface PromotionBenefit {
+  target: "goods" | "shipping" | "goods_and_shipping" | "none";
+  discount_type: "percent" | "fixed" | "none";
+  /** 0 < fraction < 1 for a percent benefit. */
+  discount_fraction?: number;
+  /** Whole KRW for a fixed benefit; clamped to the eligible base at checkout. */
+  discount_fixed_won?: number;
+  /** Caps a percentage on a large cart. Absent means uncapped. */
+  max_discount_won?: number;
+  apply_to?: "entire_subtotal" | "eligible_lines" | "shipping_fee";
+}
+
+export type ConditionOp = "eq" | "neq" | "in" | "nin" | "gte" | "lte" | "gt" | "lt";
+
+/** One comparison: attr op value. Attributes come from a service allowlist. */
+export interface PromotionPredicate {
+  attr: string;
+  op: ConditionOp;
+  value: string | number | boolean | string[] | number[];
+}
+
+/** Versioned eligibility document. `version: 0` with no rules = always eligible. */
+export interface PromotionConditions {
+  version: number;
+  all?: PromotionPredicate[];
+  exclude?: PromotionPredicate[];
+  line_match?: "any" | "all" | "eligible_only";
+}
+
+export interface Promotion {
   code: string;
-  discount: number;
+  scope: PromotionScope;
   description: string;
-  expires: string;
   active: boolean;
-}
-
-export interface CouponInput {
-  code: string;
+  conditions: PromotionConditions;
+  benefit: PromotionBenefit;
+  /** RFC3339; enforced. A manager authors a date meaning end-of-day KST. */
+  expires_at?: string | null;
+  /** Campaign-wide cap on paid uses. Absent means uncapped. */
+  max_redemptions?: number | null;
+  max_per_customer: number;
+  /** Paid uses so far, denormalised from the ledger. */
+  redemption_count: number;
+  /** How long an issued single-user entitlement lasts. */
+  entitlement_ttl_days?: number;
+  /** Customer-facing copy stating what the code requires. */
+  terms?: string;
+  updated_at?: string;
+  /** Pre-Phase-2 columns. Still read so an old row prices correctly; nothing writes them. */
   discount: number;
-  description?: string;
-  expires?: string;
-  active?: boolean;
+  expires: string;
 }
 
-export interface CouponUpdate {
-  discount?: number;
+/**
+ * Create/update body. `expires_on` is a `yyyy-mm-dd` date the service reads as
+ * the end of that day in Seoul; `""` clears the expiry.
+ */
+export interface PromotionInput {
+  code?: string;
+  scope?: PromotionScope;
   description?: string;
-  expires?: string;
+  terms?: string;
   active?: boolean;
+  benefit?: PromotionBenefit;
+  conditions?: PromotionConditions;
+  expires_on?: string;
+  max_redemptions?: number;
+  max_per_customer?: number;
 }
 
-export async function getCoupons(): Promise<Coupon[]> {
-  const res = await authedFetch(productPath("/api/v1/coupons"));
-  if (!res.ok) throw new Error(await readError(res, "Failed to fetch coupons"));
-  const data = (await res.json()) as { total?: number; results?: Coupon[] };
+export type PromotionUpdate = PromotionInput;
+
+export async function getPromotions(): Promise<Promotion[]> {
+  const res = await authedFetch(productPath("/api/v1/products/promotions"));
+  if (!res.ok)
+    throw new Error(await readError(res, "Failed to fetch promotional codes"));
+  const data = (await res.json()) as { total?: number; results?: Promotion[] };
   return Array.isArray(data.results) ? data.results : [];
 }
 
-export async function createCoupon(input: CouponInput): Promise<Coupon> {
-  const res = await authedFetch(productPath("/api/v1/coupons"), {
+export async function createPromotion(
+  input: PromotionInput
+): Promise<Promotion> {
+  const res = await authedFetch(productPath("/api/v1/products/promotions"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
-  if (!res.ok) throw new Error(await readError(res, "Failed to create coupon"));
-  return res.json() as Promise<Coupon>;
+  if (!res.ok)
+    throw new Error(await readError(res, "Failed to create promotional code"));
+  return res.json() as Promise<Promotion>;
 }
 
-export async function updateCoupon(
+export async function updatePromotion(
   code: string,
-  input: CouponUpdate
-): Promise<Coupon> {
+  input: PromotionUpdate
+): Promise<Promotion> {
   const res = await authedFetch(
-    productPath(`/api/v1/coupons/${encodeURIComponent(code)}`),
+    productPath(
+      `/api/v1/products/promotions/by-code/${encodeURIComponent(code)}`
+    ),
     {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
     }
   );
-  if (!res.ok) throw new Error(await readError(res, "Failed to update coupon"));
-  return res.json() as Promise<Coupon>;
+  if (!res.ok)
+    throw new Error(await readError(res, "Failed to update promotional code"));
+  return res.json() as Promise<Promotion>;
 }
 
-export async function deleteCoupon(code: string): Promise<void> {
+/**
+ * One account's right to use a `single_user` code.
+ *
+ * The entitlement grants access; the redemption ledger still decides whether
+ * it has been spent. Issued automatically on `user.registered`, by a manager
+ * here, or in bulk by the backfill command.
+ */
+export interface PromotionEntitlement {
+  id: string;
+  customer_id: string;
+  code: string;
+  /** `system` (registration), `backfill`, or `issue` (a manager). */
+  source: string;
+  trigger_key?: string;
+  issued_by?: string;
+  /** Per entitlement, so an account issued late gets the same window. */
+  expires_at?: string | null;
+  revoked_at?: string | null;
+  created_at: string;
+}
+
+/**
+ * Grants a customer a single-user code.
+ *
+ * Idempotent on the trigger key, which defaults to one manager issue per
+ * customer per code — re-issuing the same code to the same customer returns
+ * the entitlement they already have rather than a second one.
+ */
+export async function issuePromotion(
+  code: string,
+  customerId: string
+): Promise<PromotionEntitlement> {
   const res = await authedFetch(
-    productPath(`/api/v1/coupons/${encodeURIComponent(code)}`),
+    productPath(
+      `/api/v1/products/promotions/by-code/${encodeURIComponent(code)}/issue`
+    ),
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ customer_id: customerId }),
+    }
+  );
+  if (!res.ok)
+    throw new Error(await readError(res, "Failed to issue promotional code"));
+  return res.json() as Promise<PromotionEntitlement>;
+}
+
+/** Withdraws an entitlement. Never rewrites an order that already used it. */
+export async function revokePromotionEntitlement(id: string): Promise<void> {
+  const res = await authedFetch(
+    productPath(`/api/v1/products/promotions/entitlements/${encodeURIComponent(id)}`),
     { method: "DELETE" }
   );
-  if (!res.ok) throw new Error(await readError(res, "Failed to delete coupon"));
+  if (!res.ok)
+    throw new Error(await readError(res, "Failed to revoke the entitlement"));
+}
+
+export async function deletePromotion(code: string): Promise<void> {
+  const res = await authedFetch(
+    productPath(
+      `/api/v1/products/promotions/by-code/${encodeURIComponent(code)}`
+    ),
+    { method: "DELETE" }
+  );
+  if (!res.ok)
+    throw new Error(await readError(res, "Failed to delete promotional code"));
 }
 
 // ── Orders ───────────────────────────────────────────────────────────────────
@@ -1294,6 +1423,9 @@ export interface Order {
   reservation_id: string;
   items: OrderItem[];
   status: OrderStatus;
+  /** Canonical since the 2026-09-16 rename; `coupon_code` is the pre-rename alias. */
+  promotion_code?: string;
+  /** @deprecated Order emits both keys for one release; read `promotion_code`. */
   coupon_code?: string;
   subtotal_won: number;
   discount_won: number;
@@ -1611,6 +1743,9 @@ export const PERMISSION_WILDCARDS = [
   "*",
   "admin.*",
   "product.*",
+  "promotion.*",
+  // Pre-rename; still accepted by the backend for one release, and listed so an
+  // operator can see and clear one a manager already holds.
   "coupon.*",
   "user.*",
 ] as const;
@@ -1632,6 +1767,15 @@ export const PERMISSION_CATALOG = [
   "product.image.upload",
   "product.master.read",
   "product.master.write",
+  "promotion.read",
+  "promotion.create",
+  "promotion.update",
+  "promotion.delete",
+  // Moves the usage ledger; held by order's service account, not by people.
+  "promotion.redeem",
+  // Grants and revokes a single-user entitlement.
+  "promotion.issue",
+  // Pre-rename, dropped when the compatibility window closes.
   "coupon.read",
   "coupon.create",
   "coupon.update",
