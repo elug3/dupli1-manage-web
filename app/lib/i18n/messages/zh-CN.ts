@@ -811,12 +811,16 @@ export const zhCN: Messages = {
     passwordsDoNotMatch: "两次输入的密码不一致",
     passwordUpdated: "密码已更新",
     failedToUpdatePassword: "更新密码失败",
+    serviceAccountNoPassword:
+      "服务账户没有密码，不能登录店面或 manage-web，仅通过 API 密钥认证。",
     permissionsHint:
       "通过 PATCH /auth/api/v1/auth/users/{id}/permissions 替换权限分配。空列表表示账户无提升权限。",
     accountType: "账户类型",
     accountTypeCustomer: "customer",
     accountTypeManager: "manager",
     accountTypeService: "service",
+    becomesServiceWarning:
+      "保存为服务账户将删除该账户的密码：之后无法再登录，仅通过 API 密钥认证。",
     savePermissions: "保存权限",
     permissionsUpdated: "权限已更新",
     failedToUpdatePermissions: "更新权限失败",

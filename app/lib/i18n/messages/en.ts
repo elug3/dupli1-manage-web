@@ -814,12 +814,16 @@ export const en = {
     passwordsDoNotMatch: "Passwords do not match",
     passwordUpdated: "Password updated",
     failedToUpdatePassword: "Failed to update password",
+    serviceAccountNoPassword:
+      "Service accounts have no password and cannot sign in to the storefront or manage-web. They authenticate with an API key.",
     permissionsHint:
       "Replace permission assignments via PATCH /auth/api/v1/auth/users/{id}/permissions. An empty list leaves the account with no elevated access.",
     accountType: "Account type",
     accountTypeCustomer: "customer",
     accountTypeManager: "manager",
     accountTypeService: "service",
+    becomesServiceWarning:
+      "Saving as a service account removes this account's password: it will no longer be able to sign in, and authenticates with an API key only.",
     savePermissions: "Save permissions",
     permissionsUpdated: "Permissions updated",
     failedToUpdatePermissions: "Failed to update permissions",

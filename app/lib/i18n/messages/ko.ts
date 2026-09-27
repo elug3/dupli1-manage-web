@@ -816,12 +816,16 @@ export const ko: Messages = {
     passwordsDoNotMatch: "비밀번호가 일치하지 않습니다",
     passwordUpdated: "비밀번호가 업데이트되었습니다",
     failedToUpdatePassword: "비밀번호를 업데이트하지 못했습니다",
+    serviceAccountNoPassword:
+      "서비스 계정에는 비밀번호가 없으며 스토어프런트나 manage-web에 로그인할 수 없습니다. API 키로 인증합니다.",
     permissionsHint:
       "PATCH /auth/api/v1/auth/users/{id}/permissions를 통해 권한 할당을 교체합니다. 빈 목록이면 계정에 상승된 권한이 없습니다.",
     accountType: "계정 유형",
     accountTypeCustomer: "customer",
     accountTypeManager: "manager",
     accountTypeService: "service",
+    becomesServiceWarning:
+      "서비스 계정으로 저장하면 이 계정의 비밀번호가 삭제됩니다. 더 이상 로그인할 수 없으며 API 키로만 인증합니다.",
     savePermissions: "권한 저장",
     permissionsUpdated: "권한이 업데이트되었습니다",
     failedToUpdatePermissions: "권한을 업데이트하지 못했습니다",
