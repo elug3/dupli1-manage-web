@@ -1757,6 +1757,9 @@ export const PERMISSION_CATALOG = [
   "user.permissions.update",
   "user.password.update",
   "user.status.update",
+  // Service-account API keys: list, and mint/revoke.
+  "user.apikey.read",
+  "user.apikey.manage",
   "product.create",
   "product.update",
   "product.delete",
@@ -1801,6 +1804,23 @@ export const ALL_PERMISSIONS = [
   ...PERMISSION_CATALOG,
 ] as const;
 
+/**
+ * Whether `held` grants `required`, mirroring shared/pkg/permissions `Has`:
+ * exact match, a `{resource}.*` wildcard, `admin.*` for `user.*`, or `*`.
+ */
+export function permissionGrants(held: string[], required: string): boolean {
+  return held.some((h) => {
+    if (h === required || h === "*") return true;
+    if (h === "admin.*") return required.startsWith("user.");
+    if (!h.endsWith(".*")) return false;
+    const prefix = h.slice(0, -2);
+    return (
+      prefix !== "" &&
+      (required === prefix || required.startsWith(`${prefix}.`))
+    );
+  });
+}
+
 export type AccountType = "customer" | "manager" | "service";
 
 /**
@@ -1835,6 +1855,12 @@ export interface AuthUser {
   is_active: boolean;
   locked_at: string | null;
   failed_login_attempts: number;
+  /**
+   * False for an account with no password — service accounts, which
+   * authenticate with API keys only. Older auth builds omit the field, so it
+   * falls back to "anything but a service account".
+   */
+  has_password: boolean;
 }
 
 function mapAuthUser(raw: Record<string, unknown>): AuthUser {
@@ -1853,6 +1879,10 @@ function mapAuthUser(raw: Record<string, unknown>): AuthUser {
       typeof raw.failed_login_attempts === "number"
         ? raw.failed_login_attempts
         : 0,
+    has_password:
+      typeof raw.has_password === "boolean"
+        ? raw.has_password
+        : raw.account_type !== "service",
   };
 }
 
@@ -1884,14 +1914,25 @@ export async function getUserById(userId: string): Promise<AuthUser | null> {
   return users.find((user) => user.user_id === userId) ?? null;
 }
 
+/**
+ * Create an account. Service accounts have no password — they authenticate
+ * with API keys minted afterwards — so `password` is sent only for customers
+ * and managers.
+ */
 export async function registerUser(
   email: string,
-  password: string
+  accountType: AccountType,
+  password?: string
 ): Promise<{ user_id: string }> {
+  const body: Record<string, string> = {
+    email,
+    account_type: toApiAccountType(accountType),
+  };
+  if (accountType !== "service" && password) body.password = password;
   const res = await authedFetch(authPath("/api/v1/auth/register"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(await readError(res, "Failed to register user"));
   return res.json() as Promise<{ user_id: string }>;
@@ -1936,6 +1977,99 @@ export async function setUserPassword(
     }
   );
   if (!res.ok) throw new Error(await readError(res, "Failed to update password"));
+}
+
+/**
+ * A service account's API key as the management API lists it. The plaintext
+ * (`api_key`) exists only on the create response and is never stored.
+ */
+export interface ServiceApiKey {
+  id: string;
+  user_id: string;
+  name: string;
+  /** First 12 chars (`dk_live_A1b2`) — for recognising a key, not using it. */
+  prefix: string;
+  /** Scope; empty means the key inherits the account's permissions. */
+  permissions: string[];
+  /** `env` keys are seeded from auth's env and can only be rotated there. */
+  source: "api" | "env";
+  created_at: string;
+  created_by: string;
+  expires_at: string | null;
+  last_used_at: string | null;
+  revoked_at: string | null;
+}
+
+export interface CreateApiKeyRequest {
+  name: string;
+  /** Omit or `[]` to inherit the account's permissions. */
+  permissions?: string[];
+  /** Omit for a key that never expires. */
+  expires_in_days?: number;
+}
+
+export interface CreatedApiKey extends ServiceApiKey {
+  /** Plaintext key, returned this once. */
+  api_key: string;
+}
+
+function optString(value: unknown): string | null {
+  return typeof value === "string" && value ? value : null;
+}
+
+function mapApiKey(raw: Record<string, unknown>): ServiceApiKey {
+  return {
+    id: typeof raw.id === "string" ? raw.id : "",
+    user_id: typeof raw.user_id === "string" ? raw.user_id : "",
+    name: typeof raw.name === "string" ? raw.name : "",
+    prefix: typeof raw.prefix === "string" ? raw.prefix : "",
+    permissions: Array.isArray(raw.permissions)
+      ? raw.permissions.filter((p): p is string => typeof p === "string")
+      : [],
+    source: raw.source === "env" ? "env" : "api",
+    created_at: typeof raw.created_at === "string" ? raw.created_at : "",
+    created_by: typeof raw.created_by === "string" ? raw.created_by : "",
+    expires_at: optString(raw.expires_at),
+    last_used_at: optString(raw.last_used_at),
+    revoked_at: optString(raw.revoked_at),
+  };
+}
+
+export async function listApiKeys(userId: string): Promise<ServiceApiKey[]> {
+  const res = await authedFetch(
+    authPath(`/api/v1/auth/users/${encodeURIComponent(userId)}/api-keys`)
+  );
+  if (!res.ok) throw new Error(await readError(res, "Failed to load API keys"));
+  const data = (await res.json()) as { api_keys?: Record<string, unknown>[] };
+  return (data.api_keys ?? []).map(mapApiKey);
+}
+
+export async function createApiKey(
+  userId: string,
+  req: CreateApiKeyRequest
+): Promise<CreatedApiKey> {
+  const res = await authedFetch(
+    authPath(`/api/v1/auth/users/${encodeURIComponent(userId)}/api-keys`),
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req),
+    }
+  );
+  if (!res.ok) throw new Error(await readError(res, "Failed to create API key"));
+  const raw = (await res.json()) as Record<string, unknown>;
+  return {
+    ...mapApiKey(raw),
+    api_key: typeof raw.api_key === "string" ? raw.api_key : "",
+  };
+}
+
+export async function revokeApiKey(keyId: string): Promise<void> {
+  const res = await authedFetch(
+    authPath(`/api/v1/auth/api-keys/${encodeURIComponent(keyId)}`),
+    { method: "DELETE" }
+  );
+  if (!res.ok) throw new Error(await readError(res, "Failed to revoke API key"));
 }
 
 export async function setUserStatus(
