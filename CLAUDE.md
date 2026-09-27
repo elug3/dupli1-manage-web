@@ -160,12 +160,12 @@ Admin surfaces: products (parent + variants with inline **price**, **officialPri
 
 ## Production access
 
-Admin is published at **https://manage.dupli1.com** (ALB). The internal VPN host was retired for day-to-day admin access.
+Admin is published at **https://manage.dupli1.com**, served from VENUS (self-hosted, behind a Cloudflare Tunnel) since the move off AWS ECS on 2026-09-27.
 
-**This repo deploys itself.** `.github/workflows/aws.yml` builds the image, renders `.aws/task-definition.json` with it and deploys that to the `dupli1-manage-web` service — so **environment variables, CPU and memory for production are changed in that JSON**, not in the backend's Terraform. The backend also declares a task definition for this service (`dupli1 infra/terraform/ecs_frontends.tf` → `aws_ecs_task_definition.manage_web`, a different family and launch type), but `aws_ecs_service.manage_web` carries `ignore_changes = [task_definition]` so Terraform never deploys it — its environment, CPU and memory are inert. `REDIS_URL` is set only here, so there is one place to look for it.
+**This repo deploys itself.** `.github/workflows/images.yml` publishes `ghcr.io/elug3/dupli1-manage-web:sha-<short>` on every push to `master`, then its deploy job runs `deploy.sh manage-web sha-<short>` from the backend repo's deploy checkout on the VENUS self-hosted runner. That restarts only the `manage-web` container, checks `/` and `/login`, and rolls back if they fail. **Environment variables for production live in the backend repo's `deploy/venus/docker-compose.yml`** (`manage-web` service), not here. Runbook: `../dupli1/docs/deployment-venus.md` → "Deploying new code". `.aws/task-definition.json` is left from ECS and no longer used.
 
-- API calls use `DUPLI1_GATEWAY_URL` (internal nginx / proxy hostname in ECS).
-- The customer storefront (`dupli1-web`) remains public via the same ALB (`dupli1.com`).
+- API calls use `DUPLI1_GATEWAY_URL` (`http://proxy.dupli1.local`, the VENUS gateway).
+- The customer storefront (`dupli1-web`) is served from the same machine (`dupli1.com`).
 
 ## Sibling Projects
 
