@@ -1649,6 +1649,24 @@ export async function getInventoryBySkuId(skuId: string): Promise<StockItem> {
   return res.json() as Promise<StockItem>;
 }
 
+/**
+ * A variant's stock row, by `skuId` when it has one (falling back to the
+ * human SKU), or `null` when inventory has no row or cannot be reached.
+ */
+export async function getVariantStock(
+  variant: Pick<ProductVariant, "sku" | "skuId">
+): Promise<StockItem | null> {
+  try {
+    return variant.skuId
+      ? await getInventoryBySkuId(variant.skuId).catch(() =>
+          getInventory(variant.sku)
+        )
+      : await getInventory(variant.sku);
+  } catch {
+    return null;
+  }
+}
+
 export async function setInventory(
   sku: string,
   quantity: number
