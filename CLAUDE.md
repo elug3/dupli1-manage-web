@@ -100,7 +100,7 @@ Orders from checkout complete include an immutable fulfillment snapshot (`recipi
 
 #### Live order feed
 
-`OrderFeedProvider` (`app/lib/order-events.tsx`) wraps the routed pages in `admin.tsx`, so **one** stream of `GET /order/api/v1/orders/events` serves the whole console: it survives navigation, and it raises the `order.created` / `order.paid` notification wherever the operator happens to be — not just on `/orders`. It mounts past the layout's `if (!user) return null`, so no stream opens before sign-in.
+`OrderFeedProvider` (`app/lib/order-events.tsx`) wraps the header and the routed pages in `admin.tsx`, so **one** stream of `GET /order/api/v1/orders/events` serves the whole console: it survives navigation, and it raises the `order.created` / `order.paid` notification wherever the operator happens to be — not just on `/orders`. It mounts past the layout's `if (!user) return null`, so no stream opens before sign-in.
 
 Pages join that feed with `useOrderFeed(listener, enabled)` and only keep their own view in step — `/orders` merges rows and renders the Live / Not live pill, the dashboard refreshes its tiles. They gate on `enabled` until their first list load lands, so a streamed snapshot cannot render as the only row there is. Notifying is the provider's job alone; a page must not toast, or the operator gets two.
 
