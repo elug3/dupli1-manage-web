@@ -4,6 +4,7 @@ import { AuthUnavailableError, type User, getMe, logout } from "~/lib/auth";
 import { useI18n } from "~/lib/i18n";
 import { LanguageSwitcher } from "~/lib/i18n/LanguageSwitcher";
 import { OrderFeedProvider } from "~/lib/order-events";
+import { OrderAttentionBell } from "~/components/OrderAttentionBell";
 import { ThemeSwitcher } from "~/lib/ThemeSwitcher";
 import { APP_BUILD_NUMBER, APP_VERSION } from "~/lib/version";
 
@@ -217,7 +218,8 @@ export default function AdminLayout() {
         </div>
       </aside>
 
-      {/* Main content */}
+      {/* Main content. The order feed wraps the header too, for its badge. */}
+      <OrderFeedProvider>
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {/* Top header */}
         <header className="flex h-14 shrink-0 items-center gap-2 border-b border-edge bg-surface px-4 pt-[env(safe-area-inset-top)] sm:h-16 sm:gap-3 sm:px-5 lg:pt-0">
@@ -239,17 +241,17 @@ export default function AdminLayout() {
               {t("nav.backendOnline")}
             </span>
           </div>
+          <OrderAttentionBell />
         </header>
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]">
           <div className="mx-auto max-w-7xl p-4 sm:p-6">
-            <OrderFeedProvider>
-              <Outlet />
-            </OrderFeedProvider>
+            <Outlet />
           </div>
         </main>
       </div>
+      </OrderFeedProvider>
     </div>
   );
 }

@@ -27,8 +27,11 @@ export function meta() {
 const STATUS_BADGE_CLASS: Record<OrderStatus, string> = {
   pending: "bg-amber-100 text-amber-800",
   paid: "bg-blue-100 text-blue-800",
+  confirmed: "bg-indigo-100 text-indigo-800",
   in_transit: "bg-violet-100 text-violet-800",
+  delivered: "bg-teal-100 text-teal-800",
   fulfilled: "bg-emerald-100 text-emerald-800",
+  disputed: "bg-red-100 text-red-700",
   canceled: "bg-slate-100 text-slate-600",
 };
 
@@ -37,8 +40,11 @@ function OrderStatusBadge({ status }: { status: OrderStatus }) {
   const labels: Record<OrderStatus, string> = {
     pending: t("common.orderStatusPending"),
     paid: t("common.orderStatusPaid"),
+    confirmed: t("common.orderStatusConfirmed"),
     in_transit: t("common.orderStatusInTransit"),
+    delivered: t("common.orderStatusDelivered"),
     fulfilled: t("common.orderStatusFulfilled"),
+    disputed: t("common.orderStatusDisputed"),
     canceled: t("common.orderStatusCanceled"),
   };
   const cls = STATUS_BADGE_CLASS[status] ?? "bg-slate-100 text-slate-600";

@@ -11,6 +11,7 @@ import {
 import { ORDER_PREFIX } from "~/lib/gateway";
 import { useI18n } from "~/lib/i18n";
 import { useNotify } from "~/lib/notifications";
+import { subscribeOrderUpdates } from "~/lib/order-updates";
 import type { Order } from "~/lib/api";
 
 /**
@@ -209,6 +210,19 @@ export function OrderFeedProvider({ children }: { children: ReactNode }) {
     onOrder: handleOrder,
     onResync: handleResync,
   });
+
+  // An order this console just changed reaches listeners at once, whether or
+  // not the stream is up. Merges are idempotent, so the same snapshot arriving
+  // again over the stream is harmless.
+  useEffect(
+    () =>
+      subscribeOrderUpdates((order) => {
+        for (const listener of listeners.current) {
+          listener.onOrder?.(order, "order.status_updated");
+        }
+      }),
+    []
+  );
 
   const subscribe = useCallback((listener: OrderFeedListener) => {
     listeners.current.add(listener);
