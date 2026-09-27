@@ -66,12 +66,6 @@ async function login() {
   return refreshed.token;
 }
 
-function normalize(code) {
-  return String(code || "")
-    .trim()
-    .toUpperCase();
-}
-
 /** Minimal valid 1×1 PNG */
 function tinyPng() {
   return Uint8Array.from(

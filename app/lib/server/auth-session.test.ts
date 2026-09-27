@@ -121,7 +121,7 @@ afterEach(() => {
 
 describe("refresh token rotation", () => {
   it("keeps the session alive across repeated refreshes", async () => {
-    const auth = stubAuth();
+    stubAuth();
     const cookie = await signIn();
 
     // Login itself spends the token auth issued, to prime the access-token

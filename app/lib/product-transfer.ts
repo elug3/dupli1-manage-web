@@ -483,7 +483,7 @@ async function collectMasterGaps(
   const colorSet = new Set(colors.map((c) => normalizeCode(c.code)));
   const sizes = await listSizes();
   const sizeSet = new Set(sizes.map((s) => normalizeCode(s.code)));
-  let editionSet: Set<string> | null = null;
+  let editionSet: Set<string> | null;
   try {
     const editions = await listEditions();
     editionSet = new Set(editions.map((e) => normalizeCode(e.code)));

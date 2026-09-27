@@ -57,7 +57,7 @@ async function notificationFetch(
   let accessToken = await requireAccessToken(request);
   headers.set("Authorization", `Bearer ${accessToken}`);
 
-  let res = await fetch(url, { ...init, headers });
+  const res = await fetch(url, { ...init, headers });
   if (res.status !== 401) return res;
 
   // Token may have been revoked mid-request — force refresh once, same as BFF.

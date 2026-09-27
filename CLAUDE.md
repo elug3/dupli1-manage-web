@@ -24,6 +24,7 @@ npm run dev          # dev server at http://localhost:5173
 npm run build        # production build
 npm run start        # serve production build
 npm run typecheck    # react-router typegen + tsc
+npm run lint         # ESLint (flat config in eslint.config.js); CI fails on errors, not warnings
 ```
 
 ## Backend (API Gateway)
