@@ -16,7 +16,9 @@ const PORT = Number(process.env.MOCK_GATEWAY_PORT ?? 8080);
 const VALID_EMAIL = process.env.MOCK_ADMIN_EMAIL ?? "admin@dupli1.com";
 const VALID_PASSWORD = process.env.MOCK_ADMIN_PASSWORD ?? "Dupli1Admin2026!";
 const REFRESH_TOKEN = "mock-refresh-token";
-const ACCESS_TOKEN = "mock-access-token";
+// Override with a real signed JWT to put a real service behind the same BFF
+// session (e.g. order's event stream, which verifies the token).
+const ACCESS_TOKEN = process.env.MOCK_ACCESS_TOKEN || "mock-access-token";
 
 const SERVICE_PREFIXES = ["/auth", "/product", "/inventory", "/order", "/notification"];
 

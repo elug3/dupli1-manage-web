@@ -90,7 +90,7 @@ SKU identity: each variant has immutable `skuId` (ULID) and human `sku` composed
 - `POST /order/api/v1/orders/{id}/deliver` — `in_transit` → `delivered` (`order.ship`)
 - `POST /order/api/v1/orders/{id}/cancel/approve` and `…/reject` — customer cancel request (`order.status.update`)
 - `PUT /order/api/v1/orders/{id}/status` — `canceled` or `fulfilled` (`order.status.update`). Cancel refunds the captured payment first (including `in_transit` / `delivered`); a PG rejection leaves the order unchanged.
-- `GET /order/api/v1/orders/events` — **live order feed (SSE)**, `order.read.all` (backend route pending — mock gateway for tests)
+- `GET /order/api/v1/orders/events` — **live order feed (SSE)**, `order.read.all`. Served by order since 2026-09-27 (`order/pkg/livefeed`); the stream ends when its access token expires and `EventSource` reconnects with `Last-Event-ID` through the BFF's fresh token
 
 `OrderStatus` in `api.ts` carries all eight statuses; `confirmed`, `delivered` and `disputed` were missing, so their badges fell back to the raw code in grey and `/orders` had no tab for them.
 
@@ -106,9 +106,9 @@ Pages join that feed with `useOrderFeed(listener, enabled)` and only keep their 
 
 Each `event: order` frame carries the full order snapshot, so no follow-up fetch is needed; an `event: reset` frame means reload via `getOrders()`. SSE rather than a WebSocket because the BFF proxies with `fetch` (no HTTP upgrade) and the browser `WebSocket` API cannot send `Authorization` — see backend [docs/order-live-events.md](../dupli1/docs/order-live-events.md).
 
-**Header bell** (`OrderAttentionBell`, `app/lib/order-attention.ts`): the badge counts orders waiting on an operator — `paid` (confirm before the 2h auto-confirm), an open cancel request (approve/reject before the 2h auto-approve), `disputed` — red when any is overdue, and the panel lists them by deadline. The count is derived from orders, not unread pings, so it is right after a reload. It stays current via the stream when live; via `order-updates.ts`, an in-tab channel every order mutation helper in `api.ts` publishes to (the provider relays it like a streamed snapshot, so the console's own confirm/ship/cancel lands at once); and, while the stream is not live, a `listAllOrders()` re-read every 30s when the tab is visible. Hidden without `order.read.all`. **The backend stream is not built yet** (`dupli1/docs/order-live-events.md`), so production runs on the 30s fallback today.
+**Header bell** (`OrderAttentionBell`, `app/lib/order-attention.ts`): the badge counts orders waiting on an operator — `paid` (confirm before the 2h auto-confirm), an open cancel request (approve/reject before the 2h auto-approve), `disputed` — red when any is overdue, and the panel lists them by deadline. The count is derived from orders, not unread pings, so it is right after a reload. It stays current via the stream when live; via `order-updates.ts`, an in-tab channel every order mutation helper in `api.ts` publishes to (the provider relays it like a streamed snapshot, so the console's own confirm/ship/cancel lands at once); and, while the stream is not live, a `listAllOrders()` re-read every 30s when the tab is visible. Hidden without `order.read.all`.
 
-`npm run test:orders:browser` drives all of this in a real browser against `npm run mock:gateway`.
+`npm run test:orders:browser` drives all of this in a real browser against `npm run mock:gateway`. To put the real order service behind the same session, start the mock with `MOCK_ACCESS_TOKEN=<a JWT order accepts>` and route `/api/v1/orders` to order.
 
 ### Support (`/api/v1/support`)
 
