@@ -136,7 +136,13 @@ export default function UserDetail() {
           {activeTab === "state" && (
             <StateTab user={user} onUpdated={setUser} />
           )}
-          {activeTab === "credentials" && <CredentialsTab userId={user.user_id} />}
+          {activeTab === "credentials" &&
+            (user.account_type === "service" ? (
+              // Service accounts have no password: auth refuses to set one.
+              <p className="text-sm text-muted">{t("userDetail.serviceAccountNoPassword")}</p>
+            ) : (
+              <CredentialsTab userId={user.user_id} />
+            ))}
           {activeTab === "permissions" && (
             <PermissionsTab user={user} onUpdated={setUser} />
           )}
@@ -397,6 +403,9 @@ function PermissionsTab({
             </option>
           ))}
         </select>
+        {accountType === "service" && user.account_type !== "service" && (
+          <p className="text-xs text-danger-fg">{t("userDetail.becomesServiceWarning")}</p>
+        )}
       </div>
 
       <div className="grid gap-2 sm:grid-cols-2">
