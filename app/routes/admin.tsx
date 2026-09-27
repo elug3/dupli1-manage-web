@@ -17,6 +17,11 @@ export default function AdminLayout() {
   // session is probably fine, so this must not become a trip to /login.
   const [unreachable, setUnreachable] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // The user /login hands over in navigation state, read once at mount: the
+  // auth check below runs once per layout mount, not per navigation.
+  const [pendingUser] = useState(
+    () => (location.state as { user?: User } | null)?.user
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -24,7 +29,6 @@ export default function AdminLayout() {
     async function checkAuth() {
       setChecking(true);
       setUnreachable(false);
-      const pendingUser = (location.state as { user?: User } | null)?.user;
 
       try {
         const me = await getMe();
@@ -57,8 +61,10 @@ export default function AdminLayout() {
     return () => {
       cancelled = true;
     };
-    // Once per layout mount: re-running per navigation flashed the whole sidebar behind a spinner.
-  }, []);
+    // Once per layout mount: re-running per navigation flashed the whole
+    // sidebar behind a spinner. Neither dependency changes after mount —
+    // pendingUser is fixed and navigate is stable under the data router.
+  }, [pendingUser, navigate]);
 
   useEffect(() => {
     setSidebarOpen(false);
