@@ -20,6 +20,47 @@ const ACCESS_TOKEN = "mock-access-token";
 
 const SERVICE_PREFIXES = ["/auth", "/product", "/inventory", "/order", "/notification"];
 
+const users = new Map();
+const apiKeys = new Map();
+
+function makeUser(email, accountType, permissions, extra = {}) {
+  const user = {
+    user_id: `usr_${users.size + 1}`,
+    email,
+    account_type: accountType,
+    permissions,
+    is_active: true,
+    locked_at: null,
+    failed_login_attempts: 0,
+    has_password: accountType !== "service",
+    ...extra,
+  };
+  users.set(user.user_id, user);
+  return user;
+}
+
+makeUser(VALID_EMAIL, "manager", ["*"], { user_id: "usr_mock_admin" });
+{
+  const order = makeUser("order@internal.dupli1", "service", [
+    "order.ship",
+    "promotion.redeem",
+    "payment.cancel",
+  ]);
+  apiKeys.set("key_env_order", {
+    id: "key_env_order",
+    user_id: order.user_id,
+    name: "bootstrap",
+    prefix: "dk_test_Ab3x",
+    permissions: [],
+    source: "env",
+    created_at: "2026-09-27T00:00:00Z",
+    created_by: "",
+    expires_at: null,
+    last_used_at: "2026-09-27T12:00:00Z",
+    revoked_at: null,
+  });
+}
+
 /** Heartbeat cadence, matching the order service. */
 const HEARTBEAT_MS = 20_000;
 
@@ -241,6 +282,77 @@ const server = http.createServer(async (req, res) => {
         "product.read",
       ],
     });
+  }
+
+  // Users and service-account API keys. Service accounts are created without
+  // a password and authenticate with keys, as auth enforces.
+  if (method === "GET" && path === "/api/v1/auth/users") {
+    return send(res, 200, { users: [...users.values()] });
+  }
+  if (method === "POST" && path === "/api/v1/auth/register") {
+    const body = await readBody(req).catch(() => ({}));
+    const accountType = body.account_type || "customer";
+    if (accountType === "service" && body.password) {
+      return send(res, 422, { error: "register: service accounts do not use passwords; use api keys" });
+    }
+    if (accountType !== "service" && (body.password ?? "").length < 8) {
+      return send(res, 400, { error: "register: parse request: password is required (at least 8 characters)" });
+    }
+    const user = makeUser(body.email, accountType, []);
+    return send(res, 201, { user_id: user.user_id });
+  }
+  let m = path.match(/^\/api\/v1\/auth\/users\/([^/]+)\/permissions$/);
+  if (m && method === "PATCH") {
+    const user = users.get(decodeURIComponent(m[1]));
+    if (!user) return send(res, 404, { error: "user not found" });
+    const body = await readBody(req).catch(() => ({}));
+    if (body.account_type === "service") user.has_password = false;
+    if (body.account_type) user.account_type = body.account_type;
+    user.permissions = body.permissions ?? [];
+    return send(res, 200, user);
+  }
+  m = path.match(/^\/api\/v1\/auth\/users\/([^/]+)\/api-keys$/);
+  if (m) {
+    const user = users.get(decodeURIComponent(m[1]));
+    if (!user) return send(res, 404, { error: "user not found" });
+    if (user.account_type !== "service") {
+      return send(res, 400, { error: "invalid_account_type" });
+    }
+    if (method === "GET") {
+      return send(res, 200, {
+        api_keys: [...apiKeys.values()].filter((k) => k.user_id === user.user_id),
+      });
+    }
+    if (method === "POST") {
+      const body = await readBody(req).catch(() => ({}));
+      if (!body.name) return send(res, 400, { error: "name is required" });
+      const plaintext = `dk_test_${Math.random().toString(36).slice(2).padEnd(43, "x")}`;
+      const key = {
+        id: `key_${apiKeys.size + 1}`,
+        user_id: user.user_id,
+        name: body.name,
+        prefix: plaintext.slice(0, 12),
+        permissions: body.permissions ?? [],
+        source: "api",
+        created_at: new Date().toISOString(),
+        created_by: "usr_mock_admin",
+        expires_at: body.expires_in_days
+          ? new Date(Date.now() + body.expires_in_days * 86_400_000).toISOString()
+          : null,
+        last_used_at: null,
+        revoked_at: null,
+      };
+      apiKeys.set(key.id, key);
+      return send(res, 201, { ...key, api_key: plaintext });
+    }
+  }
+  m = path.match(/^\/api\/v1\/auth\/api-keys\/([^/]+)$/);
+  if (m && method === "DELETE") {
+    const key = apiKeys.get(decodeURIComponent(m[1]));
+    if (!key) return send(res, 404, { error: "api key not found" });
+    if (key.source === "env") return send(res, 409, { error: "env_managed_key" });
+    key.revoked_at ??= new Date().toISOString();
+    return res.writeHead(204).end();
   }
 
   // Orders.

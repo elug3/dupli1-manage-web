@@ -16,6 +16,13 @@ export function meta() {
 
 type UserTab = "customers" | "managers" | "services";
 
+/** New user starts on the account type of the tab it was opened from. */
+const NEW_USER_TYPE: Record<UserTab, "customer" | "manager" | "service"> = {
+  customers: "customer",
+  managers: "manager",
+  services: "service",
+};
+
 function userMatchesTab(user: AuthUser, tab: UserTab): boolean {
   switch (tab) {
     case "customers":
@@ -111,7 +118,7 @@ export default function Users() {
           <p className="mt-0.5 text-sm text-muted">{t("users.subtitle")}</p>
         </div>
         <Link
-          to="/users/new"
+          to={`/users/new?type=${NEW_USER_TYPE[activeTab]}`}
           className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-accent-hover active:scale-[0.98] sm:w-auto"
         >
           <PlusIcon />

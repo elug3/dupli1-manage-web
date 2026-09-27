@@ -53,7 +53,8 @@ Money fields on the wire are **`*_won`** (`total_won`, `subtotal_won`, `discount
 
 ### Auth (`/auth`)
 
-- `POST /auth/api/v1/auth/register` — create account (Bearer; `user.create`)
+- `POST /auth/api/v1/auth/register` — create account (Bearer; `user.create`). `account_type: "service"` is sent **without** a password — service accounts have none (auth answers `422` if one is sent)
+- `GET|POST /auth/api/v1/auth/users/{id}/api-keys`, `DELETE /auth/api/v1/auth/api-keys/{keyId}` — a service account's API keys (`user.apikey.read|manage`; owner-only in practice, since only the owner manages service accounts). The plaintext is in the create response only; `source: "env"` keys are seeded from auth's env and revoke with `409`. Design: backend [docs/auth-service-api-keys.md](../dupli1/docs/auth-service-api-keys.md)
 - `POST /auth/api/v1/auth/login` — returns `{ refresh_token }`
 - `POST /auth/api/v1/auth/refresh` — `{ refresh_token }` → `{ token }` (access token)
 - `POST /auth/api/v1/auth/logout` — `204`
@@ -156,7 +157,7 @@ app/
 
 Route modules use React Router 7 conventions: `loader` for data fetching, `action` for mutations, `default` export for the component.
 
-Admin surfaces: products (parent + variants with inline **price**, **officialPrice**, **attributes** key-value editor, and catalog master fields on PDP), **SKU detail** (`/products/:id/SKU/:skuId`), **catalog masters** (`/catalog`), orders, **promotional codes** (`/promotions`), users (**Customers / Managers / Services** tabs by `account_type`), **Telegram** (`/telegram` — ops alert subscriptions), **Support** (`/support` — customer consultation inbox), settings (local UI; manager settings API still sketch on backend).
+Admin surfaces: products (parent + variants with inline **price**, **officialPrice**, **attributes** key-value editor, and catalog master fields on PDP), **SKU detail** (`/products/:id/SKU/:skuId`), **catalog masters** (`/catalog`), orders, **promotional codes** (`/promotions`), users (**Customers / Managers / Services** tabs by `account_type`; service accounts have no password — `/users/new` omits it for them and their detail page's credentials tab is an **API keys** panel that shows a new key's plaintext once and never stores it), **Telegram** (`/telegram` — ops alert subscriptions), **Support** (`/support` — customer consultation inbox), settings (local UI; manager settings API still sketch on backend).
 
 ## Production access
 

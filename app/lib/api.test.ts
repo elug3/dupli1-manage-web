@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { type Order, orderHasFulfillment, productImageSrc } from "./api";
+import {
+  type Order,
+  orderHasFulfillment,
+  permissionGrants,
+  productImageSrc,
+} from "./api";
 
 function order(partial: Partial<Order> & Pick<Order, "id" | "status">): Order {
   return {
@@ -86,5 +91,20 @@ describe("orderHasFulfillment", () => {
         })
       )
     ).toBe(false);
+  });
+});
+
+describe("permissionGrants", () => {
+  // Mirrors shared/pkg/permissions Has, which decides what an API key may be
+  // scoped to — the key panel offers only what the account holds.
+  it("matches exact, resource-wildcard, admin.* and owner grants", () => {
+    expect(permissionGrants(["order.ship"], "order.ship")).toBe(true);
+    expect(permissionGrants(["order.ship"], "order.read.all")).toBe(false);
+    expect(permissionGrants(["product.*"], "product.variant.create")).toBe(true);
+    expect(permissionGrants(["product.*"], "promotion.read")).toBe(false);
+    expect(permissionGrants(["admin.*"], "user.apikey.manage")).toBe(true);
+    expect(permissionGrants(["admin.*"], "order.ship")).toBe(false);
+    expect(permissionGrants(["*"], "payment.cancel")).toBe(true);
+    expect(permissionGrants([], "order.ship")).toBe(false);
   });
 });
