@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import {
   type CatalogCodeName,
   type Product,
@@ -10,7 +10,6 @@ import {
   attributeRowsFromMap,
   attributesFromRows,
   createVariant,
-  deleteVariant,
   deleteVariantImage,
   LastImageDeleteError,
   dimensionsEmpty,
@@ -38,6 +37,11 @@ import {
 import { useI18n } from "~/lib/i18n";
 import { useNotify } from "~/lib/notifications";
 import { ProductExportButton } from "~/components/ProductExportButton";
+import { DangerZone } from "~/components/DeleteConfirmDialog";
+import {
+  ProductDeleteDialog,
+  SkuDeleteDialog,
+} from "~/components/ProductDeleteDialogs";
 
 const MAX_IMAGE_BYTES = 50 * 1024 * 1024;
 const LOW_STOCK_THRESHOLD = 5;
@@ -57,7 +61,9 @@ interface VariantRow extends ProductVariant {
 
 export default function ProductDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { t } = useI18n();
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [product, setProduct] = useState<Product | null>(null);
   const [variantRows, setVariantRows] = useState<VariantRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -181,7 +187,22 @@ export default function ProductDetail() {
             onUploaded={setProduct}
           />
         )}
+
+        <div className="mt-8">
+          <DangerZone
+            hint={t("productDelete.zoneHint")}
+            label={t("productDelete.button")}
+            onClick={() => setDeleteOpen(true)}
+          />
+        </div>
       </div>
+
+      <ProductDeleteDialog
+        product={product}
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        onDeleted={() => navigate("/products")}
+      />
     </div>
   );
 }
@@ -777,6 +798,8 @@ function VariantsSection({
   const { t } = useI18n();
   const [editingSku, setEditingSku] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [deletingSku, setDeletingSku] = useState<string | null>(null);
+  const deletingRow = rows.find((r) => r.sku === deletingSku) ?? null;
 
   async function handleSetStock(sku: string, quantity: number) {
     try {
@@ -946,30 +969,7 @@ function VariantsSection({
                             ? t("productDetail.cannotDeleteOnlyVariant")
                             : undefined
                         }
-                        onClick={async () => {
-                          if (
-                            !window.confirm(
-                              t("productDetail.deleteVariantConfirm", {
-                                sku: row.sku,
-                              })
-                            )
-                          ) {
-                            return;
-                          }
-                          try {
-                            await deleteVariant(product.id, row.sku);
-                            notify(t("productDetail.deletedSku", { sku: row.sku }));
-                            setEditingSku(null);
-                            await onReload();
-                          } catch (err) {
-                            notify(
-                              err instanceof Error
-                                ? err.message
-                                : t("productDetail.failedToDeleteVariant"),
-                              "error"
-                            );
-                          }
-                        }}
+                        onClick={() => setDeletingSku(row.sku)}
                         className="text-xs font-semibold text-danger-fg hover:underline disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         {t("common.delete")}
@@ -1020,6 +1020,20 @@ function VariantsSection({
           </button>
         )}
       </div>
+
+      {deletingRow && (
+        <SkuDeleteDialog
+          product={product}
+          variant={deletingRow}
+          open
+          onClose={() => setDeletingSku(null)}
+          onDeleted={async () => {
+            setDeletingSku(null);
+            setEditingSku(null);
+            await onReload();
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -24,6 +24,7 @@ npm run dev          # dev server at http://localhost:5173
 npm run build        # production build
 npm run start        # serve production build
 npm run typecheck    # react-router typegen + tsc
+npm run lint         # ESLint (flat config in eslint.config.js); CI fails on errors, not warnings
 ```
 
 ## Backend (API Gateway)
@@ -67,9 +68,11 @@ Money fields on the wire are **`*_won`** (`total_won`, `subtotal_won`, `discount
 - `POST /product/api/v1/products` — create parent (ULID `id`; requires existing `brandCode` + `styleCode`)
 - `GET /product/api/v1/products/{id}` — parent PDP with `variants[]`, `price`, `officialPrice`, `attributes`, merchandising fields (`brandCode`, `styleCode`, `subCategory`, `style`, `target`, `material`, …)
 - `PUT /product/api/v1/products/{id}` — update parent (including price, officialPrice, attributes, catalog master codes)
-- `DELETE /product/api/v1/products/{id}` — delete parent
+- `DELETE /product/api/v1/products/{id}` — delete parent, every SKU and their stock rows; `409` while any SKU has stock reserved for an open order
 - `POST /product/api/v1/products/{id}/variants` — create variant (requires existing `colorCode` + `sizeCode`)
-- `PUT|DELETE /product/api/v1/products/{id}/variants/{sku}`
+- `PUT|DELETE /product/api/v1/products/{id}/variants/{sku}` — delete needs the SKU's stock row empty (`409` with stock on hand or reserved)
+
+Both deletes go through `DeleteConfirmDialog` (`app/components/`): a caution, the concrete impact with live stock, and a "Please type `<id>` to confirm." field (the product `id`, or the SKU code). Delete stays disabled while the backend would refuse, and the only SKU of a product cannot be deleted from the console.
 - `POST /product/api/v1/products/{id}/images` — upload to default variant
 - `POST /product/api/v1/products/{id}/variants/{sku}/images`
 - `GET|POST|PATCH|DELETE /product/api/v1/catalog/brands|colors|sizes|editions` (+ styles under brands) — master data (`product.master.read|write`)

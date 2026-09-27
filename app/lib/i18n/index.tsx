@@ -153,7 +153,7 @@ interface I18nContextValue {
 
 const I18nContext = createContext<I18nContextValue | null>(null);
 
-let localeListeners = new Set<() => void>();
+const localeListeners = new Set<() => void>();
 let clientLocale: Locale | null = null;
 
 function subscribeLocale(listener: () => void) {

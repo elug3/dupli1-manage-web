@@ -61,6 +61,42 @@ makeUser(VALID_EMAIL, "manager", ["*"], { user_id: "usr_mock_admin" });
   });
 }
 
+const products = new Map();
+const stock = new Map();
+
+function seedProduct(id, name, skus) {
+  products.set(id, {
+    id,
+    name,
+    category: "bags",
+    status: "active",
+    price: 250000,
+    brandCode: "DUP",
+    styleCode: "ECO01",
+    variants: skus.map(([sku, skuId, color]) => ({
+      sku,
+      skuId,
+      productId: id,
+      color,
+      colorCode: sku.split("_")[2],
+      sizeCode: "OS",
+      status: "active",
+      imageUrls: [],
+    })),
+  });
+}
+
+// A product whose black SKU is held by an open order and whose green SKU
+// still has stock on hand; the natural SKU is empty and deletable.
+seedProduct("prod_mock_eco", "Eco Bag", [
+  ["DUP_ECO01_BLK_OS", "sku_eco_blk", "Black"],
+  ["DUP_ECO01_GRN_OS", "sku_eco_grn", "Green"],
+  ["DUP_ECO01_NAT_OS", "sku_eco_nat", "Natural"],
+]);
+stock.set("sku_eco_blk", { sku: "DUP_ECO01_BLK_OS", quantity: 4, reserved: 1, updated_at: "2026-09-27T00:00:00Z" });
+stock.set("sku_eco_grn", { sku: "DUP_ECO01_GRN_OS", quantity: 3, reserved: 0, updated_at: "2026-09-27T00:00:00Z" });
+stock.set("sku_eco_nat", { sku: "DUP_ECO01_NAT_OS", quantity: 0, reserved: 0, updated_at: "2026-09-27T00:00:00Z" });
+
 /** Heartbeat cadence, matching the order service. */
 const HEARTBEAT_MS = 20_000;
 
@@ -238,6 +274,17 @@ const server = http.createServer(async (req, res) => {
       delivered: broadcast({ event: "reset", data: { reason: "gap" } }),
     });
   }
+  if (path === "/__control/stock" && method === "POST") {
+    // Set a SKU's stock row: { skuId, quantity, reserved }.
+    const body = await readBody(req).catch(() => ({}));
+    const item = stock.get(body.skuId);
+    if (!item) return send(res, 404, { error: "no stock row" });
+    Object.assign(item, {
+      quantity: body.quantity ?? item.quantity,
+      reserved: body.reserved ?? item.reserved,
+    });
+    return send(res, 200, item);
+  }
   if (path === "/__control/seed" && method === "POST") {
     seed();
     lastEventIdSeen = null;
@@ -353,6 +400,42 @@ const server = http.createServer(async (req, res) => {
     if (key.source === "env") return send(res, 409, { error: "env_managed_key" });
     key.revoked_at ??= new Date().toISOString();
     return res.writeHead(204).end();
+  }
+
+  // Products and stock, with product's delete rules: a SKU goes only with
+  // an empty stock row, and a product not while any SKU has stock reserved.
+  m = path.match(/^\/api\/v1\/products\/([^/]+)$/);
+  if (m && products.has(decodeURIComponent(m[1]))) {
+    const product = products.get(decodeURIComponent(m[1]));
+    if (method === "GET") return send(res, 200, product);
+    if (method === "DELETE") {
+      const held = product.variants.find((v) => stock.get(v.skuId)?.reserved > 0);
+      if (held) {
+        return send(res, 409, { error: `cannot delete: stock of ${held.sku} reserved for open orders` });
+      }
+      for (const v of product.variants) stock.delete(v.skuId);
+      products.delete(product.id);
+      return res.writeHead(204).end();
+    }
+  }
+  m = path.match(/^\/api\/v1\/products\/([^/]+)\/variants\/([^/]+)$/);
+  if (m && method === "DELETE") {
+    const product = products.get(decodeURIComponent(m[1]));
+    const sku = decodeURIComponent(m[2]);
+    const variant = product?.variants.find((v) => v.sku === sku);
+    if (!variant) return send(res, 404, { error: "variant not found" });
+    const item = stock.get(variant.skuId);
+    if (item && (item.quantity > 0 || item.reserved > 0)) {
+      return send(res, 409, { error: `cannot delete variant ${sku}: it still has stock on hand or reserved` });
+    }
+    stock.delete(variant.skuId);
+    product.variants = product.variants.filter((v) => v.sku !== sku);
+    return res.writeHead(204).end();
+  }
+  m = path.match(/^\/api\/v1\/inventory\/by-sku-id\/([^/]+)$/);
+  if (m && method === "GET") {
+    const item = stock.get(decodeURIComponent(m[1]));
+    return item ? send(res, 200, item) : send(res, 404, { error: "not found" });
   }
 
   // Orders.

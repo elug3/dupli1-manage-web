@@ -4,7 +4,6 @@ import {
   type Product,
   type ProductVariant,
   LastImageDeleteError,
-  deleteVariant,
   deleteVariantImage,
   dimensionsEmpty,
   findVariant,
@@ -21,6 +20,8 @@ import {
 } from "~/lib/api";
 import { useI18n } from "~/lib/i18n";
 import { useNotify } from "~/lib/notifications";
+import { DangerZone } from "~/components/DeleteConfirmDialog";
+import { SkuDeleteDialog } from "~/components/ProductDeleteDialogs";
 
 export function meta() {
   return [{ title: "SKU | Dupli1 Admin" }];
@@ -41,6 +42,7 @@ export default function SkuDetail() {
   const [reserved, setReserved] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const load = useCallback(async () => {
     if (!id || !skuId) return;
@@ -205,36 +207,20 @@ export default function SkuDetail() {
           }}
         />
 
-        <div className="border-t border-edge-soft pt-6">
-          <button
-            type="button"
-            className="text-sm font-semibold text-danger-fg hover:underline"
-            onClick={async () => {
-              if (
-                !window.confirm(
-                  t("productDetail.deleteVariantConfirm", { sku: variant.sku })
-                )
-              ) {
-                return;
-              }
-              try {
-                await deleteVariant(product.id, variant.sku);
-                notify(t("productDetail.deletedSku", { sku: variant.sku }));
-                navigate(`/products/${encodeURIComponent(product.id)}`);
-              } catch (err) {
-                notify(
-                  err instanceof Error
-                    ? err.message
-                    : t("productDetail.failedToDeleteVariant"),
-                  "error"
-                );
-              }
-            }}
-          >
-            {t("skuDetail.deleteSku")}
-          </button>
-        </div>
+        <DangerZone
+          hint={t("skuDelete.zoneHint")}
+          label={t("skuDetail.deleteSku")}
+          onClick={() => setDeleteOpen(true)}
+        />
       </div>
+
+      <SkuDeleteDialog
+        product={product}
+        variant={variant}
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        onDeleted={() => navigate(`/products/${encodeURIComponent(product.id)}`)}
+      />
     </div>
   );
 }
