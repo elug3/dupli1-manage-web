@@ -446,9 +446,7 @@ function PermissionsTab({
           ))}
         </select>
         {accountType === "service" && user.account_type !== "service" && (
-          <p className="text-sm text-warn-fg">
-            {t("userDetail.convertToServiceWarning")}
-          </p>
+          <p className="text-xs text-danger-fg">{t("userDetail.becomesServiceWarning")}</p>
         )}
       </div>
 

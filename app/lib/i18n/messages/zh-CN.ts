@@ -819,6 +819,8 @@ export const zhCN: Messages = {
     accountTypeCustomer: "customer",
     accountTypeManager: "manager",
     accountTypeService: "service",
+    becomesServiceWarning:
+      "保存为服务账户将删除该账户的密码：之后无法再登录，仅通过 API 密钥认证。",
     savePermissions: "保存权限",
     permissionsUpdated: "权限已更新",
     failedToUpdatePermissions: "更新权限失败",
@@ -826,7 +828,6 @@ export const zhCN: Messages = {
     fieldSignIn: "登录方式",
     signInApiKeysOnly: "仅 API 密钥（无密码）",
     noPasswordSet: "此账户尚未设置密码，设置之前无法登录。",
-    convertToServiceWarning: "将此账户改为服务账户会删除其密码，之后只能通过 API 密钥认证。",
     apiKeysHint: "服务账户没有密码。调用方用 API 密钥换取 15 分钟有效的访问令牌（POST /api/v1/auth/token）。每次换取时，密钥范围都会与账户当前权限取交集。",
     noApiKeys: "暂无 API 密钥。",
     failedToLoadApiKeys: "加载 API 密钥失败",

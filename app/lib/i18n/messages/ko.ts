@@ -824,6 +824,8 @@ export const ko: Messages = {
     accountTypeCustomer: "customer",
     accountTypeManager: "manager",
     accountTypeService: "service",
+    becomesServiceWarning:
+      "서비스 계정으로 저장하면 이 계정의 비밀번호가 삭제됩니다. 더 이상 로그인할 수 없으며 API 키로만 인증합니다.",
     savePermissions: "권한 저장",
     permissionsUpdated: "권한이 업데이트되었습니다",
     failedToUpdatePermissions: "권한을 업데이트하지 못했습니다",
@@ -831,7 +833,6 @@ export const ko: Messages = {
     fieldSignIn: "로그인 방식",
     signInApiKeysOnly: "API 키 전용 (비밀번호 없음)",
     noPasswordSet: "이 계정에는 아직 비밀번호가 없어, 설정하기 전까지 로그인할 수 없습니다.",
-    convertToServiceWarning: "서비스 계정으로 바꾸면 비밀번호가 삭제되고 API 키로만 인증합니다.",
     apiKeysHint: "서비스 계정에는 비밀번호가 없습니다. 호출자는 API 키를 15분짜리 액세스 토큰으로 교환합니다(POST /api/v1/auth/token). 키의 범위는 교환할 때마다 계정의 현재 권한과 교집합으로 계산됩니다.",
     noApiKeys: "API 키가 없습니다.",
     failedToLoadApiKeys: "API 키를 불러오지 못했습니다",

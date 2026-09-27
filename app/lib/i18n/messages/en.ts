@@ -822,6 +822,8 @@ export const en = {
     accountTypeCustomer: "customer",
     accountTypeManager: "manager",
     accountTypeService: "service",
+    becomesServiceWarning:
+      "Saving as a service account removes this account's password: it will no longer be able to sign in, and authenticates with an API key only.",
     savePermissions: "Save permissions",
     permissionsUpdated: "Permissions updated",
     failedToUpdatePermissions: "Failed to update permissions",
@@ -829,7 +831,6 @@ export const en = {
     fieldSignIn: "Sign-in",
     signInApiKeysOnly: "API keys only (no password)",
     noPasswordSet: "This account has no password yet, so it cannot sign in until one is set.",
-    convertToServiceWarning: "Changing this account to a service account removes its password. It will authenticate with API keys only.",
     apiKeysHint: "Service accounts have no password. A caller exchanges an API key for a 15-minute access token (POST /api/v1/auth/token). A key's scope is intersected with the account's current permissions on every exchange.",
     noApiKeys: "No API keys yet.",
     failedToLoadApiKeys: "Failed to load API keys",

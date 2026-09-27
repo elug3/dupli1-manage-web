@@ -1757,7 +1757,7 @@ export const PERMISSION_CATALOG = [
   "user.permissions.update",
   "user.password.update",
   "user.status.update",
-  // Service-account API keys: list, and mint/revoke.
+  // Service-account API keys (owner only in practice; elug3/dupli1#308).
   "user.apikey.read",
   "user.apikey.manage",
   "product.create",
