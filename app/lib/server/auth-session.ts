@@ -279,7 +279,14 @@ export async function handleSessionLogin(request: Request): Promise<Response> {
     return jsonResponse({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const res = await backendPost("auth", "/api/v1/auth/login", { email, password });
+  // client=manage: auth refuses customer and service accounts here with a
+  // 403 whose message is shown on the login page as is. The rule lives in
+  // auth, not in this app.
+  const res = await backendPost("auth", "/api/v1/auth/login", {
+    email,
+    password,
+    client: "manage",
+  });
   if (!res.ok) {
     return jsonResponse(
       { error: await readError(res, "Login failed") },

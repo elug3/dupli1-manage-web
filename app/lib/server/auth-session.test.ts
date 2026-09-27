@@ -311,3 +311,49 @@ describe("auth unavailable is not a dead session", () => {
     expect(await response.json()).toMatchObject({ code: "auth_unavailable" });
   });
 });
+
+describe("login client", () => {
+  it("asks auth for the manage client", async () => {
+    let sentClient: unknown;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: unknown, init?: RequestInit) => {
+        if (String(url).endsWith("/api/v1/auth/login")) {
+          sentClient = JSON.parse(String(init?.body)).client;
+        }
+        return json({ error: "stop here" }, 401);
+      })
+    );
+
+    await handleSessionLogin(
+      new Request("http://localhost/auth/session/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: "admin@example.com", password: "secret" }),
+      })
+    );
+    expect(sentClient).toBe("manage");
+  });
+
+  it("shows auth's refusal for a customer account and opens no session", async () => {
+    const message =
+      "Customer accounts cannot sign in to manage-web. Please sign in on the storefront.";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        json({ error: message, code: "account_type_not_allowed" }, 403)
+      )
+    );
+
+    const response = await handleSessionLogin(
+      new Request("http://localhost/auth/session/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: "shopper@example.com", password: "secret" }),
+      })
+    );
+    expect(response.status).toBe(403);
+    expect(response.headers.get("Set-Cookie")).toBeNull();
+    expect(await response.json()).toMatchObject({ error: message });
+  });
+});
