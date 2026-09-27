@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   type AuthUser,
   type Promotion,
@@ -43,7 +43,10 @@ export default function Promotions() {
   const { t, formatWon } = useI18n();
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // The server's own message when there is one; otherwise the translated
+  // fallback is chosen at render, so the load effect does not depend on `t`
+  // and a language switch does not refetch.
+  const [error, setError] = useState<{ message?: string } | null>(null);
   const [form, setForm] = useState<PromotionFormState>(emptyPromotionForm);
   const [formError, setFormError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
@@ -62,21 +65,21 @@ export default function Promotions() {
       .catch(() => setCustomers([]));
   }, [issuing, customers]);
 
-  function loadPromotions() {
+  const loadPromotions = useCallback(() => {
     setLoading(true);
     setError(null);
     getPromotions()
       .then(setPromotions)
       .catch((err) => {
         setPromotions([]);
-        setError(err instanceof Error ? err.message : t("promotions.failedToLoad"));
+        setError({ message: err instanceof Error ? err.message : undefined });
       })
       .finally(() => setLoading(false));
-  }
+  }, []);
 
   useEffect(() => {
     loadPromotions();
-  }, []);
+  }, [loadPromotions]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -197,7 +200,7 @@ export default function Promotions() {
 
       {error && (
         <div className="rounded-xl bg-danger-bg px-4 py-3 text-sm text-danger-fg">
-          {error}
+          {error.message ?? t("promotions.failedToLoad")}
         </div>
       )}
 

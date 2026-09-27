@@ -10,7 +10,10 @@ export default function Analytics() {
   const { t, formatWon } = useI18n();
   const [data, setData] = useState<AnalyticsSummary | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // The server's own message when there is one; otherwise the translated
+  // fallback is chosen at render, so the load effect does not depend on `t`
+  // and a language switch does not refetch.
+  const [error, setError] = useState<{ message?: string } | null>(null);
   const [period, setPeriod] = useState<"7d" | "30d">("30d");
 
   useEffect(() => {
@@ -19,9 +22,7 @@ export default function Analytics() {
       .then(setData)
       .catch((err) => {
         setData(null);
-        setError(
-          err instanceof Error ? err.message : t("analytics.failedToLoad")
-        );
+        setError({ message: err instanceof Error ? err.message : undefined });
       })
       .finally(() => setLoading(false));
   }, []);
@@ -46,7 +47,7 @@ export default function Analytics() {
           </p>
         </div>
         <div className="rounded-xl bg-danger-bg px-4 py-3 text-sm text-danger-fg">
-          {error}
+          {error.message ?? t("analytics.failedToLoad")}
         </div>
       </div>
     );

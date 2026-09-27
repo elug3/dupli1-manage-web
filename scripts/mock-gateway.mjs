@@ -16,7 +16,9 @@ const PORT = Number(process.env.MOCK_GATEWAY_PORT ?? 8080);
 const VALID_EMAIL = process.env.MOCK_ADMIN_EMAIL ?? "admin@dupli1.com";
 const VALID_PASSWORD = process.env.MOCK_ADMIN_PASSWORD ?? "Dupli1Admin2026!";
 const REFRESH_TOKEN = "mock-refresh-token";
-const ACCESS_TOKEN = "mock-access-token";
+// Override with a real signed JWT to put a real service behind the same BFF
+// session (e.g. order's event stream, which verifies the token).
+const ACCESS_TOKEN = process.env.MOCK_ACCESS_TOKEN || "mock-access-token";
 
 const SERVICE_PREFIXES = ["/auth", "/product", "/inventory", "/order", "/notification"];
 
@@ -170,7 +172,21 @@ function seed() {
     const created = new Date(Date.now() - minutesAgo * 60_000).toISOString();
     orders.set(
       id,
-      makeOrder({ id, status, created_at: created, updated_at: created })
+      makeOrder({
+        id,
+        status,
+        created_at: created,
+        updated_at: created,
+        // Paid orders auto-confirm 2h after payment (paid on creation here).
+        ...(status === "paid"
+          ? {
+              paid_at: created,
+              confirmation_due_at: new Date(
+                Date.now() + (120 - minutesAgo) * 60_000
+              ).toISOString(),
+            }
+          : {}),
+      })
     );
   }
 }
@@ -441,6 +457,24 @@ const server = http.createServer(async (req, res) => {
   // Orders.
   if (method === "GET" && path === "/api/v1/orders/events") {
     return handleOrderEvents(req, res);
+  }
+  m = path.match(/^\/api\/v1\/orders\/([^/]+)\/confirm$/);
+  if (m && method === "POST") {
+    // Like the real order service: changes the order and does not announce it
+    // on the stream, so the console must pick up its own action by itself.
+    const order = orders.get(decodeURIComponent(m[1]));
+    if (!order) return send(res, 404, { error: "order not found" });
+    if (order.status !== "paid") return send(res, 409, { error: "order is not paid" });
+    Object.assign(order, {
+      status: "confirmed",
+      confirmed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+    return send(res, 200, order);
+  }
+  m = path.match(/^\/api\/v1\/orders\/([^/]+)$/);
+  if (m && method === "GET" && orders.has(decodeURIComponent(m[1]))) {
+    return send(res, 200, orders.get(decodeURIComponent(m[1])));
   }
   if (method === "GET" && path === "/api/v1/orders") {
     const list = orderList();

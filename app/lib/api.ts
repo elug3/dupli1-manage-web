@@ -1,4 +1,5 @@
 import { authedFetch } from "./auth";
+import { publishOrderUpdate } from "./order-updates";
 import {
   authPath,
   inventoryPath,
@@ -1387,11 +1388,15 @@ export async function deletePromotion(code: string): Promise<void> {
 
 // ── Orders ───────────────────────────────────────────────────────────────────
 
+/** Full lifecycle, as the order service emits it (see CLAUDE.md → Order). */
 export type OrderStatus =
   | "pending"
   | "paid"
+  | "confirmed"
   | "in_transit"
+  | "delivered"
   | "fulfilled"
+  | "disputed"
   | "canceled";
 
 export interface OrderItem {
@@ -1510,6 +1515,25 @@ async function fetchCustomerOrders(customerId: string): Promise<Order[]> {
   return data.orders ?? [];
 }
 
+/** Tell the rest of the console (header badge, open lists) about a change. */
+function published(order: Order): Order {
+  publishOrderUpdate(order);
+  return order;
+}
+
+/**
+ * Every order, or `null` when the operator may not list them all
+ * (`order.read.all`). Unlike `getOrders` there is no per-customer fallback:
+ * callers that refresh in the background must not fan out a request per user.
+ */
+export async function listAllOrders(): Promise<Order[] | null> {
+  const res = await authedFetch(orderPath("/api/v1/orders"));
+  if (res.status === 403) return null;
+  if (!res.ok) throw new Error(await readError(res, "Failed to fetch orders"));
+  const data = (await res.json()) as OrdersResponse;
+  return data.orders ?? [];
+}
+
 async function fetchAllOrders(): Promise<Order[]> {
   // No customer_id → backend lists every order (requires order.read.all).
   const res = await authedFetch(orderPath("/api/v1/orders"));
@@ -1575,7 +1599,7 @@ export async function shipOrder(
     }),
   });
   if (!res.ok) throw new Error(await readError(res, "Failed to ship order"));
-  return res.json() as Promise<Order>;
+  return published(await res.json());
 }
 
 /** Cancel or fulfill via status API. Use `shipOrder` for `in_transit`. */
@@ -1589,7 +1613,7 @@ export async function updateOrderStatus(
     body: JSON.stringify({ status }),
   });
   if (!res.ok) throw new Error(await readError(res, "Failed to update order"));
-  return res.json() as Promise<Order>;
+  return published(await res.json());
 }
 
 /** Manager accepts a paid order. After this, customer cancel needs approval. */
@@ -1598,7 +1622,7 @@ export async function confirmOrder(id: string): Promise<Order> {
     method: "POST",
   });
   if (!res.ok) throw new Error(await readError(res, "Failed to confirm order"));
-  return res.json() as Promise<Order>;
+  return published(await res.json());
 }
 
 /** Approve a customer cancel request and refund. */
@@ -1608,7 +1632,7 @@ export async function approveOrderCancel(id: string): Promise<Order> {
     { method: "POST" }
   );
   if (!res.ok) throw new Error(await readError(res, "Failed to approve cancel"));
-  return res.json() as Promise<Order>;
+  return published(await res.json());
 }
 
 /** Reject a customer cancel request; the order stays in place. */
@@ -1618,7 +1642,7 @@ export async function rejectOrderCancel(id: string): Promise<Order> {
     { method: "POST" }
   );
   if (!res.ok) throw new Error(await readError(res, "Failed to reject cancel"));
-  return res.json() as Promise<Order>;
+  return published(await res.json());
 }
 
 // ── Inventory ────────────────────────────────────────────────────────────────

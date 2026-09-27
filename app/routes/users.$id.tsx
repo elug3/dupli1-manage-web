@@ -44,7 +44,14 @@ export default function UserDetail() {
   const { t } = useI18n();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // The server's own message, or a flag for which translated fallback to
+  // show, chosen at render: the load effect then does not depend on `t`, so a
+  // language switch does not refetch (which would unmount the API keys tab
+  // and lose a key shown only once).
+  const [error, setError] = useState<{
+    message?: string;
+    notFound?: boolean;
+  } | null>(null);
   const [activeTab, setActiveTab] = useState<DetailTab>(() =>
     initialTab(searchParams.get("tab"))
   );
@@ -60,7 +67,7 @@ export default function UserDetail() {
       .then((found) => {
         if (cancelled) return;
         if (!found) {
-          setError(t("userDetail.userNotFound"));
+          setError({ notFound: true });
           setUser(null);
           return;
         }
@@ -68,9 +75,7 @@ export default function UserDetail() {
       })
       .catch((err) => {
         if (!cancelled) {
-          setError(
-            err instanceof Error ? err.message : t("userDetail.failedToLoad")
-          );
+          setError({ message: err instanceof Error ? err.message : undefined });
           setUser(null);
         }
       })
@@ -98,7 +103,10 @@ export default function UserDetail() {
           {t("userDetail.backToUsers")}
         </Link>
         <div className="rounded-2xl border border-edge bg-surface p-10 text-center text-muted">
-          {error ?? t("userDetail.userNotFound")}
+          {error?.message ??
+            (error && !error.notFound
+              ? t("userDetail.failedToLoad")
+              : t("userDetail.userNotFound"))}
         </div>
       </div>
     );
@@ -484,7 +492,10 @@ function ApiKeysTab({ user }: { user: AuthUser }) {
   const { notify } = useNotify();
   const { t, formatDateTime } = useI18n();
   const [keys, setKeys] = useState<ServiceApiKey[] | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  // As above: the translated fallback is picked at render, not in the effect.
+  const [loadError, setLoadError] = useState<{ message?: string } | null>(
+    null
+  );
   const [name, setName] = useState("");
   const [expiryDays, setExpiryDays] = useState<number | null>(90);
   const [scope, setScope] = useState<string[]>([]);
@@ -502,9 +513,9 @@ function ApiKeysTab({ user }: { user: AuthUser }) {
       })
       .catch((err) => {
         if (!cancelled) {
-          setLoadError(
-            err instanceof Error ? err.message : t("userDetail.failedToLoadApiKeys")
-          );
+          setLoadError({
+            message: err instanceof Error ? err.message : undefined,
+          });
         }
       });
     return () => {
@@ -632,7 +643,9 @@ function ApiKeysTab({ user }: { user: AuthUser }) {
 
       <div className="overflow-x-auto rounded-xl border border-edge">
         {loadError ? (
-          <p className="p-6 text-center text-sm text-muted">{loadError}</p>
+          <p className="p-6 text-center text-sm text-muted">
+            {loadError.message ?? t("userDetail.failedToLoadApiKeys")}
+          </p>
         ) : keys == null ? (
           <div className="flex justify-center p-6">
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-accent border-t-transparent" />
