@@ -310,6 +310,15 @@ function PromotionRows({
               {t("promotions.scopeSingleUserShort")}
             </span>
           )}
+          {promotion.scope === "single_user" &&
+            promotion.auto_issue === "user_registered" && (
+              <span
+                className="ml-2 rounded-full bg-accent/10 px-2 py-0.5 font-sans text-[10px] font-semibold uppercase tracking-wide text-accent"
+                title={t("promotions.autoIssueSignupHint")}
+              >
+                {t("promotions.autoIssueSignupShort")}
+              </span>
+            )}
         </td>
         <td className="px-5 py-3.5 text-muted">
           {describeBenefit(promotion, formatWon, t)}
@@ -759,6 +768,41 @@ function PromotionFields({
             placeholder={t("promotions.uncapped")}
           />
         </Field>
+
+        {form.scope === "single_user" && (
+          <Field label={t("promotions.entitlementTtlDays")} id="entitlement-ttl">
+            <input
+              id="entitlement-ttl"
+              type="number"
+              min="1"
+              step="1"
+              value={form.entitlementTtlDays}
+              onChange={(e) => set("entitlementTtlDays", e.target.value)}
+              className={inputCls}
+              placeholder={t("promotions.entitlementTtlNone")}
+            />
+            <p className="text-[11px] text-faint">
+              {t("promotions.entitlementTtlHint")}
+            </p>
+          </Field>
+        )}
+
+        {form.scope === "single_user" && (
+          <div className="space-y-1.5">
+            <label className="flex items-center gap-2 pt-6 text-sm text-ink">
+              <input
+                type="checkbox"
+                checked={form.autoIssueOnSignup}
+                onChange={(e) => set("autoIssueOnSignup", e.target.checked)}
+                className="size-4 rounded border-edge text-accent focus:ring-accent/20"
+              />
+              {t("promotions.autoIssueSignup")}
+            </label>
+            <p className="text-[11px] text-faint">
+              {t("promotions.autoIssueSignupHint")}
+            </p>
+          </div>
+        )}
 
         <Field label={t("promotions.description")} id="description">
           <input

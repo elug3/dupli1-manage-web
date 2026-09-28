@@ -629,6 +629,14 @@ export const zhCN: Messages = {
     maxRedemptions: "活动总量上限",
     uncapped: "不限",
 
+    autoIssueSignup: "新客户注册时自动发放",
+    autoIssueSignupHint:
+      "每个新账户注册时都会获得此代码。未启用的代码也会发放，因此活动上线前即可累积注册用户。",
+    autoIssueSignupShort: "注册发放",
+    entitlementTtlDays: "权益有效期（天）",
+    entitlementTtlNone: "不限",
+    entitlementTtlHint: "自每个账户获得代码时起计算。上方的到期日仍然适用。",
+
     description: "描述",
     descriptionPlaceholder: "夏季促销",
     terms: "向客户展示的条件",
@@ -721,6 +729,7 @@ export const zhCN: Messages = {
     failedToDelete: "删除促销码失败",
 
     errCodeRequired: "请输入代码",
+    errEntitlementTtl: "有效天数须为大于 0 的整数",
     errPercentRange: "折扣必须在 1% 到 99% 之间",
     errFixedAmount: "折扣金额必须是大于 0 的整数（韩元）",
     errCap: "最高折扣必须是大于 0 的整数（韩元）",

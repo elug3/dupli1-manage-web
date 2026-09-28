@@ -102,6 +102,10 @@ export interface PromotionFormState {
   /** `yyyy-mm-dd`; means the end of that day in Seoul. Empty = never expires. */
   expiresOn: string;
   maxRedemptions: string;
+  /** Single-user only: grant the code to every new customer at sign-up. */
+  autoIssueOnSignup: boolean;
+  /** Single-user only: days an issued entitlement lasts. Empty = no limit of its own. */
+  entitlementTtlDays: string;
   conditions: ConditionRow[];
   /** Drops on-sale lines from the discount, as an `exclude` predicate. */
   excludeOnSale: boolean;
@@ -121,6 +125,8 @@ export function emptyPromotionForm(): PromotionFormState {
     applyTo: "entire_subtotal",
     expiresOn: "",
     maxRedemptions: "",
+    autoIssueOnSignup: false,
+    entitlementTtlDays: "",
     conditions: [],
     excludeOnSale: false,
     lineMatch: "any",
@@ -183,6 +189,10 @@ export function promotionToForm(promotion: Promotion): PromotionFormState {
   form.expiresOn = expiresOnFromISO(promotion.expires_at);
   form.maxRedemptions =
     promotion.max_redemptions == null ? "" : String(promotion.max_redemptions);
+  form.autoIssueOnSignup = promotion.auto_issue === "user_registered";
+  form.entitlementTtlDays = promotion.entitlement_ttl_days
+    ? String(promotion.entitlement_ttl_days)
+    : "";
 
   const conditions = promotion.conditions;
   if (conditions?.all) {
@@ -290,6 +300,13 @@ export function buildPromotionInput(
     maxRedemptions = cap;
   }
 
+  let entitlementTtlDays = 0;
+  if (form.scope === "single_user" && form.entitlementTtlDays.trim()) {
+    const days = Number(form.entitlementTtlDays);
+    if (!Number.isInteger(days) || days <= 0) return { errorKey: "promotions.errEntitlementTtl" };
+    entitlementTtlDays = days;
+  }
+
   const input: PromotionInput = {
     scope: form.scope,
     description: form.description.trim(),
@@ -298,7 +315,12 @@ export function buildPromotionInput(
     conditions,
     // "" clears the expiry; the service reads a date as end-of-day in Seoul.
     expires_on: form.expiresOn.trim(),
+    // Always sent, so moving a campaign to global scope also ends it — the
+    // service refuses auto_issue on a global code.
+    auto_issue:
+      form.scope === "single_user" && form.autoIssueOnSignup ? "user_registered" : "",
   };
+  if (form.scope === "single_user") input.entitlement_ttl_days = entitlementTtlDays;
   if (options.includeCode) input.code = code;
   if (maxRedemptions !== undefined) input.max_redemptions = maxRedemptions;
   return { input };

@@ -285,3 +285,60 @@ describe("CONDITION_ATTRS", () => {
     );
   });
 });
+
+describe("auto_issue", () => {
+  const base = { ...emptyPromotionForm(), code: "WELCOME50", percent: "50" };
+
+  it("marks a single-user code for sign-up issue with its entitlement window", () => {
+    const { input, errorKey } = buildPromotionInput(
+      { ...base, scope: "single_user", autoIssueOnSignup: true, entitlementTtlDays: "30" },
+      { includeCode: true }
+    );
+    expect(errorKey).toBeUndefined();
+    expect(input?.auto_issue).toBe("user_registered");
+    expect(input?.entitlement_ttl_days).toBe(30);
+  });
+
+  it("sends an empty auto_issue so unticking ends the campaign", () => {
+    const { input } = buildPromotionInput(
+      { ...base, scope: "single_user", autoIssueOnSignup: false },
+      { includeCode: true }
+    );
+    expect(input?.auto_issue).toBe("");
+    expect(input?.entitlement_ttl_days).toBe(0);
+  });
+
+  // The service refuses auto_issue on a global code, so moving a campaign to
+  // global must clear it rather than send the stale checkbox.
+  it("never sends auto_issue on a global code", () => {
+    const { input } = buildPromotionInput(
+      { ...base, scope: "global", autoIssueOnSignup: true, entitlementTtlDays: "30" },
+      { includeCode: true }
+    );
+    expect(input?.auto_issue).toBe("");
+    expect(input?.entitlement_ttl_days).toBeUndefined();
+  });
+
+  it("refuses a non-positive entitlement window", () => {
+    expect(
+      buildPromotionInput(
+        { ...base, scope: "single_user", entitlementTtlDays: "0" },
+        { includeCode: true }
+      ).errorKey
+    ).toBe("promotions.errEntitlementTtl");
+  });
+
+  it("reads both back into the edit form", () => {
+    const form = promotionToForm(
+      promotion({
+        code: "WELCOME50",
+        scope: "single_user",
+        auto_issue: "user_registered",
+        entitlement_ttl_days: 14,
+      })
+    );
+    expect(form.autoIssueOnSignup).toBe(true);
+    expect(form.entitlementTtlDays).toBe("14");
+    expect(promotionToForm(promotion({ code: "OPEN10" })).autoIssueOnSignup).toBe(false);
+  });
+});
