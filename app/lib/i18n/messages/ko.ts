@@ -633,6 +633,14 @@ export const ko: Messages = {
     maxRedemptions: "캠페인 한도",
     uncapped: "무제한",
 
+    autoIssueSignup: "신규 가입 고객 모두에게 자동 발급",
+    autoIssueSignupHint:
+      "새 계정이 가입할 때 이 코드가 발급됩니다. 비활성 코드도 발급되므로 캠페인 시작 전부터 가입자에게 모아둘 수 있습니다.",
+    autoIssueSignupShort: "가입 시 발급",
+    entitlementTtlDays: "발급 후 유효 기간(일)",
+    entitlementTtlNone: "제한 없음",
+    entitlementTtlHint: "각 계정에 발급된 시점부터 계산합니다. 위의 만료일은 그대로 적용됩니다.",
+
     description: "설명",
     descriptionPlaceholder: "여름 세일",
     terms: "고객에게 보여줄 조건",
@@ -726,6 +734,7 @@ export const ko: Messages = {
     failedToDelete: "프로모션 코드를 삭제하지 못했습니다",
 
     errCodeRequired: "코드를 입력하세요",
+    errEntitlementTtl: "유효 기간은 1 이상의 정수여야 합니다",
     errPercentRange: "할인율은 1~99% 사이여야 합니다",
     errFixedAmount: "할인 금액은 0보다 큰 정수(원)여야 합니다",
     errCap: "최대 할인 금액은 0보다 큰 정수(원)여야 합니다",

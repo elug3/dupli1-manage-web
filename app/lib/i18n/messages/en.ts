@@ -631,6 +631,15 @@ export const en = {
     maxRedemptions: "Campaign cap",
     uncapped: "uncapped",
 
+    autoIssueSignup: "Issue to every new customer at sign-up",
+    autoIssueSignupHint:
+      "Each new account is granted this code when it registers. Inactive codes are still issued, so sign-ups collect it before the campaign goes live.",
+    autoIssueSignupShort: "sign-up",
+    entitlementTtlDays: "Entitlement valid for (days)",
+    entitlementTtlNone: "no limit",
+    entitlementTtlHint:
+      "Counted from when each account is issued the code. The expiry date above still applies.",
+
     description: "Description",
     descriptionPlaceholder: "Summer sale",
     terms: "Terms shown to customers",
@@ -724,6 +733,7 @@ export const en = {
     failedToDelete: "Failed to delete promotional code",
 
     errCodeRequired: "Enter a code",
+    errEntitlementTtl: "Entitlement days must be a whole number above 0",
     errPercentRange: "Discount must be between 1 and 99%",
     errFixedAmount: "Discount must be a whole number of won above 0",
     errCap: "Max discount must be a whole number of won above 0",

@@ -1235,6 +1235,13 @@ export interface PromotionConditions {
   line_match?: "any" | "all" | "eligible_only";
 }
 
+/**
+ * What issues a `single_user` code without a manager. `user_registered` grants
+ * it to every new customer at sign-up; `""` turns that off. Whether the code
+ * can be spent is still `active`, so a campaign can collect sign-ups first.
+ */
+export type PromotionAutoIssue = "" | "user_registered";
+
 export interface Promotion {
   code: string;
   scope: PromotionScope;
@@ -1249,8 +1256,10 @@ export interface Promotion {
   max_per_customer: number;
   /** Paid uses so far, denormalised from the ledger. */
   redemption_count: number;
-  /** How long an issued single-user entitlement lasts. */
+  /** How long an issued single-user entitlement lasts. Absent or 0 = no limit of its own. */
   entitlement_ttl_days?: number;
+  /** Event that grants this single-user code on its own. Absent = only by hand. */
+  auto_issue?: PromotionAutoIssue;
   /** Customer-facing copy stating what the code requires. */
   terms?: string;
   updated_at?: string;
@@ -1274,6 +1283,10 @@ export interface PromotionInput {
   expires_on?: string;
   max_redemptions?: number;
   max_per_customer?: number;
+  /** Single-user only; 0 means an issued entitlement has no expiry of its own. */
+  entitlement_ttl_days?: number;
+  /** Single-user only; the service refuses anything but `""` on a global code. */
+  auto_issue?: PromotionAutoIssue;
 }
 
 export type PromotionUpdate = PromotionInput;
