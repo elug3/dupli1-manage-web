@@ -580,6 +580,7 @@ export const ko: Messages = {
     shippingFeeFree: "무료",
     discount: "할인",
     discountWithCode: "할인 ({code})",
+    tierDiscount: "등급 할인 ({code})",
     paymentDue: "결제 기한",
     itemUnavailable: "판매 불가",
     paidAt: "결제일",
@@ -637,6 +638,10 @@ export const ko: Messages = {
     autoIssueSignupHint:
       "새 계정이 가입할 때 이 코드가 발급됩니다. 비활성 코드도 발급되므로 캠페인 시작 전부터 가입자에게 모아둘 수 있습니다.",
     autoIssueSignupShort: "가입 시 발급",
+    tier: "고객 등급: 모든 주문에 자동 적용",
+    tierHint:
+      "이 코드를 발급받은 회원은 코드 입력 없이 모든 주문에 할인을 받으며, 다른 코드 1개와 함께 적용됩니다. 발급을 회수하면 등급에서 제외됩니다. 캠페인 한도는 없습니다.",
+    tierShort: "등급",
     entitlementTtlDays: "발급 후 유효 기간(일)",
     entitlementTtlNone: "제한 없음",
     entitlementTtlHint: "각 계정에 발급된 시점부터 계산합니다. 위의 만료일은 그대로 적용됩니다.",
@@ -735,6 +740,7 @@ export const ko: Messages = {
 
     errCodeRequired: "코드를 입력하세요",
     errEntitlementTtl: "유효 기간은 1 이상의 정수여야 합니다",
+    errTierCap: "고객 등급에는 캠페인 한도를 둘 수 없습니다",
     errPercentRange: "할인율은 1~99% 사이여야 합니다",
     errFixedAmount: "할인 금액은 0보다 큰 정수(원)여야 합니다",
     errCap: "최대 할인 금액은 0보다 큰 정수(원)여야 합니다",

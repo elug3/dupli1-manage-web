@@ -104,6 +104,8 @@ export interface PromotionFormState {
   maxRedemptions: string;
   /** Single-user only: grant the code to every new customer at sign-up. */
   autoIssueOnSignup: boolean;
+  /** Single-user only: a customer tier applied to every order its members place. */
+  tier: boolean;
   /** Single-user only: days an issued entitlement lasts. Empty = no limit of its own. */
   entitlementTtlDays: string;
   conditions: ConditionRow[];
@@ -126,6 +128,7 @@ export function emptyPromotionForm(): PromotionFormState {
     expiresOn: "",
     maxRedemptions: "",
     autoIssueOnSignup: false,
+    tier: false,
     entitlementTtlDays: "",
     conditions: [],
     excludeOnSale: false,
@@ -190,6 +193,7 @@ export function promotionToForm(promotion: Promotion): PromotionFormState {
   form.maxRedemptions =
     promotion.max_redemptions == null ? "" : String(promotion.max_redemptions);
   form.autoIssueOnSignup = promotion.auto_issue === "user_registered";
+  form.tier = promotion.apply_mode === "auto";
   form.entitlementTtlDays = promotion.entitlement_ttl_days
     ? String(promotion.entitlement_ttl_days)
     : "";
@@ -299,6 +303,9 @@ export function buildPromotionInput(
     if (!Number.isInteger(cap) || cap <= 0) return { errorKey: "promotions.errRedemptionCap" };
     maxRedemptions = cap;
   }
+  const tier = form.scope === "single_user" && form.tier;
+  // A tier is spent on every order its members place; the service refuses a cap.
+  if (tier && maxRedemptions !== undefined) return { errorKey: "promotions.errTierCap" };
 
   let entitlementTtlDays = 0;
   if (form.scope === "single_user" && form.entitlementTtlDays.trim()) {
@@ -319,6 +326,8 @@ export function buildPromotionInput(
     // service refuses auto_issue on a global code.
     auto_issue:
       form.scope === "single_user" && form.autoIssueOnSignup ? "user_registered" : "",
+    // Always sent, so unticking (or moving to global) turns a tier back into a code.
+    apply_mode: tier ? "auto" : "code",
   };
   if (form.scope === "single_user") input.entitlement_ttl_days = entitlementTtlDays;
   if (options.includeCode) input.code = code;
