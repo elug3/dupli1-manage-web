@@ -625,9 +625,6 @@ export const ko: Messages = {
     discountPercent: "할인 (%)",
     discountWon: "할인 (₩)",
     maxDiscountWon: "최대 할인 (₩)",
-    applyTo: "할인 기준",
-    applyEntire: "장바구니 전체 소계",
-    applyEligible: "조건에 맞는 상품만",
 
     expiresOn: "만료일",
     expiresOnHint: "해당 일자의 한국 시간 자정까지입니다. 비워두면 만료되지 않습니다.",
@@ -664,7 +661,7 @@ export const ko: Messages = {
     valueFalse: "아니오",
     valuePlaceholder: "bags",
     valueListPlaceholder: "bags, wallets",
-    excludeOnSale: "이미 세일 중인 상품 제외",
+    excludeOnSale: "세일 중인 상품은 적용 조건에서 제외",
     lineMatch: "상품 조건 충족 범위",
     lineMatchAny: "하나 이상",
     lineMatchAll: "모든 상품",

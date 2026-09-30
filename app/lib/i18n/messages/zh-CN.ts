@@ -621,9 +621,6 @@ export const zhCN: Messages = {
     discountPercent: "折扣（%）",
     discountWon: "折扣（₩）",
     maxDiscountWon: "最高折扣（₩）",
-    applyTo: "计算基准",
-    applyEntire: "购物车小计",
-    applyEligible: "仅符合条件的商品",
 
     expiresOn: "到期日",
     expiresOnHint: "以首尔时间当日结束为准。留空表示永不过期。",
@@ -660,7 +657,7 @@ export const zhCN: Messages = {
     valueFalse: "否",
     valuePlaceholder: "bags",
     valueListPlaceholder: "bags, wallets",
-    excludeOnSale: "排除已在促销的商品",
+    excludeOnSale: "促销中的商品不计入适用条件",
     lineMatch: "商品条件需满足",
     lineMatchAny: "至少一件",
     lineMatchAll: "全部商品",
