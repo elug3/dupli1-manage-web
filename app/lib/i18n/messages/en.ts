@@ -623,6 +623,9 @@ export const en = {
     discountPercent: "Discount (%)",
     discountWon: "Discount (₩)",
     maxDiscountWon: "Max discount (₩)",
+    applyTo: "Discount base",
+    applyEntire: "Whole cart subtotal",
+    applyEligible: "Only matching lines",
 
     expiresOn: "Expires on",
     expiresOnHint: "End of that day, Seoul time. Leave empty to never expire.",
@@ -660,7 +663,7 @@ export const en = {
     valueFalse: "no",
     valuePlaceholder: "bags",
     valueListPlaceholder: "bags, wallets",
-    excludeOnSale: "Items already on sale don't count toward eligibility",
+    excludeOnSale: "Exclude items already on sale",
     lineMatch: "Line conditions must match",
     lineMatchAny: "at least one item",
     lineMatchAll: "every item",

@@ -735,6 +735,24 @@ function PromotionFields({
           </Field>
         )}
 
+        <Field label={t("promotions.applyTo")} id="apply-to">
+          <select
+            id="apply-to"
+            value={form.applyTo}
+            onChange={(e) =>
+              set("applyTo", e.target.value as PromotionFormState["applyTo"])
+            }
+            className={inputCls}
+          >
+            <option value="entire_subtotal">
+              {t("promotions.applyEntire")}
+            </option>
+            <option value="eligible_lines">
+              {t("promotions.applyEligible")}
+            </option>
+          </select>
+        </Field>
+
         <Field label={t("promotions.expiresOn")} id="expires-on">
           <input
             id="expires-on"
