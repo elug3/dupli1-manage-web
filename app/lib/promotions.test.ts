@@ -45,6 +45,22 @@ describe("buildPromotionInput", () => {
     });
   });
 
+  it("saves a legacy matching-lines definition as a whole-order discount", () => {
+    const legacy = promotion({
+      code: "BRANDX",
+      benefit: {
+        target: "goods",
+        discount_type: "percent",
+        discount_fraction: 0.1,
+        apply_to: "eligible_lines",
+      },
+    });
+    const { input } = buildPromotionInput(promotionToForm(legacy), {
+      includeCode: true,
+    });
+    expect(input?.benefit?.apply_to).toBe("entire_subtotal");
+  });
+
   it("refuses a percentage the service would reject on write", () => {
     const form = { ...emptyPromotionForm(), code: "X", percent: "100" };
     expect(buildPromotionInput(form, { includeCode: true }).errorKey).toBe(

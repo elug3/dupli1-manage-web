@@ -98,7 +98,6 @@ export interface PromotionFormState {
   fixedWon: string;
   /** Optional cap on a percentage, whole KRW. */
   maxDiscountWon: string;
-  applyTo: "entire_subtotal" | "eligible_lines";
   /** `yyyy-mm-dd`; means the end of that day in Seoul. Empty = never expires. */
   expiresOn: string;
   maxRedemptions: string;
@@ -109,7 +108,7 @@ export interface PromotionFormState {
   /** Single-user only: days an issued entitlement lasts. Empty = no limit of its own. */
   entitlementTtlDays: string;
   conditions: ConditionRow[];
-  /** Drops on-sale lines from the discount, as an `exclude` predicate. */
+  /** On-sale lines do not count toward eligibility, as an `exclude` predicate. */
   excludeOnSale: boolean;
   lineMatch: "any" | "all";
 }
@@ -124,7 +123,6 @@ export function emptyPromotionForm(): PromotionFormState {
     percent: "",
     fixedWon: "",
     maxDiscountWon: "",
-    applyTo: "entire_subtotal",
     expiresOn: "",
     maxRedemptions: "",
     autoIssueOnSignup: false,
@@ -187,7 +185,6 @@ export function promotionToForm(promotion: Promotion): PromotionFormState {
   if (benefit?.max_discount_won) {
     form.maxDiscountWon = String(benefit.max_discount_won);
   }
-  if (benefit?.apply_to === "eligible_lines") form.applyTo = "eligible_lines";
 
   form.expiresOn = expiresOnFromISO(promotion.expires_at);
   form.maxRedemptions =
@@ -254,7 +251,9 @@ export function buildPromotionInput(
   const benefit: PromotionBenefit = {
     target: "goods",
     discount_type: form.discountType,
-    apply_to: form.applyTo,
+    // Every promotion discounts the whole order; conditions only decide
+    // whether it applies (backend retired eligible_lines on 2026-09-30).
+    apply_to: "entire_subtotal",
   };
 
   if (form.discountType === "percent") {
