@@ -1242,6 +1242,9 @@ export interface PromotionConditions {
  */
 export type PromotionAutoIssue = "" | "user_registered";
 
+/** How a promotion reaches a checkout: entered as a code, or applied on its own as a tier. */
+export type PromotionApplyMode = "code" | "auto";
+
 export interface Promotion {
   code: string;
   scope: PromotionScope;
@@ -1260,6 +1263,12 @@ export interface Promotion {
   entitlement_ttl_days?: number;
   /** Event that grants this single-user code on its own. Absent = only by hand. */
   auto_issue?: PromotionAutoIssue;
+  /**
+   * `auto` makes a single-user code a customer tier (VIP, a private tier):
+   * members get it on every order without entering it, stacked under one code.
+   * Absent or `code` = entered at checkout.
+   */
+  apply_mode?: PromotionApplyMode;
   /** Customer-facing copy stating what the code requires. */
   terms?: string;
   updated_at?: string;
@@ -1287,6 +1296,8 @@ export interface PromotionInput {
   entitlement_ttl_days?: number;
   /** Single-user only; the service refuses anything but `""` on a global code. */
   auto_issue?: PromotionAutoIssue;
+  /** `auto` needs single_user scope and no campaign cap. */
+  apply_mode?: PromotionApplyMode;
 }
 
 export type PromotionUpdate = PromotionInput;
@@ -1446,7 +1457,12 @@ export interface Order {
   /** @deprecated Order emits both keys for one release; read `promotion_code`. */
   coupon_code?: string;
   subtotal_won: number;
+  /** Whole goods discount, the tier's share included. */
   discount_won: number;
+  /** Automatic customer tier (VIP, a private tier) this order earned without a code. */
+  tier_promotion_code?: string;
+  /** The tier's share of `discount_won`; the code's share is the rest. */
+  tier_discount_won?: number;
   /** Flat delivery charge in whole KRW, snapshotted at order creation. */
   shipping_fee_won?: number;
   total_won: number;

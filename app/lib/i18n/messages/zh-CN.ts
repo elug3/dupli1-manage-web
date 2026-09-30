@@ -576,6 +576,7 @@ export const zhCN: Messages = {
     shippingFeeFree: "免费",
     discount: "折扣",
     discountWithCode: "折扣（{code}）",
+    tierDiscount: "等级折扣（{code}）",
     paymentDue: "付款截止",
     itemUnavailable: "已下架",
     paidAt: "付款时间",
@@ -633,6 +634,10 @@ export const zhCN: Messages = {
     autoIssueSignupHint:
       "每个新账户注册时都会获得此代码。未启用的代码也会发放，因此活动上线前即可累积注册用户。",
     autoIssueSignupShort: "注册发放",
+    tier: "客户等级：自动应用于每笔订单",
+    tierHint:
+      "持有此代码的会员无需输入即可在每笔订单享受折扣，并可与一个优惠码叠加。撤回发放即可移出等级。无活动上限。",
+    tierShort: "等级",
     entitlementTtlDays: "权益有效期（天）",
     entitlementTtlNone: "不限",
     entitlementTtlHint: "自每个账户获得代码时起计算。上方的到期日仍然适用。",
@@ -730,6 +735,7 @@ export const zhCN: Messages = {
 
     errCodeRequired: "请输入代码",
     errEntitlementTtl: "有效天数须为大于 0 的整数",
+    errTierCap: "客户等级不能设置活动上限",
     errPercentRange: "折扣必须在 1% 到 99% 之间",
     errFixedAmount: "折扣金额必须是大于 0 的整数（韩元）",
     errCap: "最高折扣必须是大于 0 的整数（韩元）",

@@ -577,6 +577,7 @@ export const en = {
     shippingFeeFree: "Free",
     discount: "Discount",
     discountWithCode: "Discount ({code})",
+    tierDiscount: "Tier discount ({code})",
     paymentDue: "Payment due",
     itemUnavailable: "Unavailable",
     paidAt: "Paid",
@@ -635,6 +636,10 @@ export const en = {
     autoIssueSignupHint:
       "Each new account is granted this code when it registers. Inactive codes are still issued, so sign-ups collect it before the campaign goes live.",
     autoIssueSignupShort: "sign-up",
+    tier: "Customer tier: apply to every order automatically",
+    tierHint:
+      "Members (accounts this code is issued to) get the discount on every order without entering anything, on top of one code. Revoke the entitlement to remove a member. No campaign cap.",
+    tierShort: "tier",
     entitlementTtlDays: "Entitlement valid for (days)",
     entitlementTtlNone: "no limit",
     entitlementTtlHint:
@@ -734,6 +739,7 @@ export const en = {
 
     errCodeRequired: "Enter a code",
     errEntitlementTtl: "Entitlement days must be a whole number above 0",
+    errTierCap: "A customer tier cannot have a campaign cap",
     errPercentRange: "Discount must be between 1 and 99%",
     errFixedAmount: "Discount must be a whole number of won above 0",
     errCap: "Max discount must be a whole number of won above 0",

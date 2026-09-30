@@ -342,3 +342,44 @@ describe("auto_issue", () => {
     expect(promotionToForm(promotion({ code: "OPEN10" })).autoIssueOnSignup).toBe(false);
   });
 });
+
+describe("customer tier (apply_mode)", () => {
+  const base = { ...emptyPromotionForm(), code: "VIP", percent: "10" };
+
+  it("marks a single-user code as a tier", () => {
+    const { input, errorKey } = buildPromotionInput(
+      { ...base, scope: "single_user", tier: true },
+      { includeCode: true }
+    );
+    expect(errorKey).toBeUndefined();
+    expect(input?.apply_mode).toBe("auto");
+  });
+
+  // Always sent, so unticking or moving to global turns a tier back into a code.
+  it("sends code when unticked or global", () => {
+    expect(
+      buildPromotionInput({ ...base, scope: "single_user", tier: false }, { includeCode: true })
+        .input?.apply_mode
+    ).toBe("code");
+    expect(
+      buildPromotionInput({ ...base, scope: "global", tier: true }, { includeCode: true })
+        .input?.apply_mode
+    ).toBe("code");
+  });
+
+  it("refuses a campaign cap on a tier", () => {
+    expect(
+      buildPromotionInput(
+        { ...base, scope: "single_user", tier: true, maxRedemptions: "100" },
+        { includeCode: true }
+      ).errorKey
+    ).toBe("promotions.errTierCap");
+  });
+
+  it("reads a tier back into the edit form", () => {
+    expect(
+      promotionToForm(promotion({ code: "VIP", scope: "single_user", apply_mode: "auto" })).tier
+    ).toBe(true);
+    expect(promotionToForm(promotion({ code: "OPEN10" })).tier).toBe(false);
+  });
+});
