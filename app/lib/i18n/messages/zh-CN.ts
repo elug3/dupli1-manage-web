@@ -505,6 +505,8 @@ export const zhCN: Messages = {
     cancelConfirmOverdue: "取消申请已超时 — 若不处理将自动退款。",
     approveCancel: "批准取消",
     rejectCancel: "拒绝取消",
+    markDelivered: "标记为已送达",
+    resolveDispute: "按已送达结案",
     unconfirmed: "未确认",
     orderId: "订单 ID",
     customer: "客户",

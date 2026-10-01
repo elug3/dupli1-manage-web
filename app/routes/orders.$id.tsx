@@ -8,10 +8,12 @@ import {
   SHIP_CARRIERS,
   approveOrderCancel,
   confirmOrder,
+  deliverOrder,
   getOrder,
   orderHasFulfillment,
   productImageSrc,
   rejectOrderCancel,
+  resolveOrderDispute,
   shipOrder,
   updateOrderStatus,
 } from "~/lib/api";
@@ -62,35 +64,41 @@ function OrderStatusBadge({ status }: { status: OrderStatus }) {
 type OrderAction =
   | { kind: "ship" }
   | { kind: "confirm" }
+  | { kind: "deliver" }
+  | { kind: "resolve_dispute" }
   | { kind: "approve_cancel" }
   | { kind: "reject_cancel" }
   | { kind: "status"; status: "canceled" | "fulfilled" };
 
+/** A pending customer cancel request replaces the plain cancel button. */
+function cancelActions(order: Order): OrderAction[] {
+  return order.cancel_requested_at
+    ? [{ kind: "approve_cancel" }, { kind: "reject_cancel" }]
+    : [{ kind: "status", status: "canceled" }];
+}
+
+/**
+ * Mirrors the order service's transitions (order/pkg/domain/order.go):
+ * paid → confirmed → in_transit → delivered → fulfilled, with disputed off
+ * delivered. Customer cancel requests exist from confirmed through delivered.
+ */
 function orderActions(order: Order): OrderAction[] {
-  if (order.status === "pending") {
-    return [{ kind: "status", status: "canceled" }];
+  switch (order.status) {
+    case "pending":
+      return [{ kind: "status", status: "canceled" }];
+    case "paid":
+      return [{ kind: "confirm" }, { kind: "status", status: "canceled" }];
+    case "confirmed":
+      return [{ kind: "ship" }, ...cancelActions(order)];
+    case "in_transit":
+      return [{ kind: "deliver" }, ...cancelActions(order)];
+    case "delivered":
+      return [{ kind: "status", status: "fulfilled" }, ...cancelActions(order)];
+    case "disputed":
+      return [{ kind: "resolve_dispute" }, { kind: "status", status: "canceled" }];
+    default:
+      return [];
   }
-  if (order.status === "paid") {
-    const actions: OrderAction[] = [];
-    if (!order.confirmed_at) actions.push({ kind: "confirm" });
-    actions.push({ kind: "ship" });
-    if (order.cancel_requested_at) {
-      actions.push({ kind: "approve_cancel" }, { kind: "reject_cancel" });
-    } else {
-      actions.push({ kind: "status", status: "canceled" });
-    }
-    return actions;
-  }
-  if (order.status === "in_transit") {
-    const actions: OrderAction[] = [{ kind: "status", status: "fulfilled" }];
-    if (order.cancel_requested_at) {
-      actions.push({ kind: "approve_cancel" }, { kind: "reject_cancel" });
-    } else {
-      actions.push({ kind: "status", status: "canceled" });
-    }
-    return actions;
-  }
-  return [];
 }
 
 function actionKey(a: OrderAction): string {
@@ -173,16 +181,20 @@ export default function OrderDetail() {
       return;
     }
     const key = actionKey(action);
-    if (action.kind === "status" && action.status === "canceled") {
-      const paidWithCapture =
-        (order.status === "paid" || order.status === "in_transit") &&
-        Boolean(order.payment_id);
-      const message =
-        order.status === "in_transit"
-          ? t("orderDetail.confirmCancelInTransit")
-          : paidWithCapture
-            ? t("orderDetail.confirmCancelPaid")
-            : t("orderDetail.confirmCancel");
+    if (
+      (action.kind === "status" && action.status === "canceled") ||
+      action.kind === "approve_cancel"
+    ) {
+      // Once shipped, stock is committed and a cancel refunds without restocking.
+      const stockCommitted =
+        order.status === "in_transit" ||
+        order.status === "delivered" ||
+        order.status === "disputed";
+      const message = stockCommitted
+        ? t("orderDetail.confirmCancelInTransit")
+        : order.status !== "pending" && order.payment_id
+          ? t("orderDetail.confirmCancelPaid")
+          : t("orderDetail.confirmCancel");
       if (!window.confirm(message)) return;
     }
     setUpdatingAction(key);
@@ -190,6 +202,10 @@ export default function OrderDetail() {
       let updated: Order;
       if (action.kind === "confirm") {
         updated = await confirmOrder(order.id);
+      } else if (action.kind === "deliver") {
+        updated = await deliverOrder(order.id);
+      } else if (action.kind === "resolve_dispute") {
+        updated = await resolveOrderDispute(order.id);
       } else if (action.kind === "approve_cancel") {
         updated = await approveOrderCancel(order.id);
       } else if (action.kind === "reject_cancel") {
@@ -310,6 +326,10 @@ export default function OrderDetail() {
                       ? t("orders.actionShip")
                       : action.kind === "confirm"
                         ? t("orderDetail.confirmOrder")
+                        : action.kind === "deliver"
+                          ? t("orderDetail.markDelivered")
+                          : action.kind === "resolve_dispute"
+                            ? t("orderDetail.resolveDispute")
                         : action.kind === "approve_cancel"
                           ? t("orderDetail.approveCancel")
                           : action.kind === "reject_cancel"
@@ -341,8 +361,7 @@ export default function OrderDetail() {
         {((order.status === "paid" &&
           !order.confirmed_at &&
           (order.confirmation_overdue || order.confirmation_due_at)) ||
-          ((order.status === "paid" || order.status === "in_transit") &&
-            order.cancel_requested_at)) && (
+          (order.status !== "canceled" && order.cancel_requested_at)) && (
           <div className="mt-5 space-y-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
             {order.status === "paid" && !order.confirmed_at && (
               <p>
