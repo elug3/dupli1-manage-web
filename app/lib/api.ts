@@ -1828,6 +1828,7 @@ export const PERMISSION_CATALOG = [
   "user.permissions.update",
   "user.password.update",
   "user.status.update",
+  "user.delete",
   // Service-account API keys (owner only in practice; elug3/dupli1#308).
   "user.apikey.read",
   "user.apikey.manage",
@@ -1868,6 +1869,10 @@ export const PERMISSION_CATALOG = [
   "payment.cancel",
   "notification.telegram.read",
   "notification.telegram.manage",
+  // Customer consultation inbox (support service).
+  "support.read",
+  "support.reply",
+  "support.manage",
 ] as const;
 
 export const ALL_PERMISSIONS = [
