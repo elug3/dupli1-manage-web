@@ -506,6 +506,8 @@ export const en = {
     cancelConfirmOverdue: "Cancel request overdue — approve or it will auto-refund.",
     approveCancel: "Approve cancel",
     rejectCancel: "Reject cancel",
+    markDelivered: "Mark delivered",
+    resolveDispute: "Resolve as delivered",
     unconfirmed: "Unconfirmed",
     orderId: "Order ID",
     customer: "Customer",

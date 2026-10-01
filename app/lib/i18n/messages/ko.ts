@@ -508,6 +508,8 @@ export const ko: Messages = {
     cancelConfirmOverdue: "취소 요청 기한이 지났습니다 — 승인하지 않으면 자동 환불됩니다.",
     approveCancel: "취소 승인",
     rejectCancel: "취소 거절",
+    markDelivered: "배송 완료 처리",
+    resolveDispute: "배송 완료로 분쟁 종료",
     unconfirmed: "미확인",
     orderId: "주문 ID",
     customer: "고객",

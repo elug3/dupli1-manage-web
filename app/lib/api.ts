@@ -1611,7 +1611,7 @@ export async function getOrder(id: string): Promise<Order> {
   return res.json() as Promise<Order>;
 }
 
-/** Ship a paid order (`paid` → `in_transit`). Requires `order.ship` + tracking. */
+/** Ship a confirmed order (`confirmed` → `in_transit`). Requires `order.ship` + tracking. */
 export async function shipOrder(
   id: string,
   input: ShipOrderInput
@@ -1651,6 +1651,25 @@ export async function confirmOrder(id: string): Promise<Order> {
     method: "POST",
   });
   if (!res.ok) throw new Error(await readError(res, "Failed to confirm order"));
+  return published(await res.json());
+}
+
+/** Mark a shipped order delivered (`in_transit` → `delivered`). Requires `order.ship`. */
+export async function deliverOrder(id: string): Promise<Order> {
+  const res = await authedFetch(orderPath(`/api/v1/orders/${id}/deliver`), {
+    method: "POST",
+  });
+  if (!res.ok) throw new Error(await readError(res, "Failed to mark delivered"));
+  return published(await res.json());
+}
+
+/** Close a dispute in the delivery's favor (`disputed` → `fulfilled`, no refund). */
+export async function resolveOrderDispute(id: string): Promise<Order> {
+  const res = await authedFetch(
+    orderPath(`/api/v1/orders/${id}/dispute/resolve`),
+    { method: "POST" }
+  );
+  if (!res.ok) throw new Error(await readError(res, "Failed to resolve dispute"));
   return published(await res.json());
 }
 
