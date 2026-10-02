@@ -562,6 +562,31 @@ const server = http.createServer(async (req, res) => {
       undated_customers: 37,
     });
   }
+  if (method === "GET" && path === "/api/v1/products/reports/visitors") {
+    const granularity = url.searchParams.get("granularity") ?? "week";
+    const periods = reportPeriods(granularity).map(([start, end], i) => {
+      const unique = 180 + ((i * 37) % 120);
+      return {
+        period_start: start,
+        period_end: end,
+        unique_visitors: unique,
+        visitor_days: Math.floor(unique * 1.4),
+      };
+    });
+    const unique = periods.reduce((n, p) => n + p.unique_visitors, 0);
+    return send(res, 200, {
+      granularity,
+      timezone: "Asia/Seoul",
+      from: periods[0].period_start,
+      to: periods.at(-1).period_end,
+      periods,
+      total_unique_visitors: Math.floor(unique * 0.7),
+      today: {
+        date: new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date()),
+        unique_visitors: 42,
+      },
+    });
+  }
   if (method === "GET" && path === "/api/v1/orders") {
     const list = orderList();
     return send(res, 200, { total: list.length, orders: list });

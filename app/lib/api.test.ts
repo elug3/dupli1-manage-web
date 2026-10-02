@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   type Order,
+  conversionRate,
   orderHasFulfillment,
   permissionGrants,
   productImageSrc,
@@ -106,5 +107,15 @@ describe("permissionGrants", () => {
     expect(permissionGrants(["admin.*"], "order.ship")).toBe(false);
     expect(permissionGrants(["*"], "payment.cancel")).toBe(true);
     expect(permissionGrants([], "order.ship")).toBe(false);
+  });
+});
+
+describe("conversionRate", () => {
+  it("is paid orders per unique visitor, as a percentage", () => {
+    expect(conversionRate(3, 200)).toBeCloseTo(1.5);
+  });
+
+  it("has no rate without visitors", () => {
+    expect(conversionRate(3, 0)).toBeNull();
   });
 });
