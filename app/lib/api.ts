@@ -2199,34 +2199,89 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   return { productCount: products.length, orderCount: orders.length };
 }
 
-export interface AnalyticsSummary {
-  revenue7d: number;
-  revenue30d: number;
-  orders7d: number;
-  orders30d: number;
+// ── Reports (sales and sign-ups) ─────────────────────────────────────────────
+// Both are bucketed server-side into the same KST periods: weeks run Monday to
+// Sunday, months are calendar months. Backend docs/api.md.
+
+export type ReportGranularity = "week" | "month";
+
+/** One week or month of `GET /api/v1/orders/reports/sales`. */
+export interface SalesPeriod {
+  period_start: string; // YYYY-MM-DD, first day
+  period_end: string; // YYYY-MM-DD, last day (inclusive)
+  /** Orders paid in the period, and their amounts. */
+  orders: number;
+  gross_won: number;
+  discount_won: number;
+  shipping_fee_won: number;
+  /** Paid orders canceled (refunded) in the period, whenever they were paid. */
+  refunds: number;
+  refunded_won: number;
+  /** gross_won - refunded_won: what moved in the period. */
+  net_won: number;
+  average_order_won: number;
 }
 
-export async function getAnalytics(): Promise<AnalyticsSummary | null> {
-  const orders = await getOrders();
-  if (orders.length === 0) return null;
+export interface SalesReport {
+  granularity: ReportGranularity;
+  timezone: string;
+  from: string;
+  to: string;
+  periods: SalesPeriod[];
+  totals: SalesPeriod;
+}
 
-  const now = Date.now();
-  const day = 24 * 60 * 60 * 1000;
-  const within = (days: number) => (o: Order) =>
-    now - new Date(o.created_at).getTime() <= days * day;
+/** One week or month of `GET /api/v1/auth/reports/registrations`. */
+export interface RegistrationPeriod {
+  period_start: string;
+  period_end: string;
+  new_customers: number;
+}
 
-  const sumRevenue = (list: Order[]) =>
-    list.reduce((sum, o) => sum + o.total_won, 0);
+export interface RegistrationReport {
+  granularity: ReportGranularity;
+  timezone: string;
+  from: string;
+  to: string;
+  periods: RegistrationPeriod[];
+  total_new_customers: number;
+  /** Customers who signed up before auth recorded sign-up dates. */
+  undated_customers: number;
+}
 
-  const last7 = orders.filter(within(7));
-  const last30 = orders.filter(within(30));
+function reportQuery(granularity: ReportGranularity, from?: string, to?: string) {
+  const q = new URLSearchParams({ granularity });
+  if (from) q.set("from", from);
+  if (to) q.set("to", to);
+  return q.toString();
+}
 
-  return {
-    revenue7d: sumRevenue(last7),
-    revenue30d: sumRevenue(last30),
-    orders7d: last7.length,
-    orders30d: last30.length,
-  };
+/** Sales per week or month (`order.read.all`). `null` when the caller lacks it. */
+export async function getSalesReport(
+  granularity: ReportGranularity,
+  from?: string,
+  to?: string
+): Promise<SalesReport | null> {
+  const res = await authedFetch(
+    orderPath(`/api/v1/orders/reports/sales?${reportQuery(granularity, from, to)}`)
+  );
+  if (res.status === 403) return null;
+  if (!res.ok) throw new Error(await readError(res, "Failed to load sales report"));
+  return (await res.json()) as SalesReport;
+}
+
+/** Customer sign-ups per week or month (`user.read`). `null` when the caller lacks it. */
+export async function getRegistrationReport(
+  granularity: ReportGranularity,
+  from?: string,
+  to?: string
+): Promise<RegistrationReport | null> {
+  const res = await authedFetch(
+    authPath(`/api/v1/auth/reports/registrations?${reportQuery(granularity, from, to)}`)
+  );
+  if (res.status === 403) return null;
+  if (!res.ok) throw new Error(await readError(res, "Failed to load sign-up report"));
+  return (await res.json()) as RegistrationReport;
 }
 
 // ── Notification (Telegram ops bot) ──────────────────────────────────────────

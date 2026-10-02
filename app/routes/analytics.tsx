@@ -1,84 +1,118 @@
 import { useEffect, useState } from "react";
-import { type AnalyticsSummary, getAnalytics } from "~/lib/api";
+import { ReportBarChart } from "~/components/ReportBarChart";
+import {
+  type RegistrationReport,
+  type ReportGranularity,
+  type SalesPeriod,
+  type SalesReport,
+  getRegistrationReport,
+  getSalesReport,
+} from "~/lib/api";
 import { useI18n } from "~/lib/i18n";
 
 export function meta() {
   return [{ title: "Analytics | Dupli1 Admin" }];
 }
 
+// Each report loads on its own: one the operator may not read (403 → null)
+// or one that fails must not blank the other.
+type Loaded<T> =
+  | { state: "loading" }
+  | { state: "ready"; data: T | null }
+  | { state: "error"; message?: string };
+
+/** Today in KST, YYYY-MM-DD — reports are bucketed in Korea time. */
+function todayKST(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(
+    new Date()
+  );
+}
+
+/** A report date as a local calendar date, so no timezone shifts the day. */
+function localDate(ymd: string): Date {
+  const [y, m, d] = ymd.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function percentChange(current: number, previous: number): number | null {
+  if (previous === 0) return null;
+  return ((current - previous) / Math.abs(previous)) * 100;
+}
+
 export default function Analytics() {
-  const { t, formatWon } = useI18n();
-  const [data, setData] = useState<AnalyticsSummary | null>(null);
-  const [loading, setLoading] = useState(true);
-  // The server's own message when there is one; otherwise the translated
-  // fallback is chosen at render, so the load effect does not depend on `t`
-  // and a language switch does not refetch.
-  const [error, setError] = useState<{ message?: string } | null>(null);
-  const [period, setPeriod] = useState<"7d" | "30d">("30d");
+  const { t, formatWon, formatDate } = useI18n();
+  const [granularity, setGranularity] = useState<ReportGranularity>("week");
+  const [sales, setSales] = useState<Loaded<SalesReport>>({ state: "loading" });
+  const [signups, setSignups] = useState<Loaded<RegistrationReport>>({
+    state: "loading",
+  });
 
   useEffect(() => {
-    setError(null);
-    getAnalytics()
-      .then(setData)
-      .catch((err) => {
-        setData(null);
-        setError({ message: err instanceof Error ? err.message : undefined });
-      })
-      .finally(() => setLoading(false));
-  }, []);
+    let cancelled = false;
+    setSales({ state: "loading" });
+    setSignups({ state: "loading" });
+    getSalesReport(granularity)
+      .then((data) => !cancelled && setSales({ state: "ready", data }))
+      .catch(
+        (err) =>
+          !cancelled &&
+          setSales({
+            state: "error",
+            message: err instanceof Error ? err.message : undefined,
+          })
+      );
+    getRegistrationReport(granularity)
+      .then((data) => !cancelled && setSignups({ state: "ready", data }))
+      .catch(
+        (err) =>
+          !cancelled &&
+          setSignups({
+            state: "error",
+            message: err instanceof Error ? err.message : undefined,
+          })
+      );
+    return () => {
+      cancelled = true;
+    };
+  }, [granularity]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-32">
-        <div className="h-7 w-7 animate-spin rounded-full border-2 border-accent border-t-transparent" />
-      </div>
+  const today = todayKST();
+  const isWeek = granularity === "week";
+
+  const axisLabel = (start: string) =>
+    formatDate(
+      localDate(start),
+      isWeek ? { month: "numeric", day: "numeric" } : { month: "short" }
     );
-  }
+  const periodTitle = (start: string, end: string) =>
+    isWeek
+      ? `${formatDate(localDate(start), { month: "short", day: "numeric" })} – ${formatDate(localDate(end), { month: "short", day: "numeric" })}`
+      : formatDate(localDate(start), { year: "numeric", month: "long" });
 
-  if (error) {
-    return (
-      <div className="space-y-4">
-        <div>
-          <h1 className="text-xl font-bold text-ink sm:text-2xl">
-            {t("analytics.title")}
-          </h1>
-          <p className="mt-0.5 text-sm text-muted">
-            {t("analytics.subtitleFromOrders")}
-          </p>
-        </div>
-        <div className="rounded-xl bg-danger-bg px-4 py-3 text-sm text-danger-fg">
-          {error.message ?? t("analytics.failedToLoad")}
-        </div>
-      </div>
-    );
-  }
+  // KPIs compare the last finished period with the one before it; the
+  // running period is in the chart and table, marked as in progress.
+  const finished = <P extends { period_end: string }>(periods: P[]) =>
+    periods.filter((p) => p.period_end < today);
+  const salesDone =
+    sales.state === "ready" && sales.data ? finished(sales.data.periods) : [];
+  const signupDone =
+    signups.state === "ready" && signups.data
+      ? finished(signups.data.periods)
+      : [];
+  const lastSales = salesDone.at(-1);
+  const prevSales = salesDone.at(-2);
+  const lastSignup = signupDone.at(-1);
+  const prevSignup = signupDone.at(-2);
 
-  if (!data) {
-    return (
-      <div className="space-y-4">
-        <div>
-          <h1 className="text-xl font-bold text-ink sm:text-2xl">
-            {t("analytics.title")}
-          </h1>
-          <p className="mt-0.5 text-sm text-muted">
-            {t("analytics.subtitleFromOrders")}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-edge bg-surface p-12 text-center shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
-          <p className="font-semibold text-ink">
-            {t("analytics.noOrderDataYet")}
-          </p>
-          <p className="mt-1 text-sm text-faint">
-            {t("analytics.noOrderDataHint")}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  const revenueWon = period === "7d" ? data.revenue7d : data.revenue30d;
-  const orders = period === "7d" ? data.orders7d : data.orders30d;
-  const aovWon = orders > 0 ? revenueWon / orders : 0;
+  const changeLabel = (current: number, previous: number | undefined) => {
+    if (previous === undefined) return t("analytics.noPrevious");
+    const pct = percentChange(current, previous);
+    if (pct === null) return t("analytics.noPrevious");
+    const sign = pct > 0 ? "+" : "";
+    return t(isWeek ? "analytics.vsPreviousWeek" : "analytics.vsPreviousMonth", {
+      change: `${sign}${pct.toFixed(0)}%`,
+    });
+  };
 
   return (
     <div className="space-y-8">
@@ -87,51 +121,324 @@ export default function Analytics() {
           <h1 className="text-xl font-bold text-ink sm:text-2xl">
             {t("analytics.title")}
           </h1>
-          <p className="mt-0.5 text-sm text-muted">
-            {t("analytics.subtitleFromTotals")}
-          </p>
+          <p className="mt-0.5 text-sm text-muted">{t("analytics.subtitle")}</p>
         </div>
-
-        <div className="flex gap-1 rounded-xl border border-edge bg-surface p-1 shadow-[0_1px_3px_rgba(28,27,31,0.04)]">
-          {(["7d", "30d"] as const).map((p) => (
+        <div className="flex gap-1 self-start rounded-xl border border-edge bg-surface p-1 shadow-[0_1px_3px_rgba(28,27,31,0.04)]">
+          {(["week", "month"] as const).map((g) => (
             <button
-              key={p}
-              onClick={() => setPeriod(p)}
+              key={g}
+              type="button"
+              onClick={() => setGranularity(g)}
+              aria-pressed={granularity === g}
               className={[
                 "rounded-lg px-4 py-1.5 text-xs font-semibold transition",
-                period === p
+                granularity === g
                   ? "bg-accent text-white shadow-sm"
                   : "text-muted hover:bg-page",
               ].join(" ")}
             >
-              {p === "7d"
-                ? t("analytics.period7Days")
-                : t("analytics.period30Days")}
+              {g === "week" ? t("analytics.weekly") : t("analytics.monthly")}
             </button>
           ))}
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <KpiCard
-          label={t("analytics.kpiRevenue")}
-          value={formatWon(revenueWon)}
-        />
-        <KpiCard label={t("analytics.kpiOrders")} value={String(orders)} />
-        <KpiCard
-          label={t("analytics.kpiAvgOrderValue")}
-          value={formatWon(aovWon)}
-        />
+      <div>
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-faint">
+          {isWeek ? t("analytics.lastWeek") : t("analytics.lastMonth")}
+          {lastSales
+            ? ` · ${periodTitle(lastSales.period_start, lastSales.period_end)}`
+            : ""}
+        </p>
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <KpiCard
+            label={t("analytics.kpiNetSales")}
+            value={lastSales ? formatWon(lastSales.net_won) : t("common.emptyValue")}
+            sub={lastSales ? changeLabel(lastSales.net_won, prevSales?.net_won) : null}
+          />
+          <KpiCard
+            label={t("analytics.kpiPaidOrders")}
+            value={lastSales ? String(lastSales.orders) : t("common.emptyValue")}
+            sub={lastSales ? changeLabel(lastSales.orders, prevSales?.orders) : null}
+          />
+          <KpiCard
+            label={t("analytics.kpiAvgOrderValue")}
+            value={
+              lastSales ? formatWon(lastSales.average_order_won) : t("common.emptyValue")
+            }
+            sub={
+              lastSales
+                ? changeLabel(lastSales.average_order_won, prevSales?.average_order_won)
+                : null
+            }
+          />
+          <KpiCard
+            label={t("analytics.kpiNewCustomers")}
+            value={
+              lastSignup ? String(lastSignup.new_customers) : t("common.emptyValue")
+            }
+            sub={
+              lastSignup
+                ? changeLabel(lastSignup.new_customers, prevSignup?.new_customers)
+                : null
+            }
+          />
+        </div>
+      </div>
+
+      <Section title={t("analytics.salesTitle")} note={t("analytics.salesNote")}>
+        {sales.state === "loading" && <Spinner />}
+        {sales.state === "error" && (
+          <ErrorBox message={sales.message ?? t("analytics.failedToLoad")} />
+        )}
+        {sales.state === "ready" && !sales.data && (
+          <p className="text-sm text-muted">{t("analytics.salesNoPermission")}</p>
+        )}
+        {sales.state === "ready" && sales.data && (
+          <>
+            <ReportBarChart
+              ariaLabel={t("analytics.salesChartLabel")}
+              partialNote={t("analytics.inProgress")}
+              format={(v) => formatWon(v)}
+              points={sales.data.periods.map((p) => ({
+                label: axisLabel(p.period_start),
+                title: periodTitle(p.period_start, p.period_end),
+                value: p.net_won,
+                partial: p.period_end >= today,
+              }))}
+            />
+            <SalesTable
+              report={sales.data}
+              today={today}
+              periodTitle={periodTitle}
+            />
+          </>
+        )}
+      </Section>
+
+      <Section
+        title={t("analytics.signupsTitle")}
+        note={
+          signups.state === "ready" && signups.data && signups.data.undated_customers > 0
+            ? t("analytics.undatedCustomers", {
+                count: signups.data.undated_customers,
+              })
+            : t("analytics.signupsNote")
+        }
+      >
+        {signups.state === "loading" && <Spinner />}
+        {signups.state === "error" && (
+          <ErrorBox message={signups.message ?? t("analytics.failedToLoad")} />
+        )}
+        {signups.state === "ready" && !signups.data && (
+          <p className="text-sm text-muted">{t("analytics.signupsNoPermission")}</p>
+        )}
+        {signups.state === "ready" && signups.data && (
+          <>
+            <ReportBarChart
+              ariaLabel={t("analytics.signupsChartLabel")}
+              partialNote={t("analytics.inProgress")}
+              format={(v) => String(v)}
+              points={signups.data.periods.map((p) => ({
+                label: axisLabel(p.period_start),
+                title: periodTitle(p.period_start, p.period_end),
+                value: p.new_customers,
+                partial: p.period_end >= today,
+              }))}
+            />
+            <p className="mt-3 text-sm text-muted">
+              {t("analytics.signupsTotal", {
+                count: signups.data.total_new_customers,
+              })}
+            </p>
+          </>
+        )}
+      </Section>
+    </div>
+  );
+}
+
+function SalesTable({
+  report,
+  today,
+  periodTitle,
+}: {
+  report: SalesReport;
+  today: string;
+  periodTitle: (start: string, end: string) => string;
+}) {
+  const { t, formatWon } = useI18n();
+  const rows = [...report.periods].reverse();
+
+  const exportCsv = () => {
+    const header = [
+      "period_start",
+      "period_end",
+      "orders",
+      "gross_won",
+      "discount_won",
+      "shipping_fee_won",
+      "refunds",
+      "refunded_won",
+      "net_won",
+      "average_order_won",
+    ];
+    const line = (p: SalesPeriod) =>
+      [
+        p.period_start,
+        p.period_end,
+        p.orders,
+        p.gross_won,
+        p.discount_won,
+        p.shipping_fee_won,
+        p.refunds,
+        p.refunded_won,
+        p.net_won,
+        p.average_order_won,
+      ].join(",");
+    const csv = [header.join(","), ...report.periods.map(line)].join("\n") + "\n";
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `sales-${report.granularity}-${report.from}-${report.to}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const cells = (p: SalesPeriod) => [
+    String(p.orders),
+    formatWon(p.gross_won),
+    formatWon(p.discount_won),
+    formatWon(p.shipping_fee_won),
+    p.refunds > 0 ? `${formatWon(p.refunded_won)} (${p.refunds})` : formatWon(0),
+    formatWon(p.net_won),
+    formatWon(p.average_order_won),
+  ];
+  const columns = [
+    t("analytics.colOrders"),
+    t("analytics.colGross"),
+    t("analytics.colDiscounts"),
+    t("analytics.colShipping"),
+    t("analytics.colRefunds"),
+    t("analytics.colNet"),
+    t("analytics.colAvg"),
+  ];
+
+  return (
+    <div className="mt-6">
+      <div className="mb-2 flex justify-end">
+        <button
+          type="button"
+          onClick={exportCsv}
+          className="rounded-lg border border-edge px-3 py-1.5 text-xs font-semibold text-muted transition hover:bg-page"
+        >
+          {t("analytics.exportCsv")}
+        </button>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[720px] text-sm">
+          <thead>
+            <tr className="border-b border-edge text-left text-xs text-faint">
+              <th className="py-2 pr-3 font-medium">{t("analytics.colPeriod")}</th>
+              {columns.map((c) => (
+                <th key={c} className="py-2 pl-3 text-right font-medium">
+                  {c}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((p) => (
+              <tr key={p.period_start} className="border-b border-edge-soft">
+                <td className="py-2 pr-3 text-ink">
+                  {periodTitle(p.period_start, p.period_end)}
+                  {p.period_end >= today && (
+                    <span className="ml-2 text-xs text-faint">
+                      {t("analytics.inProgress")}
+                    </span>
+                  )}
+                </td>
+                {cells(p).map((v, i) => (
+                  <td
+                    key={columns[i]}
+                    className={[
+                      "py-2 pl-3 text-right tabular-nums",
+                      i === 5 ? "font-semibold text-ink" : "text-muted",
+                    ].join(" ")}
+                  >
+                    {v}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="text-ink">
+              <td className="py-2 pr-3 font-semibold">{t("analytics.total")}</td>
+              {cells(report.totals).map((v, i) => (
+                <td
+                  key={columns[i]}
+                  className="py-2 pl-3 text-right font-semibold tabular-nums"
+                >
+                  {v}
+                </td>
+              ))}
+            </tr>
+          </tfoot>
+        </table>
       </div>
     </div>
   );
 }
 
-function KpiCard({ label, value }: { label: string; value: string }) {
+function Section({
+  title,
+  note,
+  children,
+}: {
+  title: string;
+  note: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-2xl border border-edge bg-surface p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
+      <h2 className="font-semibold text-ink">{title}</h2>
+      <p className="mt-0.5 mb-4 text-xs text-muted">{note}</p>
+      {children}
+    </section>
+  );
+}
+
+function KpiCard({
+  label,
+  value,
+  sub,
+}: {
+  label: string;
+  value: string;
+  sub: string | null;
+}) {
   return (
     <div className="rounded-2xl border border-edge bg-surface p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
-      <div className="text-2xl font-bold text-ink">{value}</div>
+      <div className="text-xl font-bold text-ink sm:text-2xl">{value}</div>
       <div className="mt-0.5 text-sm text-muted">{label}</div>
+      {sub && <div className="mt-1 text-xs text-faint">{sub}</div>}
+    </div>
+  );
+}
+
+function Spinner() {
+  return (
+    <div className="flex items-center justify-center py-16">
+      <div className="h-7 w-7 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+    </div>
+  );
+}
+
+function ErrorBox({ message }: { message: string }) {
+  return (
+    <div className="rounded-xl bg-danger-bg px-4 py-3 text-sm text-danger-fg">
+      {message}
     </div>
   );
 }

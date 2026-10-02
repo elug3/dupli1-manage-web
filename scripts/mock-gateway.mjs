@@ -244,6 +244,33 @@ function handleOrderEvents(req, res) {
   });
 }
 
+// The last 12 KST Monday weeks or calendar months, current one last, as
+// [start, end] YYYY-MM-DD pairs — the shape the real report endpoints return.
+function reportPeriods(granularity) {
+  const kstNow = new Date(Date.now() + 9 * 3600 * 1000);
+  const ymd = (d) => d.toISOString().slice(0, 10);
+  const out = [];
+  if (granularity === "month") {
+    for (let i = 11; i >= 0; i--) {
+      const start = new Date(Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth() - i, 1));
+      const end = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 0));
+      out.push([ymd(start), ymd(end)]);
+    }
+    return out;
+  }
+  const today = new Date(Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate()));
+  const monday = new Date(today);
+  monday.setUTCDate(today.getUTCDate() - ((today.getUTCDay() + 6) % 7));
+  for (let i = 11; i >= 0; i--) {
+    const start = new Date(monday);
+    start.setUTCDate(monday.getUTCDate() - 7 * i);
+    const end = new Date(start);
+    end.setUTCDate(start.getUTCDate() + 6);
+    out.push([ymd(start), ymd(end)]);
+  }
+  return out;
+}
+
 // ── Routes ───────────────────────────────────────────────────────────────────
 
 const server = http.createServer(async (req, res) => {
@@ -475,6 +502,65 @@ const server = http.createServer(async (req, res) => {
   m = path.match(/^\/api\/v1\/orders\/([^/]+)$/);
   if (m && method === "GET" && orders.has(decodeURIComponent(m[1]))) {
     return send(res, 200, orders.get(decodeURIComponent(m[1])));
+  }
+  if (method === "GET" && path === "/api/v1/orders/reports/sales") {
+    const granularity = url.searchParams.get("granularity") ?? "week";
+    const periods = reportPeriods(granularity).map(([start, end], i) => {
+      const orders = 3 + ((i * 7) % 11);
+      const gross = orders * 182000 + i * 9000;
+      const refunds = i % 4 === 2 ? 1 : 0;
+      const refunded = refunds * 245000;
+      return {
+        period_start: start,
+        period_end: end,
+        orders,
+        gross_won: gross,
+        discount_won: orders * 8000,
+        shipping_fee_won: orders * 3000,
+        refunds,
+        refunded_won: refunded,
+        net_won: gross - refunded,
+        average_order_won: Math.floor(gross / orders),
+      };
+    });
+    const sum = (k) => periods.reduce((n, p) => n + p[k], 0);
+    const totals = {
+      period_start: periods[0].period_start,
+      period_end: periods.at(-1).period_end,
+      orders: sum("orders"),
+      gross_won: sum("gross_won"),
+      discount_won: sum("discount_won"),
+      shipping_fee_won: sum("shipping_fee_won"),
+      refunds: sum("refunds"),
+      refunded_won: sum("refunded_won"),
+      net_won: sum("net_won"),
+      average_order_won: Math.floor(sum("gross_won") / sum("orders")),
+    };
+    return send(res, 200, {
+      granularity,
+      timezone: "Asia/Seoul",
+      from: totals.period_start,
+      to: totals.period_end,
+      periods,
+      totals,
+    });
+  }
+  if (method === "GET" && path === "/api/v1/auth/reports/registrations") {
+    const granularity = url.searchParams.get("granularity") ?? "week";
+    const periods = reportPeriods(granularity).map(([start, end], i) => ({
+      period_start: start,
+      period_end: end,
+      new_customers: 2 + ((i * 5) % 9),
+    }));
+    return send(res, 200, {
+      granularity,
+      timezone: "Asia/Seoul",
+      from: periods[0].period_start,
+      to: periods.at(-1).period_end,
+      periods,
+      total_new_customers: periods.reduce((n, p) => n + p.new_customers, 0),
+      undated_customers: 37,
+    });
   }
   if (method === "GET" && path === "/api/v1/orders") {
     const list = orderList();
