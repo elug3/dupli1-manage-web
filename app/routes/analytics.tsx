@@ -5,8 +5,11 @@ import {
   type ReportGranularity,
   type SalesPeriod,
   type SalesReport,
+  type VisitorReport,
+  conversionRate,
   getRegistrationReport,
   getSalesReport,
+  getVisitorReport,
 } from "~/lib/api";
 import { useI18n } from "~/lib/i18n";
 
@@ -46,11 +49,15 @@ export default function Analytics() {
   const [signups, setSignups] = useState<Loaded<RegistrationReport>>({
     state: "loading",
   });
+  const [visitors, setVisitors] = useState<Loaded<VisitorReport>>({
+    state: "loading",
+  });
 
   useEffect(() => {
     let cancelled = false;
     setSales({ state: "loading" });
     setSignups({ state: "loading" });
+    setVisitors({ state: "loading" });
     getSalesReport(granularity)
       .then((data) => !cancelled && setSales({ state: "ready", data }))
       .catch(
@@ -67,6 +74,16 @@ export default function Analytics() {
         (err) =>
           !cancelled &&
           setSignups({
+            state: "error",
+            message: err instanceof Error ? err.message : undefined,
+          })
+      );
+    getVisitorReport(granularity)
+      .then((data) => !cancelled && setVisitors({ state: "ready", data }))
+      .catch(
+        (err) =>
+          !cancelled &&
+          setVisitors({
             state: "error",
             message: err instanceof Error ? err.message : undefined,
           })
@@ -103,6 +120,32 @@ export default function Analytics() {
   const prevSales = salesDone.at(-2);
   const lastSignup = signupDone.at(-1);
   const prevSignup = signupDone.at(-2);
+  const visitorDone =
+    visitors.state === "ready" && visitors.data
+      ? finished(visitors.data.periods)
+      : [];
+  const lastVisitors = visitorDone.at(-1);
+  const prevVisitors = visitorDone.at(-2);
+
+  // Conversion pairs the two reports by period_start; both use the same KST
+  // periods, so a period missing from either simply has no rate.
+  const salesByStart = new Map(
+    sales.state === "ready" && sales.data
+      ? sales.data.periods.map((p) => [p.period_start, p] as const)
+      : []
+  );
+  const conversionFor = (start: string, uniqueVisitors: number) => {
+    const s = salesByStart.get(start);
+    return s ? conversionRate(s.orders, uniqueVisitors) : null;
+  };
+  const lastConversion = lastVisitors
+    ? conversionFor(lastVisitors.period_start, lastVisitors.unique_visitors)
+    : null;
+  const prevConversion = prevVisitors
+    ? conversionFor(prevVisitors.period_start, prevVisitors.unique_visitors)
+    : null;
+  const formatPct = (v: number | null) =>
+    v === null ? t("common.emptyValue") : `${v.toFixed(1)}%`;
 
   const changeLabel = (current: number, previous: number | undefined) => {
     if (previous === undefined) return t("analytics.noPrevious");
@@ -111,6 +154,16 @@ export default function Analytics() {
     const sign = pct > 0 ? "+" : "";
     return t(isWeek ? "analytics.vsPreviousWeek" : "analytics.vsPreviousMonth", {
       change: `${sign}${pct.toFixed(0)}%`,
+    });
+  };
+
+  // A rate moves in percentage points; "+20%" of 1.5% would read as 21.5%.
+  const pointChangeLabel = (current: number, previous: number | null) => {
+    if (previous === null) return t("analytics.noPrevious");
+    const diff = current - previous;
+    const sign = diff > 0 ? "+" : "";
+    return t(isWeek ? "analytics.vsPreviousWeek" : "analytics.vsPreviousMonth", {
+      change: t("analytics.percentPoints", { value: `${sign}${diff.toFixed(1)}` }),
     });
   };
 
@@ -150,7 +203,7 @@ export default function Analytics() {
             ? ` · ${periodTitle(lastSales.period_start, lastSales.period_end)}`
             : ""}
         </p>
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
           <KpiCard
             label={t("analytics.kpiNetSales")}
             value={lastSales ? formatWon(lastSales.net_won) : t("common.emptyValue")}
@@ -183,6 +236,24 @@ export default function Analytics() {
                 : null
             }
           />
+          <KpiCard
+            label={t("analytics.kpiVisitors")}
+            value={
+              lastVisitors ? String(lastVisitors.unique_visitors) : t("common.emptyValue")
+            }
+            sub={
+              lastVisitors
+                ? changeLabel(lastVisitors.unique_visitors, prevVisitors?.unique_visitors)
+                : null
+            }
+          />
+          <KpiCard
+            label={t("analytics.kpiConversion")}
+            value={formatPct(lastConversion)}
+            sub={
+              lastConversion !== null ? pointChangeLabel(lastConversion, prevConversion) : null
+            }
+          />
         </div>
       </div>
 
@@ -211,6 +282,48 @@ export default function Analytics() {
               report={sales.data}
               today={today}
               periodTitle={periodTitle}
+            />
+          </>
+        )}
+      </Section>
+
+      <Section title={t("analytics.visitorsTitle")} note={t("analytics.visitorsNote")}>
+        {visitors.state === "loading" && <Spinner />}
+        {visitors.state === "error" && (
+          <ErrorBox message={visitors.message ?? t("analytics.failedToLoad")} />
+        )}
+        {visitors.state === "ready" && !visitors.data && (
+          <p className="text-sm text-muted">{t("analytics.visitorsNoPermission")}</p>
+        )}
+        {visitors.state === "ready" && visitors.data && (
+          <>
+            <ReportBarChart
+              ariaLabel={t("analytics.visitorsChartLabel")}
+              partialNote={t("analytics.inProgress")}
+              format={(v) => String(v)}
+              points={visitors.data.periods.map((p) => ({
+                label: axisLabel(p.period_start),
+                title: periodTitle(p.period_start, p.period_end),
+                value: p.unique_visitors,
+                partial: p.period_end >= today,
+              }))}
+            />
+            <p className="mt-3 text-sm text-muted">
+              {t("analytics.visitorsToday", {
+                count: visitors.data.today.unique_visitors,
+              })}
+              {" · "}
+              {t("analytics.visitorsTotal", {
+                count: visitors.data.total_unique_visitors,
+              })}
+            </p>
+            <VisitorTable
+              report={visitors.data}
+              today={today}
+              periodTitle={periodTitle}
+              conversionFor={conversionFor}
+              ordersFor={(start) => salesByStart.get(start)?.orders ?? null}
+              formatPct={formatPct}
             />
           </>
         )}
@@ -387,6 +500,85 @@ function SalesTable({
           </tfoot>
         </table>
       </div>
+    </div>
+  );
+}
+
+function VisitorTable({
+  report,
+  today,
+  periodTitle,
+  conversionFor,
+  ordersFor,
+  formatPct,
+}: {
+  report: VisitorReport;
+  today: string;
+  periodTitle: (start: string, end: string) => string;
+  conversionFor: (start: string, uniqueVisitors: number) => number | null;
+  ordersFor: (start: string) => number | null;
+  formatPct: (v: number | null) => string;
+}) {
+  const { t } = useI18n();
+  const rows = [...report.periods].reverse();
+  const columns = [
+    t("analytics.colVisitors"),
+    t("analytics.colVisitorDays"),
+    t("analytics.colOrders"),
+    t("analytics.colConversion"),
+  ];
+
+  return (
+    <div className="mt-6">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[560px] text-sm">
+          <thead>
+            <tr className="border-b border-edge text-left text-xs text-faint">
+              <th className="py-2 pr-3 font-medium">{t("analytics.colPeriod")}</th>
+              {columns.map((c) => (
+                <th key={c} className="py-2 pl-3 text-right font-medium">
+                  {c}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((p) => {
+              const orders = ordersFor(p.period_start);
+              const cells = [
+                String(p.unique_visitors),
+                String(p.visitor_days),
+                orders === null ? t("common.emptyValue") : String(orders),
+                formatPct(conversionFor(p.period_start, p.unique_visitors)),
+              ];
+              return (
+                <tr key={p.period_start} className="border-b border-edge-soft">
+                  <td className="py-2 pr-3 text-ink">
+                    {periodTitle(p.period_start, p.period_end)}
+                    {p.period_end >= today && (
+                      <span className="ml-2 text-xs text-faint">
+                        {t("analytics.inProgress")}
+                      </span>
+                    )}
+                  </td>
+                  {cells.map((v, i) => (
+                    <td
+                      key={columns[i]}
+                      className={[
+                        "py-2 pl-3 text-right tabular-nums",
+                        i === 0 ? "font-semibold text-ink" : "text-muted",
+                      ].join(" ")}
+                    >
+                      {v}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p className="mt-2 text-xs text-faint">{t("analytics.conversionNote")}</p>
     </div>
   );
 }

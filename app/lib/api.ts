@@ -2199,8 +2199,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   return { productCount: products.length, orderCount: orders.length };
 }
 
-// ── Reports (sales and sign-ups) ─────────────────────────────────────────────
-// Both are bucketed server-side into the same KST periods: weeks run Monday to
+// ── Reports (sales, sign-ups and visitors) ───────────────────────────────────
+// All three are bucketed server-side into the same KST periods: weeks run Monday to
 // Sunday, months are calendar months. Backend docs/api.md.
 
 export type ReportGranularity = "week" | "month";
@@ -2249,6 +2249,34 @@ export interface RegistrationReport {
   undated_customers: number;
 }
 
+/** One week or month of `GET /api/v1/products/reports/visitors`. */
+export interface VisitorPeriod {
+  period_start: string;
+  period_end: string;
+  /** Browsers that visited at least once in the period. */
+  unique_visitors: number;
+  /** Each browser once per day it came: the sum of daily unique visitors. */
+  visitor_days: number;
+}
+
+/**
+ * Storefront unique visitors. A visitor is a browser (the `dupli1_guest`
+ * cookie), counted once per KST day by the storefront's page-load beacon, so
+ * one person on two devices counts twice. Counting began when the beacon
+ * shipped; there is no earlier history.
+ */
+export interface VisitorReport {
+  granularity: ReportGranularity;
+  timezone: string;
+  from: string;
+  to: string;
+  periods: VisitorPeriod[];
+  /** Each browser once across the whole range — not the sum of the periods. */
+  total_unique_visitors: number;
+  /** The current KST day, whatever range was asked for. */
+  today: { date: string; unique_visitors: number };
+}
+
 function reportQuery(granularity: ReportGranularity, from?: string, to?: string) {
   const q = new URLSearchParams({ granularity });
   if (from) q.set("from", from);
@@ -2282,6 +2310,29 @@ export async function getRegistrationReport(
   if (res.status === 403) return null;
   if (!res.ok) throw new Error(await readError(res, "Failed to load sign-up report"));
   return (await res.json()) as RegistrationReport;
+}
+
+/** Unique storefront visitors per week or month (`product.read`). `null` when the caller lacks it. */
+export async function getVisitorReport(
+  granularity: ReportGranularity,
+  from?: string,
+  to?: string
+): Promise<VisitorReport | null> {
+  const res = await authedFetch(
+    productPath(`/api/v1/products/reports/visitors?${reportQuery(granularity, from, to)}`)
+  );
+  if (res.status === 403) return null;
+  if (!res.ok) throw new Error(await readError(res, "Failed to load visitor report"));
+  return (await res.json()) as VisitorReport;
+}
+
+/**
+ * Paid orders per unique visitor, as a percentage, or `null` with no visitors.
+ * Both come from different reports bucketed into the same KST periods.
+ */
+export function conversionRate(paidOrders: number, uniqueVisitors: number): number | null {
+  if (uniqueVisitors <= 0) return null;
+  return (paidOrders / uniqueVisitors) * 100;
 }
 
 // ── Notification (Telegram ops bot) ──────────────────────────────────────────

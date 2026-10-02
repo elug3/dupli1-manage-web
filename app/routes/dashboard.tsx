@@ -9,6 +9,7 @@ import {
   getOrders,
   getProducts,
   getSalesReport,
+  getVisitorReport,
 } from "~/lib/api";
 import { useI18n } from "~/lib/i18n";
 import { mergeOrder, useOrderFeed } from "~/lib/order-events";
@@ -50,6 +51,17 @@ export default function Dashboard() {
   useEffect(() => {
     loadThisWeek();
   }, [loadThisWeek]);
+
+  // Today's unique storefront visitors; null when unreadable (no product.read,
+  // or down). Read once per visit to the dashboard.
+  const [visitorsToday, setVisitorsToday] = useState<number | null>(null);
+  const [visitorsLoading, setVisitorsLoading] = useState(true);
+  useEffect(() => {
+    getVisitorReport("week")
+      .then((report) => setVisitorsToday(report?.today.unique_visitors ?? null))
+      .catch(() => setVisitorsToday(null))
+      .finally(() => setVisitorsLoading(false));
+  }, []);
 
   useEffect(() => {
     const failures: string[] = [];
@@ -126,6 +138,8 @@ export default function Dashboard() {
         loading={loading}
         thisWeek={thisWeek}
         salesLoading={salesLoading}
+        visitorsToday={visitorsToday}
+        visitorsLoading={visitorsLoading}
       />
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
@@ -171,6 +185,8 @@ function StatsGrid({
   loading,
   thisWeek,
   salesLoading,
+  visitorsToday,
+  visitorsLoading,
 }: {
   products: Product[];
   ordersToday: number;
@@ -178,6 +194,8 @@ function StatsGrid({
   loading: boolean;
   thisWeek: SalesPeriod | null;
   salesLoading: boolean;
+  visitorsToday: number | null;
+  visitorsLoading: boolean;
 }) {
   const { t, formatWon } = useI18n();
   const active = products.filter(
@@ -209,6 +227,22 @@ function StatsGrid({
       to: thisWeek ? "/analytics" : undefined,
     },
     {
+      label: t("dashboard.visitorsToday"),
+      value: visitorsLoading
+        ? t("common.loadingEllipsis")
+        : visitorsToday !== null
+          ? String(visitorsToday)
+          : t("common.emptyValue"),
+      sub: visitorsLoading
+        ? null
+        : visitorsToday !== null
+          ? t("dashboard.uniqueBrowsersToday")
+          : t("dashboard.visitorsUnavailable"),
+      icon: <VisitorIcon />,
+      color: "bg-sky-50 text-sky-600",
+      to: visitorsToday !== null ? "/analytics" : undefined,
+    },
+    {
       label: t("dashboard.ordersToday"),
       value: loading ? t("common.loadingEllipsis") : String(ordersToday),
       sub: loading ? null : t("dashboard.ordersPlacedToday"),
@@ -238,7 +272,7 @@ function StatsGrid({
     "rounded-2xl border border-edge bg-surface p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)]";
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
       {cards.map((card) => {
         const inner = (
           <>
@@ -530,6 +564,14 @@ function RevenueIcon() {
   return (
     <svg className="size-5" viewBox="0 0 24 24" fill="none">
       <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+function VisitorIcon() {
+  return (
+    <svg className="size-5" viewBox="0 0 24 24" fill="none">
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
     </svg>
   );
 }
