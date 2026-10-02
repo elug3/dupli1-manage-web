@@ -3,10 +3,12 @@ import { Link } from "react-router";
 import {
   type Order,
   type Product,
+  type SalesPeriod,
   type VariantStockAlert,
   getCatalogStockAlerts,
   getOrders,
   getProducts,
+  getSalesReport,
 } from "~/lib/api";
 import { useI18n } from "~/lib/i18n";
 import { mergeOrder, useOrderFeed } from "~/lib/order-events";
@@ -34,6 +36,20 @@ export default function Dashboard() {
   const [errors, setErrors] = useState<string[]>([]);
   // Stream only after the first load, so a snapshot cannot seed an empty list.
   const [streamReady, setStreamReady] = useState(false);
+  // This KST week's sales; null when unreadable (no order.read.all, or down).
+  const [thisWeek, setThisWeek] = useState<SalesPeriod | null>(null);
+  const [salesLoading, setSalesLoading] = useState(true);
+
+  const loadThisWeek = useCallback(() => {
+    getSalesReport("week")
+      .then((report) => setThisWeek(report?.periods.at(-1) ?? null))
+      .catch(() => setThisWeek(null))
+      .finally(() => setSalesLoading(false));
+  }, []);
+
+  useEffect(() => {
+    loadThisWeek();
+  }, [loadThisWeek]);
 
   useEffect(() => {
     const failures: string[] = [];
@@ -67,9 +83,15 @@ export default function Dashboard() {
 
   // Live order changes keep the stat tiles and the recent-orders table honest;
   // products and stock alerts still only load once.
-  const handleOrderEvent = useCallback((order: Order) => {
-    setAllOrders((current) => mergeOrder(current, order));
-  }, []);
+  const handleOrderEvent = useCallback(
+    (order: Order) => {
+      setAllOrders((current) => mergeOrder(current, order));
+      // A payment or a refund moves this week's sales; re-read the report
+      // rather than re-deriving server-side bucketing here.
+      if (order.status === "paid" || order.status === "canceled") loadThisWeek();
+    },
+    [loadThisWeek]
+  );
 
   const handleResync = useCallback(() => {
     getOrders()
@@ -102,6 +124,8 @@ export default function Dashboard() {
         ordersToday={ordersToday}
         pendingOrders={pendingCount}
         loading={loading}
+        thisWeek={thisWeek}
+        salesLoading={salesLoading}
       />
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
@@ -145,13 +169,17 @@ function StatsGrid({
   ordersToday,
   pendingOrders,
   loading,
+  thisWeek,
+  salesLoading,
 }: {
   products: Product[];
   ordersToday: number;
   pendingOrders: number;
   loading: boolean;
+  thisWeek: SalesPeriod | null;
+  salesLoading: boolean;
 }) {
-  const { t } = useI18n();
+  const { t, formatWon } = useI18n();
   const active = products.filter(
     (p) => (p.status ?? "active").toLowerCase() === "active"
   ).length;
@@ -165,11 +193,20 @@ function StatsGrid({
     to?: string;
   }[] = [
     {
-      label: t("dashboard.revenueToday"),
-      value: t("common.emptyValue"),
-      sub: t("dashboard.analyticsNotYetAvailable"),
+      label: t("dashboard.netSalesThisWeek"),
+      value: salesLoading
+        ? t("common.loadingEllipsis")
+        : thisWeek
+          ? formatWon(thisWeek.net_won)
+          : t("common.emptyValue"),
+      sub: salesLoading
+        ? null
+        : thisWeek
+          ? t("dashboard.paidOrdersThisWeek", { count: thisWeek.orders })
+          : t("dashboard.salesUnavailable"),
       icon: <RevenueIcon />,
       color: "bg-violet-50 text-violet-600",
+      to: thisWeek ? "/analytics" : undefined,
     },
     {
       label: t("dashboard.ordersToday"),

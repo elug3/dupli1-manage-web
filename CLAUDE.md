@@ -61,6 +61,7 @@ Money fields on the wire are **`*_won`** (`total_won`, `subtotal_won`, `discount
 - `POST /auth/api/v1/auth/logout` — `204`
 - `GET /auth/api/v1/auth/me` — current user profile
 - `GET /auth/api/v1/auth/users` — list users (admin)
+- `GET /auth/api/v1/auth/reports/registrations?granularity=week|month` — customer sign-ups per period, same periods as the sales report (`user.read`). `undated_customers` signed up before auth recorded `created_at` and are in no period
 
 ### Product (`/product`)
 
@@ -93,6 +94,8 @@ SKU identity: each variant has immutable `skuId` (ULID) and human `sku` composed
 - `POST /order/api/v1/orders/{id}/cancel/approve` and `…/reject` — customer cancel request (`order.status.update`)
 - `PUT /order/api/v1/orders/{id}/status` — `canceled` or `fulfilled` (`order.status.update`). Cancel refunds the captured payment first (including `in_transit` / `delivered`); a PG rejection leaves the order unchanged.
 - `GET /order/api/v1/orders/events` — **live order feed (SSE)**, `order.read.all`. Served by order since 2026-09-27 (`order/pkg/livefeed`); the stream ends when its access token expires and `EventSource` reconnects with `Last-Event-ID` through the BFF's fresh token
+
+- `GET /order/api/v1/orders/reports/sales?granularity=week|month&from=&to=` — **sales report** (`order.read.all`): per KST Monday week or calendar month, paid orders, gross, discounts, shipping, refunds, net. Sales count in the period they were paid, refunds in the period they happened (backend dupli1 #322). `/analytics` and the dashboard's "Net sales this week" tile read it; nothing sums orders in the browser any more
 
 `OrderStatus` in `api.ts` carries all eight statuses; `confirmed`, `delivered` and `disputed` were missing, so their badges fell back to the raw code in grey and `/orders` had no tab for them.
 
