@@ -18,6 +18,7 @@ export default [
   route("inventory/*", "routes/gateway.inventory.tsx"),
   route("order/*", "routes/gateway.order.tsx"),
   route("notification/*", "routes/gateway.notification.tsx"),
+  route("support/events", "routes/support.events.tsx"),
   route("login", "routes/login.tsx"),
   layout("routes/admin.tsx", [
     index("routes/dashboard.tsx"),
