@@ -9,6 +9,10 @@
  *
  * `/__control/*` drives the fixture from a test: emit an order event, broadcast
  * a reset, add an order the stream does not announce, inspect connections.
+ *
+ * Support's inbox is here too (`/api/v1/support/*`): a web consultation with
+ * a product card and a Telegram one, plus the inbox stream.
+ * `POST /__control/support-message` has the web shopper write again.
  */
 import http from "node:http";
 
@@ -271,6 +275,196 @@ function reportPeriods(granularity) {
   return out;
 }
 
+// ── Support fixture ──────────────────────────────────────────────────────────
+
+const WEB_SHOPPER = "cust-web-1";
+
+/** The web shopper's orders, kept apart so the order list tests stay as they are. */
+const shopperOrders = new Map();
+for (const [id, status, daysAgo, name, skuId, total] of [
+  ["ord_web_1", "fulfilled", 40, "Eco Bag", "sku_eco_blk", 250000],
+  ["ord_web_2", "in_transit", 3, "Eco Bag", "sku_eco_grn", 250000],
+  ["ord_web_3", "canceled", 10, "Mini Pouch", "sku_other", 90000],
+]) {
+  const created = new Date(Date.now() - daysAgo * 86_400_000).toISOString();
+  shopperOrders.set(
+    id,
+    makeOrder({
+      id,
+      customer_id: WEB_SHOPPER,
+      status,
+      created_at: created,
+      updated_at: created,
+      items: [{ sku_id: skuId, sku: skuId, product_name: name, quantity: 1, unit_price_won: total }],
+      total_won: total,
+      subtotal_won: total,
+    })
+  );
+}
+
+const inquiries = new Map();
+let supportSeq = 0;
+const supportId = (p) => `${p}_${++supportSeq}`;
+
+function supportMessage(direction, body, extra = {}) {
+  return {
+    id: supportId("msg"),
+    direction,
+    kind: "text",
+    body,
+    created_at: new Date().toISOString(),
+    ...extra,
+  };
+}
+
+function productRef(skuId) {
+  for (const product of products.values()) {
+    const v = product.variants.find((x) => x.skuId === skuId);
+    if (v) {
+      return {
+        product_id: product.id, sku_id: v.skuId, sku: v.sku, name: product.name,
+        color: v.color, price_won: product.price,
+      };
+    }
+  }
+  return null;
+}
+
+function orderRef(order) {
+  return {
+    order_id: order.id, status: order.status, total_won: order.total_won,
+    first_item_name: order.items[0]?.product_name, item_count: order.items.length,
+    created_at: order.created_at,
+  };
+}
+
+function seedSupport() {
+  inquiries.clear();
+  const opened = new Date(Date.now() - 5 * 60_000).toISOString();
+  const ref = productRef("sku_eco_blk");
+  inquiries.set("inq_web_1", {
+    id: "inq_web_1", channel: "web", topic: "prd", status: "open", opened_at: opened,
+    customer_id: WEB_SHOPPER, customer_email: "shopper@example.com",
+    product_id: ref.product_id, sku_id: ref.sku_id,
+    transcript: [
+      supportMessage("inbound", `상품: ${ref.name} (${ref.color})`, { kind: "product_ref", ref_id: ref.sku_id, ref, created_at: opened }),
+      supportMessage("inbound", "블랙 재입고 언제 되나요?", { created_at: opened }),
+    ],
+  });
+  inquiries.set("inq_tg_1", {
+    id: "inq_tg_1", channel: "telegram", topic: "ret", status: "open", username: "tg_shopper",
+    opened_at: new Date(Date.now() - 20 * 60_000).toISOString(),
+    transcript: [supportMessage("inbound", "반품하고 싶어요")],
+  });
+}
+seedSupport();
+
+function inquiryView(inquiry, withTranscript) {
+  const { transcript, ...rest } = inquiry;
+  const last = [...transcript].reverse().find((m) => m.direction === "inbound");
+  return {
+    ...rest,
+    last_message: last?.body,
+    ...(withTranscript ? { transcript } : {}),
+  };
+}
+
+const supportStreams = new Set();
+function supportBroadcast(event, data) {
+  for (const res of supportStreams) writeFrame(res, { event, data });
+  return supportStreams.size;
+}
+
+function handleSupportEvents(req, res) {
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache, no-transform",
+    Connection: "keep-alive",
+    "X-Accel-Buffering": "no",
+  });
+  res.write("retry: 3000\n\n");
+  writeFrame(res, { event: "ready", data: {} });
+  supportStreams.add(res);
+  const heartbeat = setInterval(() => res.write(": ping\n\n"), HEARTBEAT_MS);
+  req.on("close", () => {
+    clearInterval(heartbeat);
+    supportStreams.delete(res);
+  });
+}
+
+async function handleSupport(req, res, method, path, url) {
+  if (method === "GET" && path === "/api/v1/support/inquiries/events") {
+    handleSupportEvents(req, res);
+    return true;
+  }
+  if (method === "GET" && path === "/api/v1/support/inquiries") {
+    const queue = url.searchParams.get("queue");
+    const status = url.searchParams.get("status");
+    const assigned = url.searchParams.get("assigned_to");
+    const channel = url.searchParams.get("channel");
+    const list = [...inquiries.values()].filter((i) => {
+      if (channel && (i.channel ?? "telegram") !== channel) return false;
+      if (status) return i.status === status;
+      if (assigned) return i.assigned_to === "usr_mock_admin" && i.status !== "closed";
+      if (queue === "waiting") return !i.assigned_to && i.status !== "closed";
+      return true;
+    });
+    send(res, 200, { inquiries: list.map((i) => inquiryView(i, false)) });
+    return true;
+  }
+  const m = path.match(/^\/api\/v1\/support\/inquiries\/([^/]+)(?:\/(assign|reply|close))?$/);
+  if (!m) return false;
+  const inquiry = inquiries.get(decodeURIComponent(m[1]));
+  if (!inquiry) {
+    send(res, 404, { error: "inquiry not found" });
+    return true;
+  }
+  const action = m[2];
+  if (!action && method === "GET") {
+    send(res, 200, { inquiry: inquiryView(inquiry, true) });
+    return true;
+  }
+  if (method !== "POST") return false;
+  if (action === "assign" || action === "reply") {
+    inquiry.assigned_to = "usr_mock_admin";
+    if (inquiry.status === "open") inquiry.status = "assigned";
+  }
+  if (action === "reply") {
+    const body = await readBody(req).catch(() => ({}));
+    const web = inquiry.channel === "web";
+    if (!web && (body.sku_id || body.order_id)) {
+      send(res, 422, { error: "reference cards can only be sent in web consultations", code: "reference_on_telegram" });
+      return true;
+    }
+    const extra = { author: "usr_mock_admin", delivery: "sent", ...(web ? { notice_status: "pending" } : {}) };
+    if (body.sku_id) {
+      const ref = productRef(body.sku_id);
+      if (!ref) {
+        send(res, 422, { error: "referenced product or order not found", code: "invalid_reference" });
+        return true;
+      }
+      inquiry.transcript.push(supportMessage("outbound", `상품: ${ref.name}`, { ...extra, kind: "product_ref", ref_id: ref.sku_id, ref }));
+    }
+    if (body.order_id) {
+      const order = shopperOrders.get(body.order_id) ?? orders.get(body.order_id);
+      if (!order) {
+        send(res, 422, { error: "referenced product or order not found", code: "invalid_reference" });
+        return true;
+      }
+      inquiry.transcript.push(supportMessage("outbound", `주문: ${order.id}`, { ...extra, kind: "order_ref", ref_id: order.id, ref: orderRef(order) }));
+    }
+    if (body.body?.trim()) inquiry.transcript.push(supportMessage("outbound", body.body.trim(), extra));
+    inquiry.status = "answered";
+  }
+  if (action === "close") {
+    inquiry.status = "closed";
+    inquiry.closed_at = new Date().toISOString();
+  }
+  supportBroadcast(action === "reply" ? "message" : "inquiry", { type: action === "reply" ? "message" : "inquiry", inquiry_id: inquiry.id, channel: inquiry.channel });
+  send(res, 200, { inquiry: inquiryView(inquiry, true), ...(action === "reply" ? { delivered: true } : {}) });
+  return true;
+}
+
 // ── Routes ───────────────────────────────────────────────────────────────────
 
 const server = http.createServer(async (req, res) => {
@@ -315,6 +509,22 @@ const server = http.createServer(async (req, res) => {
   if (path === "/__control/reset" && method === "POST") {
     return send(res, 200, {
       delivered: broadcast({ event: "reset", data: { reason: "gap" } }),
+    });
+  }
+  if (path === "/__control/support-seed" && method === "POST") {
+    seedSupport();
+    return send(res, 200, { inquiries: inquiries.size });
+  }
+  if (path === "/__control/support-message" && method === "POST") {
+    // The web shopper writes again; announced on the inbox stream with ids only.
+    const body = await readBody(req).catch(() => ({}));
+    const inquiry = inquiries.get(body.inquiry_id ?? "inq_web_1");
+    if (!inquiry) return send(res, 404, { error: "no inquiry" });
+    const message = supportMessage("inbound", body.body ?? "아직 답변이 없나요?");
+    inquiry.transcript.push(message);
+    if (body.read) inquiry.customer_last_read_at = new Date().toISOString();
+    return send(res, 200, {
+      delivered: supportBroadcast("message", { type: "message", inquiry_id: inquiry.id, message_id: message.id, channel: inquiry.channel }),
     });
   }
   if (path === "/__control/stock" && method === "POST") {
@@ -481,6 +691,27 @@ const server = http.createServer(async (req, res) => {
     return item ? send(res, 200, item) : send(res, 404, { error: "not found" });
   }
 
+  if (path.startsWith("/api/v1/support/") && (await handleSupport(req, res, method, path, url))) {
+    return;
+  }
+  m = path.match(/^\/api\/v1\/products\/variants\/by-sku-id\/([^/]+)$/);
+  if (m && method === "GET") {
+    const skuId = decodeURIComponent(m[1]);
+    for (const product of products.values()) {
+      const v = product.variants.find((x) => x.skuId === skuId);
+      if (v) {
+        const item = stock.get(skuId);
+        return send(res, 200, {
+          ...v,
+          productName: product.name,
+          price: product.price,
+          availableQty: item ? Math.max(0, item.quantity - item.reserved) : 0,
+        });
+      }
+    }
+    return send(res, 404, { error: "variant not found" });
+  }
+
   // Orders.
   if (method === "GET" && path === "/api/v1/orders/events") {
     return handleOrderEvents(req, res);
@@ -502,6 +733,9 @@ const server = http.createServer(async (req, res) => {
   m = path.match(/^\/api\/v1\/orders\/([^/]+)$/);
   if (m && method === "GET" && orders.has(decodeURIComponent(m[1]))) {
     return send(res, 200, orders.get(decodeURIComponent(m[1])));
+  }
+  if (m && method === "GET" && shopperOrders.has(decodeURIComponent(m[1]))) {
+    return send(res, 200, shopperOrders.get(decodeURIComponent(m[1])));
   }
   if (method === "GET" && path === "/api/v1/orders/reports/sales") {
     const granularity = url.searchParams.get("granularity") ?? "week";
@@ -588,6 +822,11 @@ const server = http.createServer(async (req, res) => {
     });
   }
   if (method === "GET" && path === "/api/v1/orders") {
+    const customer = url.searchParams.get("customer_id");
+    if (customer === WEB_SHOPPER) {
+      const list = [...shopperOrders.values()];
+      return send(res, 200, { total: list.length, orders: list });
+    }
     const list = orderList();
     return send(res, 200, { total: list.length, orders: list });
   }

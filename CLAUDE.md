@@ -127,6 +127,14 @@ Customer consultation inbox, served by `dupli1-support` — the **customer** Tel
 
 UI: `/support` loads and mutates via **SSR** `loader`/`action` (`app/lib/server/support.server.ts`), like `/telegram`. A shopper's transcript is customer data, so it is fetched with the operator's own token and rendered server-side — never exposed as a browser-callable endpoint. A reply the shopper never received comes back `delivered: false` and is shown as **미전송** rather than reported as sent.
 
+**Web consultations** (backend [docs/support-web-chat.md](../dupli1/docs/support-web-chat.md)): signed-in shoppers write from the storefront, and their inquiries arrive in the same inbox with `channel: "web"`. `/support` filters by channel (`?channel=web|telegram` → upstream `channel=`) and badges each row 웹 / TG.
+- **Context panel** (`loadSupportContext`, SSR with the operator's token): the shopper's email and account link, the referenced product read live from `GET /api/v1/products/variants/by-sku-id/{skuId}` (never `GET /products/{id}`, which counts a PDP view), the referenced order, and purchase history from `GET /api/v1/orders?customer_id=`. The purchase history shows paid order count and lifetime spend (`summarizeOrders`: paid, confirmed, in_transit, delivered, fulfilled and disputed count; pending and canceled do not), the last 10 orders, and "bought before" for the product. Each part fails on its own. Phone and saved addresses are never fetched. Orders need `order.read.all`, which `support_agent` carries.
+- **Cards:** transcript lines have a `kind` (`product_ref` / `order_ref` render as linked cards, `system` lines are centred notes). A web reply can attach one card (`sku_id` or `order_id`) from the 카드 첨부 select. Telegram inquiries get no select, because support refuses cards there.
+- **읽음:** a reply at or before `customer_last_read_at` is marked 읽음, and "메일 알림 보냄" shows when the unread-reply email went out (`notice_status: "sent"`).
+- **Live:** the `/support/events` resource route proxies only `GET /api/v1/support/inquiries/events` with the operator's token. Frames carry ids only, so the page reloads through its loader (`useRevalidator`, bursts coalesced) and the transcript still never crosses a browser-callable endpoint. The Live / Not live pill shows the stream's state.
+
+`npm run test:support:browser` drives all of this against `npm run mock:gateway` (`CHROMIUM_PATH` overrides Playwright's bundled browser).
+
 ### Inventory (`/inventory`)
 
 `/inventory/api/v1/inventory/{sku}` and `/by-sku-id/{skuId}`, adjust, reservations (served by product).
