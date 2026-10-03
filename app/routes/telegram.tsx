@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useFetcher, useLoaderData } from "react-router";
+import { Link, useFetcher, useLoaderData } from "react-router";
 import type {
   NotificationSettings,
   TelegramAlertFlags,
@@ -118,6 +118,7 @@ export async function action({
             String(formData.get("chat_label") ?? "").trim() || undefined,
           alert_order: formData.get("alert_order") === "on",
           alert_product: formData.get("alert_product") === "on",
+          alert_support: formData.get("alert_support") === "on",
         });
         return { ok: true, intent };
       }
@@ -127,6 +128,7 @@ export async function action({
         await acceptTelegramSubscriptionServer(request, id, {
           alert_order: formData.get("alert_order") === "true",
           alert_product: formData.get("alert_product") === "true",
+          alert_support: formData.get("alert_support") === "true",
         });
         return { ok: true, intent };
       }
@@ -174,6 +176,8 @@ export default function Telegram() {
   const [chatLabel, setChatLabel] = useState("");
   const [newAlertOrder, setNewAlertOrder] = useState(true);
   const [newAlertProduct, setNewAlertProduct] = useState(true);
+  // Support handoffs go only to chats that ask for them, so this starts off.
+  const [newAlertSupport, setNewAlertSupport] = useState(false);
 
   // Alert flags an operator picks before accepting a pending row; both default on.
   const [pendingAlerts, setPendingAlerts] = useState<
@@ -218,6 +222,7 @@ export default function Telegram() {
       pendingAlerts[sub.id] ?? {
         alert_order: sub.alert_order,
         alert_product: sub.alert_product,
+        alert_support: sub.alert_support,
       }
     );
   }
@@ -252,6 +257,7 @@ export default function Telegram() {
     fd.set("chat_label", chatLabel.trim());
     if (newAlertOrder) fd.set("alert_order", "on");
     if (newAlertProduct) fd.set("alert_product", "on");
+    if (newAlertSupport) fd.set("alert_support", "on");
     fetcher.submit(fd, { method: "post" });
   }
 
@@ -262,6 +268,7 @@ export default function Telegram() {
     fd.set("id", sub.id);
     fd.set("alert_order", String(alerts.alert_order));
     fd.set("alert_product", String(alerts.alert_product));
+    fd.set("alert_support", String(alerts.alert_support));
     fetcher.submit(fd, { method: "post" });
   }
 
@@ -425,6 +432,12 @@ export default function Telegram() {
             checked={newAlertProduct}
             onChange={setNewAlertProduct}
           />
+          <Checkbox
+            id="telegram-alert-support"
+            label={t("telegram.alertSupport")}
+            checked={newAlertSupport}
+            onChange={setNewAlertSupport}
+          />
           <button
             type="submit"
             disabled={adding}
@@ -514,9 +527,13 @@ export default function Telegram() {
                       className="border-b border-edge-soft last:border-0 hover:bg-subtle"
                     >
                       <td className="px-5 py-3.5">
-                        <span className="block font-mono text-xs font-semibold text-ink">
+                        <Link
+                          to={`/telegram/${encodeURIComponent(sub.id)}`}
+                          title={t("telegram.openDetails")}
+                          className="block font-mono text-xs font-semibold text-ink hover:text-accent hover:underline"
+                        >
                           {sub.chat_id || t("common.emptyValue")}
-                        </span>
+                        </Link>
                         {(sub.chat_label || sub.username) && (
                           <span className="block text-xs text-muted">
                             {sub.chat_label ||
@@ -554,6 +571,15 @@ export default function Telegram() {
                             disabled={busyId === sub.id}
                             onToggle={() =>
                               togglePendingAlert(sub, "alert_product")
+                            }
+                          />
+                          <AlertChip
+                            label={t("telegram.alertSupportShort")}
+                            on={alerts.alert_support}
+                            editable={editable}
+                            disabled={busyId === sub.id}
+                            onToggle={() =>
+                              togglePendingAlert(sub, "alert_support")
                             }
                           />
                         </div>
