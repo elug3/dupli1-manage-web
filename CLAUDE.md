@@ -136,7 +136,10 @@ UI: `/support` loads and mutates via **SSR** `loader`/`action` (`app/lib/server/
 Telegram ops bot manager API (served by `dupli1-notification`). Upstream paths:
 
 - `GET /api/v1/notification/telegram/subscriptions` — list (`notification.telegram.read`)
-- `POST …/subscriptions`, `…/{id}/accept|reject`, `DELETE …/{id}` — manage (`notification.telegram.manage`)
+- `GET …/subscriptions/{id}` — one subscription (`notification.telegram.read`)
+- `POST …/subscriptions`, `…/{id}/accept|reject`, `PATCH|DELETE …/{id}` — manage (`notification.telegram.manage`). `PATCH` changes `alert_order` / `alert_product` / `alert_support` after accept too; an omitted flag is kept, a rejected row is `409`
+
+Each chat opts into three alert classes; `alert_support` (customer inquiry handoffs) defaults **off** in the add form, since support handoffs go only to chats that asked for them. `/telegram/:id` (`routes/telegram.$id.tsx`) is the subscription's detail page — its fields, the three alert toggles (Save for an accepted chat, Accept/Reject with the chosen alerts for a pending one, read-only for a rejected one) and Remove. The list's chat ID links there.
 
 UI: `/telegram` loads and mutates via **SSR** `loader`/`action` (`app/lib/server/notification.server.ts`) so the browser does not call `/notification/…` or `/auth/session/gateway/notification/…`. The `/notification` Vite/SSR gateway prefix remains for other/public proxy use.
 
@@ -170,7 +173,7 @@ app/
 
 Route modules use React Router 7 conventions: `loader` for data fetching, `action` for mutations, `default` export for the component.
 
-Admin surfaces: products (parent + variants with inline **price**, **officialPrice**, **attributes** key-value editor, and catalog master fields on PDP), **SKU detail** (`/products/:id/SKU/:skuId`), **catalog masters** (`/catalog`), orders, **promotional codes** (`/promotions`), users (**Customers / Managers / Services** tabs by `account_type`; service accounts have no password — `/users/new` omits it for them and their detail page's credentials tab is an **API keys** panel that shows a new key's plaintext once and never stores it), **Telegram** (`/telegram` — ops alert subscriptions), **Support** (`/support` — customer consultation inbox), settings (local UI; manager settings API still sketch on backend).
+Admin surfaces: products (parent + variants with inline **price**, **officialPrice**, **attributes** key-value editor, and catalog master fields on PDP), **SKU detail** (`/products/:id/SKU/:skuId`), **catalog masters** (`/catalog`), orders, **promotional codes** (`/promotions`), users (**Customers / Managers / Services** tabs by `account_type`; service accounts have no password — `/users/new` omits it for them and their detail page's credentials tab is an **API keys** panel that shows a new key's plaintext once and never stores it), **Telegram** (`/telegram` — ops alert subscriptions; `/telegram/:id` edits one chat's alerts), **Support** (`/support` — customer consultation inbox), settings (local UI; manager settings API still sketch on backend).
 
 ## Production access
 

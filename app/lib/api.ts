@@ -2353,6 +2353,8 @@ export interface TelegramSubscription {
   status: TelegramSubscriptionStatus;
   alert_order: boolean;
   alert_product: boolean;
+  /** Customer inquiry handoffs from the support bot. */
+  alert_support: boolean;
   created_at: string;
   updated_at: string;
   accepted_at?: string;
@@ -2363,6 +2365,7 @@ export interface TelegramSubscription {
 export interface TelegramAlertFlags {
   alert_order: boolean;
   alert_product: boolean;
+  alert_support: boolean;
 }
 
 export interface TelegramSubscriptionInput extends TelegramAlertFlags {

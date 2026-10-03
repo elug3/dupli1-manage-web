@@ -89,6 +89,43 @@ export async function loadTelegramSubscriptions(
   return parseSubscriptions(await res.json());
 }
 
+/** One subscription, or `null` when the notification service has no such id. */
+export async function loadTelegramSubscription(
+  request: Request,
+  id: string
+): Promise<TelegramSubscription | null> {
+  const res = await notificationFetch(
+    request,
+    `${SUBSCRIPTIONS_PATH}/${encodeURIComponent(id)}`
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    throw new Error(
+      await readError(res, "Failed to load Telegram subscription")
+    );
+  }
+  return res.json() as Promise<TelegramSubscription>;
+}
+
+/** Changes which alerts a pending or accepted chat receives. */
+export async function updateTelegramAlertsServer(
+  request: Request,
+  id: string,
+  alerts: TelegramAlertFlags
+): Promise<TelegramSubscription> {
+  const res = await notificationFetch(
+    request,
+    `${SUBSCRIPTIONS_PATH}/${encodeURIComponent(id)}`,
+    { method: "PATCH", body: JSON.stringify(alerts) }
+  );
+  if (!res.ok) {
+    throw new Error(
+      await readError(res, "Failed to update Telegram alerts")
+    );
+  }
+  return res.json() as Promise<TelegramSubscription>;
+}
+
 /** Settings is public; still server-side so the browser does not call notification. */
 export async function loadNotificationSettings(
   request: Request
