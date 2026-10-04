@@ -129,6 +129,8 @@ export const ko: Messages = {
   },
 
   products: {
+    category_bags: "가방",
+    category_clothing: "의류",
     metaTitle: "상품 | Dupli1 Admin",
     title: "상품",
     subtitle: "상위 스타일 조회: GET /product/api/v1/products",
@@ -191,6 +193,8 @@ export const ko: Messages = {
   },
 
   productNew: {
+    category: "카테고리",
+    subCategory: "하위 카테고리",
     metaTitle: "새 상품 | Dupli1 Admin",
     backToProducts: "← 상품으로 돌아가기",
     title: "새 상품",
@@ -266,6 +270,29 @@ export const ko: Messages = {
   },
 
   productDetail: {
+    category: "카테고리",
+    categoryLockedHint: "SKU가 있는 상품은 카테고리를 바꿀 수 없습니다.",
+    attributePresets: "빠른 추가:",
+    attributePreset_fill: "충전재 (예: 덕다운 90/10)",
+    attributePreset_fill_weight: "충전량 (예: 250 g)",
+    attributePreset_outer_fabric: "겉감 (예: 나일론 100%)",
+    attributePreset_lining: "안감 (예: 폴리에스터 100%)",
+    attributePreset_care: "세탁 방법 (예: 드라이클리닝)",
+    sizeChart: "사이즈 표 (cm)",
+    sizeChartHint: "사이즈별 실측치로, 스토어의 사이즈 가이드에 표시됩니다. 0.5 cm 단위로 반올림되며, 비워 둔 행의 사이즈는 빠집니다.",
+    sizeChartEmpty: "아직 사이즈가 없습니다. 사이즈를 추가해 표를 시작하세요.",
+    sizeChartChest: "가슴단면",
+    sizeChartLength: "총장",
+    sizeChartShoulder: "어깨너비",
+    sizeChartSleeve: "소매길이",
+    cmPlaceholder: "cm",
+    sizeChartAddSize: "+ 사이즈 추가",
+    sizeChartSave: "사이즈 표 저장",
+    sizeChartSaved: "사이즈 표를 저장했습니다",
+    sizeChartTooManyRows: "사이즈 표에는 최대 {max}개 사이즈까지 넣을 수 있습니다",
+    sizeChartSizeRequired: "치수를 입력한 행에는 사이즈가 필요합니다",
+    sizeChartDuplicateSize: "사이즈 {size}가 두 번 있습니다",
+    sizeChartInvalidMeasurement: "사이즈 {size}: 치수는 0~{max} cm 사이의 숫자여야 합니다",
     metaTitle: "상품 | Dupli1 Admin",
     backToProducts: "← 상품으로 돌아가기",
     productNotFound: "상품을 찾을 수 없습니다",

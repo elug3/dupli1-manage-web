@@ -18,6 +18,7 @@ import {
   updateVariant,
   uploadVariantImage,
 } from "~/lib/api";
+import { isClothingCategory } from "~/lib/categories";
 import { useI18n } from "~/lib/i18n";
 import { useNotify } from "~/lib/notifications";
 import { DangerZone } from "~/components/DeleteConfirmDialog";
@@ -163,10 +164,16 @@ export default function SkuDetail() {
               t("skuDetail.editionCode"),
               variant.editionCode ?? t("common.emptyValue"),
             ],
-            [
-              t("skuDetail.dimensions"),
-              formatDimensionsMm(variant.dimensions) ?? t("common.emptyValue"),
-            ],
+            // W×H×D is a bag measurement; clothing uses the parent's size chart.
+            ...(isClothingCategory(product.category)
+              ? []
+              : [
+                  [
+                    t("skuDetail.dimensions"),
+                    formatDimensionsMm(variant.dimensions) ??
+                      t("common.emptyValue"),
+                  ],
+                ]),
             [t("productDetail.status"), variant.status],
             [t("productDetail.colStock"), stockLabel],
           ].map(([label, value]) => (
@@ -201,6 +208,7 @@ export default function SkuDetail() {
         <EditSection
           productId={product.id}
           variant={variant}
+          showDimensions={!isClothingCategory(product.category)}
           onSaved={async () => {
             await load();
             notify(t("productDetail.updatedSku", { sku: variant.sku }));
@@ -449,10 +457,13 @@ function ImagesSection({
 function EditSection({
   productId,
   variant,
+  showDimensions,
   onSaved,
 }: {
   productId: string;
   variant: ProductVariant;
+  /** Bag-only W×H×D; hidden for clothing. */
+  showDimensions: boolean;
   onSaved: () => Promise<void>;
 }) {
   const { t } = useI18n();
@@ -495,8 +506,10 @@ function EditSection({
     setSaving(true);
     try {
       const hadDimensions = !dimensionsEmpty(variant.dimensions);
-      const nextDimensions =
-        parsed.dimensions ?? (hadDimensions ? {} : null);
+      // Hidden editor: leave whatever is stored alone.
+      const nextDimensions = !showDimensions
+        ? null
+        : (parsed.dimensions ?? (hadDimensions ? {} : null));
       await updateVariant(productId, variant.sku, {
         color: color.trim(),
         size: size.trim(),
@@ -556,6 +569,7 @@ function EditSection({
             <option value="archived">{t("common.statusArchived")}</option>
           </select>
         </label>
+        {showDimensions && (
         <div className="sm:col-span-2 space-y-2">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted">
             {t("skuDetail.dimensions")}
@@ -609,6 +623,7 @@ function EditSection({
             </label>
           </div>
         </div>
+        )}
         <div className="sm:col-span-2">
           <button
             type="submit"

@@ -20,6 +20,7 @@ import {
   getManageProduct,
   getMasterCatalog,
   listBrands,
+  listCategories,
   listColors,
   listEditions,
   listSizes,
@@ -34,6 +35,24 @@ import {
   uploadProductImage,
   uploadVariantImage,
 } from "~/lib/api";
+import {
+  type ProductCategory,
+  type SizeChartEditorRow,
+  type SizeChartMeasurement,
+  DEFAULT_CATEGORY,
+  MAX_SIZE_CHART_CM,
+  MAX_SIZE_CHART_ROWS,
+  SIZE_CHART_MEASUREMENTS,
+  attributePresetsFor,
+  categoryLabel as categoryDisplayName,
+  defaultSizeCode,
+  filterSizesForCategory,
+  findCategory,
+  isClothingCategory,
+  normalizeCategory,
+  sizeChartEditorRows,
+  sizeChartFromEditorRows,
+} from "~/lib/categories";
 import { useI18n } from "~/lib/i18n";
 import { useNotify } from "~/lib/notifications";
 import { ProductExportButton } from "~/components/ProductExportButton";
@@ -68,6 +87,19 @@ export default function ProductDetail() {
   const [variantRows, setVariantRows] = useState<VariantRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [categories, setCategories] = useState<ProductCategory[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    listCategories()
+      .then((rows) => {
+        if (!cancelled) setCategories(rows);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const loadProduct = useCallback(async () => {
     if (!id) return;
@@ -170,10 +202,27 @@ export default function ProductDetail() {
       </Link>
 
       <div className="rounded-2xl border border-edge bg-surface p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)] sm:p-8">
-        <ParentSummarySection product={product} onUpdated={setProduct} />
+        <ParentSummarySection
+          product={product}
+          categories={categories}
+          hasVariants={
+            variantRows.length > 0 || (product.variants?.length ?? 0) > 0
+          }
+          onUpdated={setProduct}
+        />
+
+        {isClothingCategory(product.category) && (
+          <SizeChartSection
+            product={product}
+            variantSizes={variantRows.map((r) => r.sizeCode || r.size)}
+            sizeOrder={findCategory(categories, product.category)?.sizes}
+            onUpdated={setProduct}
+          />
+        )}
 
         <VariantsSection
           product={product}
+          allowedSizes={findCategory(categories, product.category)?.sizes}
           rows={variantRows}
           onStockUpdated={refreshVariantStock}
           onProductUpdated={setProduct}
@@ -218,15 +267,23 @@ function catalogTermLabel(
 
 function ParentSummarySection({
   product,
+  categories,
+  hasVariants,
   onUpdated,
 }: {
   product: Product;
+  categories: ProductCategory[];
+  /** Category is fixed once a SKU exists (its size must suit the category). */
+  hasVariants: boolean;
   onUpdated: (product: Product) => void;
 }) {
   const { notify } = useNotify();
   const { t, formatCurrency } = useI18n();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(product.name);
+  const [category, setCategory] = useState(
+    normalizeCategory(product.category)
+  );
   const [brand, setBrand] = useState(product.brand ?? "");
   const [subCategory, setSubCategory] = useState(product.subCategory ?? "");
   const [style, setStyle] = useState(product.style ?? "");
@@ -254,6 +311,7 @@ function ParentSummarySection({
 
   useEffect(() => {
     setName(product.name);
+    setCategory(normalizeCategory(product.category));
     setBrand(product.brand ?? "");
     setSubCategory(product.subCategory ?? "");
     setStyle(product.style ?? "");
@@ -280,7 +338,10 @@ function ParentSummarySection({
   useEffect(() => {
     let cancelled = false;
     setMastersLoading(true);
-    Promise.all([listBrands(), getMasterCatalog()])
+    Promise.all([
+      listBrands(),
+      getMasterCatalog(normalizeCategory(product.category)),
+    ])
       .then(([brandRows, master]) => {
         if (cancelled) return;
         setBrands(brandRows);
@@ -303,7 +364,17 @@ function ParentSummarySection({
     return () => {
       cancelled = true;
     };
-  }, [notify, t]);
+  }, [product.category, notify, t]);
+
+  // Subcategories follow the category picked in the form; the master call
+  // (scoped to the product's own category) covers a categories outage.
+  const subCategoryOptions =
+    findCategory(categories, category)?.subCategories ??
+    (category === normalizeCategory(product.category) ? subCategories : []);
+  const categoryLabel = categoryDisplayName(product.category, categories, t);
+  const attributePresets = attributePresetsFor(category).filter(
+    (key) => !attributeRows.some((row) => row.key.trim() === key)
+  );
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -365,7 +436,7 @@ function ParentSummarySection({
         price: parsedPrice,
         officialPrice: parsedOfficial,
         // Backend UpdateProduct merge keeps omitted taxonomy; send current values.
-        category: product.category || "bags",
+        category: category || DEFAULT_CATEGORY,
         subCategory: subCategory.trim(),
         style: style.trim(),
         target: target.trim(),
@@ -424,9 +495,7 @@ function ParentSummarySection({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-ink">{product.name}</h1>
-          <p className="mt-1 text-sm capitalize text-muted">
-            {product.category}
-          </p>
+          <p className="mt-1 text-sm text-muted">{categoryLabel}</p>
         </div>
         {!editing && (
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
@@ -485,6 +554,44 @@ function ParentSummarySection({
             </label>
             <label className="space-y-1.5">
               <span className="text-xs font-semibold uppercase tracking-wide text-muted">
+                {t("productDetail.category")}
+              </span>
+              <select
+                value={category}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setCategory(next);
+                  const options = findCategory(categories, next)?.subCategories;
+                  if (!options?.some((row) => row.code === subCategory)) {
+                    setSubCategory("");
+                  }
+                }}
+                className={fieldCls}
+                disabled={hasVariants || categories.length === 0}
+                title={
+                  hasVariants ? t("productDetail.categoryLockedHint") : undefined
+                }
+              >
+                {withCurrentTerm(
+                  categories.map((c) => ({
+                    code: c.code,
+                    name: categoryDisplayName(c.code, categories, t),
+                  })),
+                  category
+                ).map((row) => (
+                  <option key={row.code} value={row.code}>
+                    {row.name}
+                  </option>
+                ))}
+              </select>
+              {hasVariants && (
+                <p className="text-xs text-faint">
+                  {t("productDetail.categoryLockedHint")}
+                </p>
+              )}
+            </label>
+            <label className="space-y-1.5">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted">
                 {t("productDetail.subCategory")}
               </span>
               <select
@@ -493,7 +600,7 @@ function ParentSummarySection({
                 className={fieldCls}
               >
                 <option value="">{t("common.emptyValue")}</option>
-                {withCurrentTerm(subCategories, subCategory).map((row) => (
+                {withCurrentTerm(subCategoryOptions, subCategory).map((row) => (
                   <option key={row.code} value={row.code}>
                     {row.name}
                   </option>
@@ -621,6 +728,31 @@ function ParentSummarySection({
                   {t("productDetail.addAttribute")}
                 </button>
               </div>
+              {attributePresets.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs text-faint">
+                    {t("productDetail.attributePresets")}
+                  </span>
+                  {attributePresets.map((key) => (
+                    <button
+                      key={key}
+                      type="button"
+                      disabled={attributeRows.length >= MAX_PRODUCT_ATTRIBUTES}
+                      onClick={() =>
+                        setAttributeRows((rows) => [
+                          // Drop blank rows so repeated presets don't pile up empties.
+                          ...rows.filter((r) => r.key.trim() || r.value.trim()),
+                          { key, value: "" },
+                        ])
+                      }
+                      title={t(`productDetail.attributePreset_${key}`)}
+                      className="rounded-full border border-edge px-2.5 py-1 font-mono text-[11px] text-accent hover:border-accent/40 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      + {key}
+                    </button>
+                  ))}
+                </div>
+              )}
               {attributeRows.length === 0 ? (
                 <p className="text-sm text-muted">
                   {t("productDetail.noAttributes")}
@@ -700,13 +832,15 @@ function ParentSummarySection({
         <dl className="mt-6 grid gap-4 sm:grid-cols-2">
           {[
             [t("productDetail.id"), product.id],
+            [t("productDetail.category"), categoryLabel],
             [t("productDetail.brand"), product.brand],
             [t("productDetail.brandCode"), product.brandCode],
             [t("productDetail.styleCode"), product.styleCode],
             [
               t("productDetail.subCategory"),
               catalogTermLabel(
-                subCategories,
+                findCategory(categories, product.category)?.subCategories ??
+                  subCategories,
                 product.subCategory,
                 t("common.emptyValue")
               ),
@@ -781,14 +915,244 @@ function ParentSummarySection({
   );
 }
 
+const SIZE_CHART_LABEL_KEYS: Record<SizeChartMeasurement, string> = {
+  chestCm: "productDetail.sizeChartChest",
+  lengthCm: "productDetail.sizeChartLength",
+  shoulderCm: "productDetail.sizeChartShoulder",
+  sleeveCm: "productDetail.sizeChartSleeve",
+};
+
+/** Clothing size guide: one row per size, measurements in cm. */
+function SizeChartSection({
+  product,
+  variantSizes,
+  sizeOrder,
+  onUpdated,
+}: {
+  product: Product;
+  /** Size codes of the product's SKUs; each gets a row to fill in. */
+  variantSizes: string[];
+  /** The category's sizes, smallest first; absent while categories load. */
+  sizeOrder?: string[];
+  onUpdated: (product: Product) => void;
+}) {
+  const { notify } = useNotify();
+  const { t } = useI18n();
+  const variantSizesKey = variantSizes.join(",");
+  const [rows, setRows] = useState<SizeChartEditorRow[]>(() =>
+    sizeChartEditorRows(product.sizeChart, variantSizes, sizeOrder)
+  );
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setRows(
+      sizeChartEditorRows(
+        product.sizeChart,
+        variantSizesKey ? variantSizesKey.split(",") : [],
+        sizeOrder
+      )
+    );
+  }, [product.sizeChart, variantSizesKey, sizeOrder]);
+
+  const unusedSizes = (sizeOrder ?? []).filter(
+    (size) => !rows.some((r) => r.size.trim().toUpperCase() === size)
+  );
+
+  function setCell(index: number, patch: Partial<SizeChartEditorRow>) {
+    setRows((current) =>
+      current.map((r, i) => (i === index ? { ...r, ...patch } : r))
+    );
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    const result = sizeChartFromEditorRows(rows);
+    if (result.error) {
+      const err = result.error;
+      notify(
+        err.code === "TOO_MANY_ROWS"
+          ? t("productDetail.sizeChartTooManyRows", {
+              max: String(MAX_SIZE_CHART_ROWS),
+            })
+          : err.code === "SIZE_REQUIRED"
+            ? t("productDetail.sizeChartSizeRequired")
+            : err.code === "DUPLICATE_SIZE"
+              ? t("productDetail.sizeChartDuplicateSize", { size: err.size })
+              : t("productDetail.sizeChartInvalidMeasurement", {
+                  size: err.size,
+                  max: String(MAX_SIZE_CHART_CM),
+                }),
+        "error"
+      );
+      return;
+    }
+    setSaving(true);
+    try {
+      // `[]` clears the chart; the other parent fields are kept (omitted).
+      const updated = await updateProduct(product.id, {
+        sizeChart: result.chart,
+      });
+      onUpdated(updated);
+      notify(t("productDetail.sizeChartSaved"));
+    } catch (err) {
+      notify(
+        err instanceof Error
+          ? err.message
+          : t("productDetail.failedToUpdateProduct"),
+        "error"
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form
+      onSubmit={handleSave}
+      className="mt-8 space-y-3 border-t border-edge-soft pt-6"
+    >
+      <div>
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-faint">
+          {t("productDetail.sizeChart")}
+        </h2>
+        <p className="mt-1 text-sm text-muted">
+          {t("productDetail.sizeChartHint")}
+        </p>
+      </div>
+      {rows.length === 0 ? (
+        <p className="text-sm text-muted">{t("productDetail.sizeChartEmpty")}</p>
+      ) : (
+        <div className="overflow-x-auto rounded-xl border border-edge">
+          <table className="w-full min-w-[560px] text-sm">
+            <thead>
+              <tr className="border-b border-edge-soft bg-subtle text-left">
+                <th className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-faint">
+                  {t("productDetail.size")}
+                </th>
+                {SIZE_CHART_MEASUREMENTS.map((m) => (
+                  <th
+                    key={m}
+                    className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-faint"
+                  >
+                    {t(SIZE_CHART_LABEL_KEYS[m])}
+                  </th>
+                ))}
+                <th className="px-3 py-2" />
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, index) => (
+                <tr
+                  key={index}
+                  className="border-b border-edge-soft last:border-0"
+                >
+                  <td className="px-3 py-2">
+                    {sizeOrder && sizeOrder.length > 0 ? (
+                      <select
+                        value={row.size}
+                        onChange={(e) => setCell(index, { size: e.target.value })}
+                        aria-label={t("productDetail.size")}
+                        className={`w-24 ${inputCls}`}
+                      >
+                        {!sizeOrder.includes(row.size) && (
+                          <option value={row.size}>{row.size || "—"}</option>
+                        )}
+                        {sizeOrder.map((size) => (
+                          <option key={size} value={size}>
+                            {size}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        value={row.size}
+                        onChange={(e) =>
+                          setCell(index, { size: e.target.value.toUpperCase() })
+                        }
+                        aria-label={t("productDetail.size")}
+                        className={`w-24 ${inputCls}`}
+                      />
+                    )}
+                  </td>
+                  {SIZE_CHART_MEASUREMENTS.map((m) => (
+                    <td key={m} className="px-3 py-2">
+                      <input
+                        type="number"
+                        min={0}
+                        max={MAX_SIZE_CHART_CM}
+                        step={0.5}
+                        inputMode="decimal"
+                        value={row[m]}
+                        onChange={(e) => setCell(index, { [m]: e.target.value })}
+                        placeholder={t("productDetail.cmPlaceholder")}
+                        aria-label={`${row.size} ${t(SIZE_CHART_LABEL_KEYS[m])}`}
+                        className={`w-24 ${inputCls}`}
+                      />
+                    </td>
+                  ))}
+                  <td className="px-3 py-2 text-right">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setRows((current) => current.filter((_, i) => i !== index))
+                      }
+                      className="text-xs font-semibold text-danger-fg hover:underline"
+                    >
+                      {t("common.remove")}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={
+            rows.length >= MAX_SIZE_CHART_ROWS ||
+            (Boolean(sizeOrder?.length) && unusedSizes.length === 0)
+          }
+          onClick={() =>
+            setRows((current) => [
+              ...current,
+              {
+                size: unusedSizes[0] ?? "",
+                chestCm: "",
+                lengthCm: "",
+                shoulderCm: "",
+                sleeveCm: "",
+              },
+            ])
+          }
+          className="rounded-lg border border-edge px-3 py-1.5 text-xs font-semibold text-accent hover:border-accent/40 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {t("productDetail.sizeChartAddSize")}
+        </button>
+        <button
+          type="submit"
+          disabled={saving}
+          className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+        >
+          {saving ? t("common.saving") : t("productDetail.sizeChartSave")}
+        </button>
+      </div>
+    </form>
+  );
+}
+
 function VariantsSection({
   product,
+  allowedSizes,
   rows,
   onStockUpdated,
   onProductUpdated,
   onReload,
 }: {
   product: Product;
+  /** The category's size codes; absent = any size. */
+  allowedSizes?: string[];
   rows: VariantRow[];
   onStockUpdated: (sku: string) => Promise<void>;
   onProductUpdated: (product: Product) => void;
@@ -983,6 +1347,7 @@ function VariantsSection({
                       <VariantEditForm
                         productId={product.id}
                         variant={row}
+                        showDimensions={!isClothingCategory(product.category)}
                         onSaved={async () => {
                           setEditingSku(null);
                           await onReload();
@@ -1003,6 +1368,8 @@ function VariantsSection({
         {showAddForm ? (
           <AddVariantForm
             productId={product.id}
+            allowedSizes={allowedSizes}
+            showDimensions={!isClothingCategory(product.category)}
             onAdded={async () => {
               setShowAddForm(false);
               await onReload();
@@ -1041,11 +1408,14 @@ function VariantsSection({
 function VariantEditForm({
   productId,
   variant,
+  showDimensions,
   onSaved,
   onCancel,
 }: {
   productId: string;
   variant: ProductVariant;
+  /** Bag-only W×H×D; hidden for clothing. */
+  showDimensions: boolean;
   onSaved: () => Promise<void>;
   onCancel: () => void;
 }) {
@@ -1080,8 +1450,10 @@ function VariantEditForm({
     setSaving(true);
     try {
       const hadDimensions = !dimensionsEmpty(variant.dimensions);
-      const nextDimensions =
-        parsed.dimensions ?? (hadDimensions ? {} : null);
+      // Hidden editor: leave whatever is stored alone.
+      const nextDimensions = !showDimensions
+        ? null
+        : (parsed.dimensions ?? (hadDimensions ? {} : null));
       await updateVariant(productId, variant.sku, {
         color: color.trim(),
         size: size.trim(),
@@ -1140,6 +1512,7 @@ function VariantEditForm({
           </select>
         </label>
       </div>
+      {showDimensions && (
       <div className="space-y-1">
         <p className="text-xs text-muted">{t("skuDetail.dimensions")}</p>
         <p className="text-xs text-faint">{t("skuDetail.dimensionsHint")}</p>
@@ -1185,6 +1558,7 @@ function VariantEditForm({
           </label>
         </div>
       </div>
+      )}
       <div className="flex gap-2">
         <button
           type="submit"
@@ -1207,10 +1581,15 @@ function VariantEditForm({
 
 function AddVariantForm({
   productId,
+  allowedSizes,
+  showDimensions,
   onAdded,
   onCancel,
 }: {
   productId: string;
+  allowedSizes?: string[];
+  /** Bag-only W×H×D; hidden for clothing. */
+  showDimensions: boolean;
   onAdded: () => Promise<void>;
   onCancel: () => void;
 }) {
@@ -1239,8 +1618,9 @@ function AddVariantForm({
         setSizes(s);
         setEditions(e);
         if (c[0]) setColorCode(c[0].code);
-        if (s.some((row) => row.code === "OS")) setSizeCode("OS");
-        else if (s[0]) setSizeCode(s[0].code);
+        setSizeCode(
+          defaultSizeCode(filterSizesForCategory(s, allowedSizes), allowedSizes)
+        );
       })
       .catch((err) => {
         if (!cancelled) {
@@ -1258,7 +1638,7 @@ function AddVariantForm({
     return () => {
       cancelled = true;
     };
-  }, [notify, t]);
+  }, [allowedSizes, notify, t]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -1267,7 +1647,9 @@ function AddVariantForm({
       return;
     }
 
-    const parsed = parseDimensionsInput({ widthMm, heightMm, depthMm });
+    const parsed: ReturnType<typeof parseDimensionsInput> = showDimensions
+      ? parseDimensionsInput({ widthMm, heightMm, depthMm })
+      : {};
     if (parsed.error === "INVALID_DIMENSION") {
       notify(t("skuDetail.invalidDimension"), "error");
       return;
@@ -1359,7 +1741,7 @@ function AddVariantForm({
             onChange={(e) => setSizeCode(e.target.value)}
             className={`block w-full ${inputCls}`}
           >
-            {sizes.map((s) => (
+            {filterSizesForCategory(sizes, allowedSizes).map((s) => (
               <option key={s.code} value={s.code}>
                 {s.code} — {s.name}
               </option>
@@ -1404,6 +1786,7 @@ function AddVariantForm({
             placeholder={t("productDetail.initialStockPlaceholder")}
           />
         </label>
+        {showDimensions && (
         <div className="space-y-1 sm:col-span-2 lg:col-span-3">
           <p className="text-xs text-muted">{t("skuDetail.dimensions")}</p>
           <p className="text-xs text-faint">{t("skuDetail.dimensionsHint")}</p>
@@ -1449,6 +1832,7 @@ function AddVariantForm({
             </label>
           </div>
         </div>
+        )}
       </div>
       <div className="flex gap-2">
         <button

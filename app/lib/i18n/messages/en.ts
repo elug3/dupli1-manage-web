@@ -127,6 +127,8 @@ export const en = {
   },
 
   products: {
+    category_bags: "Bags",
+    category_clothing: "Clothing",
     metaTitle: "Products | Dupli1 Admin",
     title: "Products",
     subtitle: "Parent styles via GET /product/api/v1/products",
@@ -188,6 +190,8 @@ export const en = {
   },
 
   productNew: {
+    category: "Category",
+    subCategory: "Subcategory",
     metaTitle: "New Product | Dupli1 Admin",
     backToProducts: "← Back to products",
     title: "New product",
@@ -263,6 +267,29 @@ export const en = {
   },
 
   productDetail: {
+    category: "Category",
+    categoryLockedHint: "Category is fixed once the product has SKUs.",
+    attributePresets: "Quick add:",
+    attributePreset_fill: "Fill (e.g. duck down 90/10)",
+    attributePreset_fill_weight: "Fill weight (e.g. 250 g)",
+    attributePreset_outer_fabric: "Outer fabric (e.g. nylon 100%)",
+    attributePreset_lining: "Lining (e.g. polyester 100%)",
+    attributePreset_care: "Care (e.g. dry clean only)",
+    sizeChart: "Size chart (cm)",
+    sizeChartHint: "Garment measurements per size, shown as the storefront size guide. Rounded to 0.5 cm; leave a row blank to leave that size out.",
+    sizeChartEmpty: "No sizes yet. Add a size to start the chart.",
+    sizeChartChest: "Chest",
+    sizeChartLength: "Length",
+    sizeChartShoulder: "Shoulder",
+    sizeChartSleeve: "Sleeve",
+    cmPlaceholder: "cm",
+    sizeChartAddSize: "+ Add size",
+    sizeChartSave: "Save size chart",
+    sizeChartSaved: "Size chart saved",
+    sizeChartTooManyRows: "A size chart holds at most {max} sizes",
+    sizeChartSizeRequired: "Every measured row needs a size",
+    sizeChartDuplicateSize: "Size {size} appears twice",
+    sizeChartInvalidMeasurement: "Size {size}: measurements must be numbers between 0 and {max} cm",
     metaTitle: "Product | Dupli1 Admin",
     backToProducts: "← Back to products",
     productNotFound: "Product not found",

@@ -6,6 +6,13 @@ import {
   orderPath,
   productPath,
 } from "./gateway";
+import {
+  DEFAULT_CATEGORY,
+  type ProductCategory,
+  type SizeChartRow,
+  mapCategories,
+  mapSizeChart,
+} from "./categories";
 
 // ── Product catalog ────────────────────────────────────────────────────────────
 
@@ -64,7 +71,7 @@ export interface Product {
   brandCode?: string;
   /** Immutable master style code under brand (e.g. CAS001). */
   styleCode?: string;
-  /** Bag type under category (handbags, tote, …). */
+  /** Type under category (handbags, tote, … for bags; padded for clothing). */
   subCategory?: string;
   /** Bag occasion / look (casual, evening, …) — not styleCode. */
   style?: string;
@@ -75,6 +82,8 @@ export interface Product {
    * Display-only; not used for search/pricing/checkout.
    */
   attributes?: Record<string, string>;
+  /** Garment measurements per size (clothing size guide). */
+  sizeChart?: SizeChartRow[];
   color?: string;
   material?: string;
   sku?: string;
@@ -485,7 +494,7 @@ export function mapProduct(
   return {
     id: hitId(hit, index),
     name: hitName(hit),
-    category: category ?? hitString(hit, "category") ?? "bags",
+    category: category ?? hitString(hit, "category") ?? DEFAULT_CATEGORY,
     price:
       hitNumber(hit, "price") ??
       hitNumber(hit, "priceFrom") ??
@@ -508,6 +517,7 @@ export function mapProduct(
     style: hitString(hit, "style") ?? hitString(hit, "bag_style"),
     target: hitString(hit, "target"),
     attributes: hitStringMap(hit, "attributes"),
+    sizeChart: mapSizeChart(hit.sizeChart ?? hit.size_chart),
     color: hitString(hit, "color"),
     material: hitString(hit, "material"),
     sku: hitString(hit, "sku") ?? hitString(hit, "id"),
@@ -699,7 +709,10 @@ export interface CreateProductParentInput {
   material: string;
   /** Optional display brand name; backend enriches from master when blank. */
   brand?: string;
+  /** Category code (bags, clothing); omitted is bags. */
   category?: string;
+  /** Subcategory under that category; omitted leaves it unset. */
+  subCategory?: string;
   description?: string;
   status?: string;
   /** Actual sale price (KRW won) on the parent. */
@@ -722,7 +735,8 @@ export async function createProductParent(
       styleCode: input.styleCode,
       brand: input.brand,
       material: input.material,
-      category: input.category ?? "bags",
+      category: input.category || DEFAULT_CATEGORY,
+      subCategory: input.subCategory || undefined,
       description: input.description,
       status: input.status ?? "active",
       price: input.price,
@@ -732,7 +746,7 @@ export async function createProductParent(
   });
   if (!res.ok) throw new Error(await readError(res, "Failed to create product"));
   const hit = (await res.json()) as ProductSearchHit;
-  return mapProduct(hit, input.category ?? "bags");
+  return mapProduct(hit);
 }
 
 export interface CreateVariantInput {
@@ -874,12 +888,12 @@ export async function createBagProduct(
       brand: input.brand,
       color: input.color,
       material: input.material,
-      category: "bags",
+      category: DEFAULT_CATEGORY,
     }),
   });
   if (!res.ok) throw new Error(await readError(res, "Failed to create product"));
   const hit = (await res.json()) as ProductSearchHit;
-  return mapProduct(hit, "bags");
+  return mapProduct(hit, DEFAULT_CATEGORY);
 }
 
 export interface UpdateProductInput {
@@ -895,7 +909,7 @@ export interface UpdateProductInput {
   material?: string;
   stock?: number;
   category?: string;
-  /** Bag type code; blank clears. Always send with updates to avoid wipe. */
+  /** Subcategory code of `category`; blank clears. Always send with updates to avoid wipe. */
   subCategory?: string;
   /** Bag occasion code; blank clears. Always send with updates to avoid wipe. */
   style?: string;
@@ -906,6 +920,8 @@ export interface UpdateProductInput {
    * Partial key patches are not supported by the API.
    */
   attributes?: Record<string, string>;
+  /** Clothing size guide. Omit to keep; `[]` clears. */
+  sizeChart?: SizeChartRow[];
   status?: string;
 }
 
@@ -943,15 +959,21 @@ async function parseCatalogList<T>(res: Response, fallback: string): Promise<T[]
   return Array.isArray(data.results) ? data.results : [];
 }
 
-/** Bag merchandising taxonomy (storefront filters; not SKU segment masters). */
+/** Merchandising taxonomy (storefront filters; not SKU segment masters). */
 export interface MasterCatalog {
+  /** Subcategories of the requested category (bags when none given). */
   subCategories: CatalogCodeName[];
   styles: CatalogCodeName[];
   targets: CatalogCodeName[];
 }
 
-export async function getMasterCatalog(): Promise<MasterCatalog> {
-  const res = await authedFetch(productPath("/api/v1/products/catalog/master"));
+export async function getMasterCatalog(category?: string): Promise<MasterCatalog> {
+  const query = category
+    ? `?category=${encodeURIComponent(category)}`
+    : "";
+  const res = await authedFetch(
+    productPath(`/api/v1/products/catalog/master${query}`)
+  );
   if (!res.ok) {
     throw new Error(await readError(res, "Failed to load master catalog"));
   }
@@ -961,6 +983,17 @@ export async function getMasterCatalog(): Promise<MasterCatalog> {
     styles: Array.isArray(data.styles) ? data.styles : [],
     targets: Array.isArray(data.targets) ? data.targets : [],
   };
+}
+
+/** Product categories with their subcategories and allowed sizes (public). */
+export async function listCategories(): Promise<ProductCategory[]> {
+  const res = await authedFetch(
+    productPath("/api/v1/products/catalog/categories")
+  );
+  if (!res.ok) {
+    throw new Error(await readError(res, "Failed to load categories"));
+  }
+  return mapCategories(await res.json());
 }
 
 export async function listBrands(): Promise<CatalogCodeName[]> {
