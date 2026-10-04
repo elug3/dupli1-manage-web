@@ -657,6 +657,7 @@ function OrderTotals({ order }: { order: Order }) {
   // (dupli1 docs/product-promotion-rename.md); drop it when the window closes.
   const promotionCode = order.promotion_code || order.coupon_code;
   const shipping = order.shipping_fee_won ?? 0;
+  const surcharge = order.card_surcharge_won ?? 0;
   return (
     <div className="mt-4 space-y-1.5 border-t border-edge pt-4 text-sm">
       <div className="flex items-center justify-between text-muted">
@@ -687,6 +688,24 @@ function OrderTotals({ order }: { order: Order }) {
             {t("orders.tierDiscount", { code: order.tier_promotion_code ?? "" })}
           </span>
           <span>−{formatWon(tierWon)}</span>
+        </div>
+      )}
+      {surcharge > 0 && (
+        <div className="flex items-center justify-between text-muted">
+          <span>{t("orders.cardSurcharge")}</span>
+          <span>{formatWon(surcharge)}</span>
+        </div>
+      )}
+      {order.payment_method && (
+        <div className="flex items-center justify-between text-muted">
+          <span>{t("orders.paymentMethod")}</span>
+          <span>
+            {order.payment_method === "bypass"
+              ? t("orders.paymentMethodBypass")
+              : order.payment_method === "credit_card"
+                ? t("orders.paymentMethodCard")
+                : order.payment_method}
+          </span>
         </div>
       )}
       <div className="flex items-center justify-between font-bold text-ink">

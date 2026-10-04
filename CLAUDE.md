@@ -96,11 +96,13 @@ SKU identity: each variant has immutable `skuId` (ULID) and human `sku` composed
 - `PUT /order/api/v1/orders/{id}/status` — `canceled` or `fulfilled` (`order.status.update`). Cancel refunds the captured payment first (including `in_transit` / `delivered`); a PG rejection leaves the order unchanged.
 - `GET /order/api/v1/orders/events` — **live order feed (SSE)**, `order.read.all`. Served by order since 2026-09-27 (`order/pkg/livefeed`); the stream ends when its access token expires and `EventSource` reconnects with `Last-Event-ID` through the BFF's fresh token
 
-- `GET /order/api/v1/orders/reports/sales?granularity=week|month&from=&to=` — **sales report** (`order.read.all`): per KST Monday week or calendar month, paid orders, gross, discounts, shipping, refunds, net. Sales count in the period they were paid, refunds in the period they happened (backend dupli1 #322). `/analytics` and the dashboard's "Net sales this week" tile read it; nothing sums orders in the browser any more
+- `GET /order/api/v1/orders/reports/sales?granularity=week|month&from=&to=` — **sales report** (`order.read.all`): per KST Monday week or calendar month, paid orders, gross, discounts, shipping, card surcharge, refunds, net. Sales count in the period they were paid, refunds in the period they happened (backend dupli1 #322). `/analytics` and the dashboard's "Net sales this week" tile read it; nothing sums orders in the browser any more
 
 `OrderStatus` in `api.ts` carries all eight statuses; `confirmed`, `delivered` and `disputed` were missing, so their badges fell back to the raw code in grey and `/orders` had no tab for them.
 
 Statuses: `pending` → `paid` → `confirmed` → `in_transit` → `delivered` → `fulfilled` (or `disputed` / `canceled`). Customer cancel before confirm is immediate; from `confirmed` through `delivered` it is a manager-approved request (2-hour SLA). Full lifecycle: backend [docs/order-service.md](../dupli1/docs/order-service.md).
+
+Card payments carry a surcharge (10% by default, backend `DUPLI1_ORDER_CARD_SURCHARGE_BPS`). An order records `payment_method` (`credit_card` or `bypass`) and `card_surcharge_won`, which is already inside `total_won`; the order page shows both, and orders placed before the surcharge have neither.
 
 Orders from checkout complete include an immutable fulfillment snapshot (`recipient_name`, `recipient_phone`, `shipping_address`) shown in the order expand panel.
 
