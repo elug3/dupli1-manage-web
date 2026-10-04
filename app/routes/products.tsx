@@ -6,10 +6,12 @@ import {
   type Product,
   formatProductColors,
   listBrands,
+  listCategories,
   productPreviewImage,
   productVariantCount,
   searchProducts,
 } from "~/lib/api";
+import { type ProductCategory, categoryLabel } from "~/lib/categories";
 import { useI18n } from "~/lib/i18n";
 
 export function meta() {
@@ -29,7 +31,7 @@ const SORT_OPTIONS = [
 
 const STATUS_OPTIONS = ["", "active", "draft", "archived"] as const;
 
-const KNOWN_CATEGORIES = ["bags"] as const;
+const KNOWN_CATEGORIES = ["bags", "clothing"] as const;
 
 const filterSelectCls =
   "rounded-xl border border-edge bg-surface px-3 py-2.5 text-sm text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20";
@@ -73,6 +75,7 @@ export default function Products() {
   const [products, setProducts] = useState<Product[]>([]);
   const [total, setTotal] = useState(0);
   const [brands, setBrands] = useState<CatalogCodeName[]>([]);
+  const [categoryRows, setCategoryRows] = useState<ProductCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -89,6 +92,11 @@ export default function Products() {
       .catch(() => {
         if (!cancelled) setBrands([]);
       });
+    listCategories()
+      .then((rows) => {
+        if (!cancelled) setCategoryRows(rows);
+      })
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -156,12 +164,13 @@ export default function Products() {
 
   const categories = useMemo(() => {
     const cats = new Set<string>(KNOWN_CATEGORIES);
+    for (const c of categoryRows) cats.add(c.code);
     for (const p of products) {
       if (p.category) cats.add(p.category.toLowerCase());
     }
     if (category) cats.add(category.toLowerCase());
     return ["all", ...Array.from(cats).sort()];
-  }, [products, category]);
+  }, [products, category, categoryRows]);
 
   const activeCategory = category || "all";
   const hasActiveFilters = Boolean(qParam || category || brand || status);
@@ -249,7 +258,9 @@ export default function Products() {
                 : "bg-surface text-muted border border-edge hover:border-accent/40",
             ].join(" ")}
           >
-            {cat === "all" ? t("products.categoryAll") : cat}
+            {cat === "all"
+              ? t("products.categoryAll")
+              : categoryLabel(cat, categoryRows, t)}
           </button>
         ))}
       </div>

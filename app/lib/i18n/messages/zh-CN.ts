@@ -129,6 +129,8 @@ export const zhCN: Messages = {
   },
 
   products: {
+    category_bags: "包袋",
+    category_clothing: "服装",
     metaTitle: "商品 | Dupli1 Admin",
     title: "商品",
     subtitle: "父级款式查询：GET /product/api/v1/products",
@@ -189,6 +191,8 @@ export const zhCN: Messages = {
   },
 
   productNew: {
+    category: "类别",
+    subCategory: "子类别",
     metaTitle: "新建商品 | Dupli1 Admin",
     backToProducts: "← 返回商品",
     title: "新建商品",
@@ -264,6 +268,29 @@ export const zhCN: Messages = {
   },
 
   productDetail: {
+    category: "类别",
+    categoryLockedHint: "商品已有 SKU 后无法更改类别。",
+    attributePresets: "快速添加：",
+    attributePreset_fill: "填充物（例：鸭绒 90/10）",
+    attributePreset_fill_weight: "充绒量（例：250 g）",
+    attributePreset_outer_fabric: "面料（例：尼龙 100%）",
+    attributePreset_lining: "里料（例：聚酯纤维 100%）",
+    attributePreset_care: "洗护（例：仅限干洗）",
+    sizeChart: "尺码表（cm）",
+    sizeChartHint: "各尺码的成衣尺寸，显示为商城的尺码指南。按 0.5 cm 取整；留空的行不会显示该尺码。",
+    sizeChartEmpty: "暂无尺码。添加尺码以开始填写尺码表。",
+    sizeChartChest: "胸围",
+    sizeChartLength: "衣长",
+    sizeChartShoulder: "肩宽",
+    sizeChartSleeve: "袖长",
+    cmPlaceholder: "cm",
+    sizeChartAddSize: "+ 添加尺码",
+    sizeChartSave: "保存尺码表",
+    sizeChartSaved: "尺码表已保存",
+    sizeChartTooManyRows: "尺码表最多 {max} 个尺码",
+    sizeChartSizeRequired: "填写了尺寸的行必须选择尺码",
+    sizeChartDuplicateSize: "尺码 {size} 重复",
+    sizeChartInvalidMeasurement: "尺码 {size}：尺寸必须是 0 到 {max} cm 之间的数字",
     metaTitle: "商品 | Dupli1 Admin",
     backToProducts: "← 返回商品",
     productNotFound: "未找到商品",

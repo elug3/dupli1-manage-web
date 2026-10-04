@@ -8,6 +8,7 @@ import {
   createStyle,
   createVariant,
   listBrands,
+  listCategories,
   listColors,
   listEditions,
   listSizes,
@@ -17,6 +18,16 @@ import {
   setInventoryBySkuId,
   uploadVariantImage,
 } from "~/lib/api";
+import {
+  DEFAULT_CATEGORY,
+  FALLBACK_CATEGORIES,
+  type ProductCategory,
+  categoryLabel,
+  defaultSizeCode,
+  filterSizesForCategory,
+  findCategory,
+  isClothingCategory,
+} from "~/lib/categories";
 import { useI18n } from "~/lib/i18n";
 import { useNotify } from "~/lib/notifications";
 
@@ -42,6 +53,8 @@ export default function NewProduct() {
   const [createdProductName, setCreatedProductName] = useState("");
   const [createdSkus, setCreatedSkus] = useState<ProductVariant[]>([]);
 
+  const [categories, setCategories] =
+    useState<ProductCategory[]>(FALLBACK_CATEGORIES);
   const [brands, setBrands] = useState<CatalogCodeName[]>([]);
   const [styles, setStyles] = useState<CatalogStyle[]>([]);
   const [colors, setColors] = useState<CatalogCodeName[]>([]);
@@ -51,6 +64,8 @@ export default function NewProduct() {
   const [skuMastersLoading, setSkuMastersLoading] = useState(false);
 
   const [name, setName] = useState("");
+  const [category, setCategory] = useState(DEFAULT_CATEGORY);
+  const [subCategory, setSubCategory] = useState("");
   const [brandCode, setBrandCode] = useState("");
   const [styleCode, setStyleCode] = useState("");
   const [newStyleCode, setNewStyleCode] = useState("");
@@ -74,6 +89,25 @@ export default function NewProduct() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [addingSku, setAddingSku] = useState(false);
+
+  // Bags stays the default and only option if categories cannot load.
+  useEffect(() => {
+    let cancelled = false;
+    listCategories()
+      .then((rows) => {
+        if (!cancelled && rows.length > 0) setCategories(rows);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const selectedCategory = findCategory(categories, category);
+  const subCategoryOptions = selectedCategory?.subCategories ?? [];
+  const allowedSizes = selectedCategory?.sizes;
+  const sizeOptions = filterSizesForCategory(sizes, allowedSizes);
+  const isClothing = isClothingCategory(category);
 
   useEffect(() => {
     let cancelled = false;
@@ -144,8 +178,9 @@ export default function NewProduct() {
         setSizes(s);
         setEditions(e);
         if (c[0]) setColorCode(c[0].code);
-        if (s.some((row) => row.code === "OS")) setSizeCode("OS");
-        else if (s[0]) setSizeCode(s[0].code);
+        setSizeCode(
+          defaultSizeCode(filterSizesForCategory(s, allowedSizes), allowedSizes)
+        );
       })
       .catch((err) => {
         if (!cancelled) {
@@ -163,7 +198,7 @@ export default function NewProduct() {
     return () => {
       cancelled = true;
     };
-  }, [step, notify, t]);
+  }, [step, allowedSizes, notify, t]);
 
   useEffect(() => {
     if (!imageFile) {
@@ -266,6 +301,8 @@ export default function NewProduct() {
         styleCode,
         brand: brandName,
         material: material.trim(),
+        category,
+        subCategory: subCategory || undefined,
         description: description.trim() || undefined,
         status,
         price: parsedPrice,
@@ -302,7 +339,10 @@ export default function NewProduct() {
       return;
     }
 
-    const parsed = parseDimensionsInput({ widthMm, heightMm, depthMm });
+    // Clothing has no W×H×D; its measurements live in the size chart.
+    const parsed: ReturnType<typeof parseDimensionsInput> = isClothing
+      ? {}
+      : parseDimensionsInput({ widthMm, heightMm, depthMm });
     if (parsed.error === "INVALID_DIMENSION") {
       notify(t("skuDetail.invalidDimension"), "error");
       return;
@@ -427,6 +467,43 @@ export default function NewProduct() {
                 disabled={!!createdProductId}
               />
             </Field>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label={t("productNew.category")} id="category" required>
+                <select
+                  id="category"
+                  required
+                  value={category}
+                  onChange={(e) => {
+                    setCategory(e.target.value);
+                    setSubCategory("");
+                  }}
+                  className={inputCls}
+                  disabled={!!createdProductId}
+                >
+                  {categories.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {categoryLabel(c.code, categories, t)}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label={t("productNew.subCategory")} id="subCategory">
+                <select
+                  id="subCategory"
+                  value={subCategory}
+                  onChange={(e) => setSubCategory(e.target.value)}
+                  className={inputCls}
+                  disabled={!!createdProductId}
+                >
+                  <option value="">{t("common.emptyValue")}</option>
+                  {subCategoryOptions.map((row) => (
+                    <option key={row.code} value={row.code}>
+                      {row.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </div>
             <Field label={t("productNew.brandCode")} id="brandCode" required>
               <select
                 id="brandCode"
@@ -685,7 +762,7 @@ export default function NewProduct() {
                     onChange={(e) => setSizeCode(e.target.value)}
                     className={inputCls}
                   >
-                    {sizes.map((s) => (
+                    {sizeOptions.map((s) => (
                       <option key={s.code} value={s.code}>
                         {s.code} — {s.name}
                       </option>
@@ -734,6 +811,7 @@ export default function NewProduct() {
                 </Field>
               </div>
 
+              {!isClothing && (
               <div className="space-y-1.5">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted">
                   {t("skuDetail.dimensions")}
@@ -783,6 +861,7 @@ export default function NewProduct() {
                   </Field>
                 </div>
               </div>
+              )}
 
               <div className="space-y-1.5">
                 <span className="text-xs font-semibold uppercase tracking-wide text-muted">

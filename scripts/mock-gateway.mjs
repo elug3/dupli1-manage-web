@@ -13,6 +13,10 @@
  * Support's inbox is here too (`/api/v1/support/*`): a web consultation with
  * a product card and a Telegram one, plus the inbox stream.
  * `POST /__control/support-message` has the web shopper write again.
+ *
+ * Products serve product's category rules (`/api/v1/products/catalog/*`):
+ * bags take any size, clothing only XXS–XXL, and a PUT validates `sizeChart`
+ * against the category (omitted keeps it, `[]` clears it).
  */
 import http from "node:http";
 
@@ -70,7 +74,59 @@ makeUser(VALID_EMAIL, "manager", ["*"], { user_id: "usr_mock_admin" });
 const products = new Map();
 const stock = new Map();
 
-function seedProduct(id, name, skus) {
+const APPAREL_SIZES = ["XXS", "XS", "S", "M", "L", "XL", "XXL"];
+const CATEGORIES = [
+  {
+    code: "bags",
+    name: "Bags",
+    subCategories: [
+      { code: "handbags", name: "Handbags" },
+      { code: "tote", name: "Tote" },
+      { code: "shoulder", name: "Shoulder" },
+      { code: "cross", name: "Crossbody" },
+      { code: "mini", name: "Mini" },
+    ],
+  },
+  {
+    code: "clothing",
+    name: "Clothing",
+    subCategories: [{ code: "padded", name: "Padded Jackets" }],
+    sizes: APPAREL_SIZES,
+  },
+];
+const SIZE_MASTERS = [
+  { code: "OS", name: "One size" },
+  ...APPAREL_SIZES.map((code) => ({ code, name: code })),
+];
+
+/** product's NormalizeSizeChart, enough to exercise the editor's errors. */
+function normalizeSizeChart(category, rows) {
+  const cat = CATEGORIES.find((c) => c.code === category) ?? CATEGORIES[0];
+  const seen = new Set();
+  const out = [];
+  for (const r of rows) {
+    const size = String(r.size ?? "").trim().toUpperCase();
+    if (!size) throw new Error("size chart: size is required");
+    if (seen.has(size)) throw new Error(`size chart: size ${size} appears twice`);
+    seen.add(size);
+    if (cat.sizes && !cat.sizes.includes(size)) {
+      throw new Error(`size chart: size ${size} is not a ${cat.code} size`);
+    }
+    const row = { size };
+    for (const m of ["chestCm", "lengthCm", "shoulderCm", "sleeveCm"]) {
+      const v = Number(r[m] ?? 0);
+      if (!(v >= 0 && v <= 300)) throw new Error(`size chart ${size}: ${m} must be between 0 and 300 cm`);
+      const rounded = Math.round(v * 2) / 2;
+      if (rounded > 0) row[m] = rounded;
+    }
+    if (Object.keys(row).length === 1) throw new Error(`size chart ${size}: give at least one measurement`);
+    out.push(row);
+  }
+  return out;
+}
+
+function seedProduct(id, name, skus, extra = {}) {
+  const sizeCode = extra.category === "clothing" ? null : "OS";
   products.set(id, {
     id,
     name,
@@ -79,13 +135,14 @@ function seedProduct(id, name, skus) {
     price: 250000,
     brandCode: "DUP",
     styleCode: "ECO01",
+    ...extra,
     variants: skus.map(([sku, skuId, color]) => ({
       sku,
       skuId,
       productId: id,
       color,
       colorCode: sku.split("_")[2],
-      sizeCode: "OS",
+      sizeCode: sizeCode ?? sku.split("_").at(-1),
       status: "active",
       imageUrls: [],
     })),
@@ -102,6 +159,24 @@ seedProduct("prod_mock_eco", "Eco Bag", [
 stock.set("sku_eco_blk", { sku: "DUP_ECO01_BLK_OS", quantity: 4, reserved: 1, updated_at: "2026-09-27T00:00:00Z" });
 stock.set("sku_eco_grn", { sku: "DUP_ECO01_GRN_OS", quantity: 3, reserved: 0, updated_at: "2026-09-27T00:00:00Z" });
 stock.set("sku_eco_nat", { sku: "DUP_ECO01_NAT_OS", quantity: 0, reserved: 0, updated_at: "2026-09-27T00:00:00Z" });
+
+// A padded jacket with a partial size chart (L not measured yet).
+seedProduct(
+  "prod_mock_padded",
+  "Puffer Jacket",
+  [
+    ["DUP_PUF01_BLK_M", "sku_puf_blk_m", "Black"],
+    ["DUP_PUF01_BLK_L", "sku_puf_blk_l", "Black"],
+  ],
+  {
+    category: "clothing",
+    subCategory: "padded",
+    styleCode: "PUF01",
+    price: 390000,
+    attributes: { fill: "duck down 90/10" },
+    sizeChart: [{ size: "M", chestCm: 58, lengthCm: 70, shoulderCm: 47, sleeveCm: 63.5 }],
+  }
+);
 
 /** Heartbeat cadence, matching the order service. */
 const HEARTBEAT_MS = 20_000;
@@ -655,12 +730,56 @@ const server = http.createServer(async (req, res) => {
     return res.writeHead(204).end();
   }
 
+  // Catalog: categories with their subcategories and sizes; the master
+  // catalog's subcategories follow `?category=` (bags by default).
+  if (method === "GET" && path === "/api/v1/products/catalog/categories") {
+    return send(res, 200, CATEGORIES);
+  }
+  if (method === "GET" && (path === "/api/v1/products/catalog/master" || path === "/api/v1/products/catalog/subcategories")) {
+    const code = url.searchParams.get("category") || "bags";
+    const cat = CATEGORIES.find((c) => c.code === code.toLowerCase());
+    if (!cat) return send(res, 400, { error: `invalid category "${code}"` });
+    if (path.endsWith("/subcategories")) return send(res, 200, cat.subCategories);
+    return send(res, 200, {
+      subCategories: cat.subCategories,
+      styles: [{ code: "casual", name: "Casual" }],
+      targets: [{ code: "women", name: "Women" }, { code: "men", name: "Men" }],
+    });
+  }
+  if (method === "GET" && path === "/api/v1/products/catalog/brands") {
+    return send(res, 200, [{ code: "DUP", name: "Dupli1" }]);
+  }
+  if (method === "GET" && path === "/api/v1/products/catalog/sizes") return send(res, 200, SIZE_MASTERS);
+  if (method === "GET" && path === "/api/v1/products/catalog/colors") {
+    return send(res, 200, [{ code: "BLK", name: "Black" }, { code: "GRN", name: "Green" }]);
+  }
+  if (method === "GET" && path === "/api/v1/products/catalog/editions") return send(res, 200, []);
+
   // Products and stock, with product's delete rules: a SKU goes only with
   // an empty stock row, and a product not while any SKU has stock reserved.
   m = path.match(/^\/api\/v1\/products\/([^/]+)$/);
   if (m && products.has(decodeURIComponent(m[1]))) {
     const product = products.get(decodeURIComponent(m[1]));
     if (method === "GET") return send(res, 200, product);
+    if (method === "PUT") {
+      const body = await readBody(req);
+      const category = body.category || product.category;
+      if (!CATEGORIES.some((c) => c.code === category)) {
+        return send(res, 400, { error: `invalid category "${category}"` });
+      }
+      let sizeChart = product.sizeChart;
+      try {
+        if (Array.isArray(body.sizeChart)) sizeChart = normalizeSizeChart(category, body.sizeChart);
+      } catch (err) {
+        return send(res, 400, { error: err.message });
+      }
+      const rest = { ...body };
+      delete rest.sizeChart;
+      Object.assign(product, rest, { category });
+      if (sizeChart?.length) product.sizeChart = sizeChart;
+      else delete product.sizeChart;
+      return send(res, 200, product);
+    }
     if (method === "DELETE") {
       const held = product.variants.find((v) => stock.get(v.skuId)?.reserved > 0);
       if (held) {
