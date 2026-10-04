@@ -751,6 +751,8 @@ const server = http.createServer(async (req, res) => {
         gross_won: gross,
         discount_won: orders * 8000,
         shipping_fee_won: orders * 3000,
+        // Every mock order is paid by card: 10% on top, already in gross.
+        card_surcharge_won: Math.floor(gross / 11),
         refunds,
         refunded_won: refunded,
         net_won: gross - refunded,
@@ -765,6 +767,7 @@ const server = http.createServer(async (req, res) => {
       gross_won: sum("gross_won"),
       discount_won: sum("discount_won"),
       shipping_fee_won: sum("shipping_fee_won"),
+      card_surcharge_won: sum("card_surcharge_won"),
       refunds: sum("refunds"),
       refunded_won: sum("refunded_won"),
       net_won: sum("net_won"),

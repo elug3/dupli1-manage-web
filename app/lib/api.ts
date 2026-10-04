@@ -1465,6 +1465,10 @@ export interface Order {
   tier_discount_won?: number;
   /** Flat delivery charge in whole KRW, snapshotted at order creation. */
   shipping_fee_won?: number;
+  /** What the order was priced for; absent on orders from before the card surcharge. */
+  payment_method?: "credit_card" | "bypass" | string;
+  /** Card surcharge in whole KRW, already inside `total_won`. 0 for bypass. */
+  card_surcharge_won?: number;
   total_won: number;
   /** Recipient display name from checkout fulfillment snapshot. */
   recipient_name?: string;
@@ -2214,6 +2218,8 @@ export interface SalesPeriod {
   gross_won: number;
   discount_won: number;
   shipping_fee_won: number;
+  /** Card surcharge collected, already inside `gross_won`. Absent before the backend added it. */
+  card_surcharge_won?: number;
   /** Paid orders canceled (refunded) in the period, whenever they were paid. */
   refunds: number;
   refunded_won: number;
