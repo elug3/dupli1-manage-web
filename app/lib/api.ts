@@ -2361,6 +2361,12 @@ export interface TelegramSubscription {
   alert_product: boolean;
   /** Customer inquiry handoffs from the support bot. */
   alert_support: boolean;
+  /**
+   * Single messages this chat does not receive inside a class it is on, e.g.
+   * `order.created` while keeping `order.paid`. Absent from a notification
+   * service that predates per-message mutes (backend dupli1 #332).
+   */
+  muted_events?: string[];
   created_at: string;
   updated_at: string;
   accepted_at?: string;
@@ -2373,6 +2379,36 @@ export interface TelegramAlertFlags {
   alert_product: boolean;
   alert_support: boolean;
 }
+
+/** Alert flags plus the muted messages, as PATCH and accept take them. */
+export interface TelegramAlertSettings extends TelegramAlertFlags {
+  /** Replaces the whole list when sent; omitted keeps it as it is. */
+  muted_events?: string[];
+}
+
+/**
+ * The messages a chat can mute, by the class they belong to — the NATS
+ * subjects the notification service alerts on. Support handoffs cannot be
+ * muted.
+ */
+export const TELEGRAM_ALERT_EVENTS = {
+  alert_order: [
+    "order.created",
+    "order.paid",
+    "order.status_updated",
+    "payment.canceled",
+    "payment.callback_rejected",
+  ],
+  alert_product: [
+    "product.created",
+    "product.updated",
+    "product.deleted",
+    "product.image_uploaded",
+  ],
+} as const;
+
+export type TelegramAlertEvent =
+  (typeof TELEGRAM_ALERT_EVENTS)[keyof typeof TELEGRAM_ALERT_EVENTS][number];
 
 export interface TelegramSubscriptionInput extends TelegramAlertFlags {
   telegram_user_id?: number;

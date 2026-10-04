@@ -859,6 +859,13 @@ export const en = {
     alertProductsShort: "Products",
     alertSupport: "Support inquiry alerts",
     alertSupportShort: "Support",
+    alertHelpLabel: "What {label} include",
+    alertOrdersHelp:
+      "A message for every new order, payment and order status change (confirmed, shipped, delivered, canceled and so on), plus refunds and payment-provider callbacks the payment service rejected.",
+    alertProductsHelp:
+      "A message when a product is created, updated or deleted in the catalog, or a product image is uploaded.",
+    alertSupportHelp:
+      "A message when a shopper asks to talk to a person, from the support bot or the storefront chat, with a link to the inquiry in Support. Outside service hours it arrives silently, without a notification sound.",
     openDetails: "Open subscription details",
     backToList: "← Back to Telegram",
     detailTitleFallback: "Telegram subscription",
@@ -876,6 +883,19 @@ export const en = {
       "A rejected chat receives nothing. Remove it if it should register again with /start.",
     saveAlerts: "Save alerts",
     alertsSaved: "Alerts updated",
+    messagesLabel: "Messages",
+    messagesHint: "Untick a message to stop just that one. The rest of the class still arrives.",
+    messagesClassOff: "Turn the alert on to choose its messages.",
+    eventOrderCreated: "New order",
+    eventOrderPaid: "Payment completed",
+    eventOrderStatusUpdated: "Status changes (confirm, ship, deliver, cancel…)",
+    eventPaymentCanceled: "Refunds",
+    eventPaymentCallbackRejected: "Rejected payment callbacks",
+    eventProductCreated: "Product created",
+    eventProductUpdated: "Product updated",
+    eventProductDeleted: "Product deleted",
+    eventProductImageUploaded: "Image uploaded",
+    allMessagesMuted: "Every message is unticked, so this chat gets none of these alerts.",
     sectionRemove: "Remove subscription",
     removeHint:
       "The chat stops receiving alerts at once and can no longer use the bot. It can send /start to register again.",

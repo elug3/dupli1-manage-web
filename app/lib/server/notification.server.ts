@@ -5,7 +5,7 @@
 import { redirect } from "react-router";
 import type {
   NotificationSettings,
-  TelegramAlertFlags,
+  TelegramAlertSettings,
   TelegramSubscription,
   TelegramSubscriptionInput,
 } from "~/lib/api";
@@ -111,7 +111,7 @@ export async function loadTelegramSubscription(
 export async function updateTelegramAlertsServer(
   request: Request,
   id: string,
-  alerts: TelegramAlertFlags
+  alerts: TelegramAlertSettings
 ): Promise<TelegramSubscription> {
   const res = await notificationFetch(
     request,
@@ -163,7 +163,7 @@ export async function createTelegramSubscriptionServer(
 export async function acceptTelegramSubscriptionServer(
   request: Request,
   id: string,
-  alerts: TelegramAlertFlags
+  alerts: TelegramAlertSettings
 ): Promise<TelegramSubscription> {
   const res = await notificationFetch(
     request,

@@ -860,6 +860,13 @@ export const ko: Messages = {
     alertProductsShort: "상품",
     alertSupport: "고객 문의 알림",
     alertSupportShort: "문의",
+    alertHelpLabel: "{label}에 포함되는 내용",
+    alertOrdersHelp:
+      "새 주문, 결제, 주문 상태 변경(확정, 배송, 배송 완료, 취소 등)마다 알림을 보냅니다. 환불과 결제 서비스가 거부한 결제사 콜백도 포함됩니다.",
+    alertProductsHelp:
+      "카탈로그에서 상품이 생성·수정·삭제되거나 상품 이미지가 업로드되면 알림을 보냅니다.",
+    alertSupportHelp:
+      "고객이 상담 봇이나 스토어 채팅에서 상담원 연결을 요청하면 상담 화면 링크와 함께 알림을 보냅니다. 운영 시간 외에는 알림음 없이 조용히 전송됩니다.",
     openDetails: "구독 상세 보기",
     backToList: "← 텔레그램으로 돌아가기",
     detailTitleFallback: "텔레그램 구독",
@@ -877,6 +884,19 @@ export const ko: Messages = {
       "거부된 채팅은 알림을 받지 않습니다. /start로 다시 등록하게 하려면 삭제하세요.",
     saveAlerts: "알림 저장",
     alertsSaved: "알림을 변경했습니다",
+    messagesLabel: "메시지",
+    messagesHint: "체크를 해제한 메시지만 받지 않습니다. 나머지 알림은 그대로 옵니다.",
+    messagesClassOff: "알림을 켜면 받을 메시지를 고를 수 있습니다.",
+    eventOrderCreated: "신규 주문",
+    eventOrderPaid: "결제 완료",
+    eventOrderStatusUpdated: "상태 변경 (확정, 출고, 배송 완료, 취소 등)",
+    eventPaymentCanceled: "환불",
+    eventPaymentCallbackRejected: "거부된 결제 콜백",
+    eventProductCreated: "상품 등록",
+    eventProductUpdated: "상품 수정",
+    eventProductDeleted: "상품 삭제",
+    eventProductImageUploaded: "이미지 업로드",
+    allMessagesMuted: "모든 메시지가 해제되어 이 채팅은 이 알림을 하나도 받지 않습니다.",
     sectionRemove: "구독 삭제",
     removeHint:
       "이 채팅은 즉시 알림을 받지 않으며 봇을 사용할 수 없습니다. /start를 보내 다시 등록할 수 있습니다.",
