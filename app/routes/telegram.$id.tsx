@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, redirect, useFetcher, useLoaderData } from "react-router";
-import type {
-  TelegramAlertFlags,
-  TelegramSubscription,
-  TelegramSubscriptionStatus,
+import {
+  TELEGRAM_ALERT_EVENTS,
+  type TelegramAlertEvent,
+  type TelegramAlertFlags,
+  type TelegramAlertSettings,
+  type TelegramSubscription,
+  type TelegramSubscriptionStatus,
 } from "~/lib/api";
 import { HelpTip } from "~/components/HelpTip";
 import { useI18n } from "~/lib/i18n";
@@ -40,12 +43,36 @@ const STATUS_BADGE_CLASS: Record<TelegramSubscriptionStatus, string> = {
 
 const ALERT_KEYS = ["alert_order", "alert_product", "alert_support"] as const;
 
-function alertsFromForm(formData: FormData): TelegramAlertFlags {
-  return {
+// i18n key for each message a chat can mute.
+const EVENT_LABEL_KEYS: Record<TelegramAlertEvent, string> = {
+  "order.created": "telegram.eventOrderCreated",
+  "order.paid": "telegram.eventOrderPaid",
+  "order.status_updated": "telegram.eventOrderStatusUpdated",
+  "payment.canceled": "telegram.eventPaymentCanceled",
+  "payment.callback_rejected": "telegram.eventPaymentCallbackRejected",
+  "product.created": "telegram.eventProductCreated",
+  "product.updated": "telegram.eventProductUpdated",
+  "product.deleted": "telegram.eventProductDeleted",
+  "product.image_uploaded": "telegram.eventProductImageUploaded",
+};
+
+function alertsFromForm(formData: FormData): TelegramAlertSettings {
+  const alerts: TelegramAlertSettings = {
     alert_order: formData.get("alert_order") === "true",
     alert_product: formData.get("alert_product") === "true",
     alert_support: formData.get("alert_support") === "true",
   };
+  // Sent only when the service reports mutes; omitting it keeps the list.
+  const muted = formData.get("muted_events");
+  if (typeof muted === "string") {
+    const parsed: unknown = JSON.parse(muted);
+    if (Array.isArray(parsed)) {
+      alerts.muted_events = parsed.filter(
+        (e): e is string => typeof e === "string"
+      );
+    }
+  }
+  return alerts;
 }
 
 export async function loader({
@@ -118,8 +145,14 @@ export default function TelegramSubscriptionDetail() {
   const [alerts, setAlerts] = useState<TelegramAlertFlags | null>(
     sub ? pickAlerts(sub) : null
   );
+  // null when the notification service predates per-message mutes: the
+  // message toggles are hidden rather than offering a choice it would drop.
+  const [muted, setMuted] = useState<string[] | null>(
+    sub?.muted_events ? [...sub.muted_events] : null
+  );
   useEffect(() => {
     setAlerts(sub ? pickAlerts(sub) : null);
+    setMuted(sub?.muted_events ? [...sub.muted_events] : null);
   }, [sub]);
 
   const busy = fetcher.state !== "idle";
@@ -169,7 +202,9 @@ export default function TelegramSubscriptionDetail() {
         : status === "rejected"
           ? t("telegram.statusRejected")
           : status;
-  const changed = ALERT_KEYS.some((key) => alerts[key] !== sub[key]);
+  const changed =
+    ALERT_KEYS.some((key) => alerts[key] !== sub[key]) ||
+    (muted !== null && !sameSet(muted, sub.muted_events ?? []));
   const editable = status !== "rejected";
 
   const alertLabels: Record<(typeof ALERT_KEYS)[number], string> = {
@@ -188,8 +223,16 @@ export default function TelegramSubscriptionDetail() {
     fd.set("intent", intent);
     if (withAlerts && alerts) {
       for (const key of ALERT_KEYS) fd.set(key, String(alerts[key]));
+      if (muted !== null) fd.set("muted_events", JSON.stringify(muted));
     }
     fetcher.submit(fd, { method: "post" });
+  }
+
+  function toggleEvent(event: string, receive: boolean) {
+    if (muted === null) return;
+    setMuted(
+      receive ? muted.filter((e) => e !== event) : [...muted, event].sort()
+    );
   }
 
   function handleDelete() {
@@ -277,27 +320,41 @@ export default function TelegramSubscriptionDetail() {
 
         <div className="mt-4 space-y-3">
           {ALERT_KEYS.map((key) => (
-            <div key={key} className="flex items-center gap-2">
-              <label
-                htmlFor={`telegram-detail-${key}`}
-                className="flex items-center gap-2 text-sm text-ink"
-              >
-                <input
-                  id={`telegram-detail-${key}`}
-                  type="checkbox"
-                  checked={alerts[key]}
-                  disabled={!editable || busy}
-                  onChange={(e) =>
-                    setAlerts({ ...alerts, [key]: e.target.checked })
-                  }
-                  className="size-4 rounded border-edge text-accent focus:ring-accent/20 disabled:opacity-50"
+            <div key={key}>
+              <div className="flex items-center gap-2">
+                <label
+                  htmlFor={`telegram-detail-${key}`}
+                  className="flex items-center gap-2 text-sm text-ink"
+                >
+                  <input
+                    id={`telegram-detail-${key}`}
+                    type="checkbox"
+                    checked={alerts[key]}
+                    disabled={!editable || busy}
+                    onChange={(e) =>
+                      setAlerts({ ...alerts, [key]: e.target.checked })
+                    }
+                    className="size-4 rounded border-edge text-accent focus:ring-accent/20 disabled:opacity-50"
+                  />
+                  {alertLabels[key]}
+                </label>
+                <HelpTip
+                  label={t("telegram.alertHelpLabel", {
+                    label: alertLabels[key],
+                  })}
+                  text={alertHelp[key]}
                 />
-                {alertLabels[key]}
-              </label>
-              <HelpTip
-                label={t("telegram.alertHelpLabel", { label: alertLabels[key] })}
-                text={alertHelp[key]}
-              />
+              </div>
+              {muted !== null && key !== "alert_support" && (
+                <MessageToggles
+                  classKey={key}
+                  events={TELEGRAM_ALERT_EVENTS[key]}
+                  muted={muted}
+                  classOn={alerts[key]}
+                  disabled={!editable || busy}
+                  onToggle={toggleEvent}
+                />
+              )}
             </div>
           ))}
         </div>
@@ -363,6 +420,80 @@ function pickAlerts(sub: TelegramSubscription): TelegramAlertFlags {
     // Absent until the notification service reports it.
     alert_support: sub.alert_support ?? false,
   };
+}
+
+function sameSet(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  const set = new Set(a);
+  return b.every((e) => set.has(e));
+}
+
+/**
+ * One checkbox per message inside an alert class: ticked means the chat
+ * receives it. Disabled while the class itself is off, since a mute only
+ * narrows a class the chat already gets.
+ */
+function MessageToggles({
+  classKey,
+  events,
+  muted,
+  classOn,
+  disabled,
+  onToggle,
+}: {
+  classKey: string;
+  events: readonly TelegramAlertEvent[];
+  muted: string[];
+  classOn: boolean;
+  disabled: boolean;
+  onToggle: (event: string, receive: boolean) => void;
+}) {
+  const { t } = useI18n();
+  const groupId = `telegram-detail-${classKey}-messages`;
+  const allMuted = events.every((e) => muted.includes(e));
+  return (
+    <div
+      role="group"
+      aria-labelledby={groupId}
+      className="ml-6 mt-2 border-l border-edge pl-4"
+    >
+      <p id={groupId} className="text-xs font-medium text-muted">
+        {t("telegram.messagesLabel")}
+      </p>
+      <p className="text-xs text-faint">
+        {classOn ? t("telegram.messagesHint") : t("telegram.messagesClassOff")}
+      </p>
+      <div className="mt-2 grid gap-1.5 sm:grid-cols-2">
+        {events.map((event) => {
+          const id = `telegram-detail-event-${event}`;
+          return (
+            <label
+              key={event}
+              htmlFor={id}
+              className="flex items-center gap-2 text-sm text-ink"
+            >
+              <input
+                id={id}
+                type="checkbox"
+                checked={!muted.includes(event)}
+                disabled={disabled || !classOn}
+                onChange={(e) => onToggle(event, e.target.checked)}
+                className="size-4 rounded border-edge text-accent focus:ring-accent/20 disabled:opacity-50"
+              />
+              <span className={classOn ? "" : "text-muted"}>
+                {t(EVENT_LABEL_KEYS[event])}
+              </span>
+            </label>
+          );
+        })}
+      </div>
+      {classOn && allMuted && (
+        <p className="mt-2 text-xs text-amber-700">
+          {t("telegram.allMessagesMuted")}
+        </p>
+      )}
+    </div>
+  );
 }
 
 function Mono({ children }: { children: React.ReactNode }) {
