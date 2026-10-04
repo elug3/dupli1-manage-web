@@ -855,6 +855,13 @@ export const ko: Messages = {
     alertProductsShort: "상품",
     alertSupport: "고객 문의 알림",
     alertSupportShort: "문의",
+    alertHelpLabel: "{label}에 포함되는 내용",
+    alertOrdersHelp:
+      "새 주문, 결제, 주문 상태 변경(확정, 배송, 배송 완료, 취소 등)마다 알림을 보냅니다. 환불과 결제 서비스가 거부한 결제사 콜백도 포함됩니다.",
+    alertProductsHelp:
+      "카탈로그에서 상품이 생성·수정·삭제되거나 상품 이미지가 업로드되면 알림을 보냅니다.",
+    alertSupportHelp:
+      "고객이 상담 봇이나 스토어 채팅에서 상담원 연결을 요청하면 상담 화면 링크와 함께 알림을 보냅니다. 운영 시간 외에는 알림음 없이 조용히 전송됩니다.",
     openDetails: "구독 상세 보기",
     backToList: "← 텔레그램으로 돌아가기",
     detailTitleFallback: "텔레그램 구독",

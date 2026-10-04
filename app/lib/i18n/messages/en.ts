@@ -854,6 +854,13 @@ export const en = {
     alertProductsShort: "Products",
     alertSupport: "Support inquiry alerts",
     alertSupportShort: "Support",
+    alertHelpLabel: "What {label} include",
+    alertOrdersHelp:
+      "A message for every new order, payment and order status change (confirmed, shipped, delivered, canceled and so on), plus refunds and payment-provider callbacks the payment service rejected.",
+    alertProductsHelp:
+      "A message when a product is created, updated or deleted in the catalog, or a product image is uploaded.",
+    alertSupportHelp:
+      "A message when a shopper asks to talk to a person, from the support bot or the storefront chat, with a link to the inquiry in Support. Outside service hours it arrives silently, without a notification sound.",
     openDetails: "Open subscription details",
     backToList: "← Back to Telegram",
     detailTitleFallback: "Telegram subscription",

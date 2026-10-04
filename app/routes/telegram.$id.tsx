@@ -5,6 +5,7 @@ import type {
   TelegramSubscription,
   TelegramSubscriptionStatus,
 } from "~/lib/api";
+import { HelpTip } from "~/components/HelpTip";
 import { useI18n } from "~/lib/i18n";
 import { useNotify } from "~/lib/notifications";
 import {
@@ -176,6 +177,11 @@ export default function TelegramSubscriptionDetail() {
     alert_product: t("telegram.alertProducts"),
     alert_support: t("telegram.alertSupport"),
   };
+  const alertHelp: Record<(typeof ALERT_KEYS)[number], string> = {
+    alert_order: t("telegram.alertOrdersHelp"),
+    alert_product: t("telegram.alertProductsHelp"),
+    alert_support: t("telegram.alertSupportHelp"),
+  };
 
   function submit(intent: string, withAlerts: boolean) {
     const fd = new FormData();
@@ -271,23 +277,28 @@ export default function TelegramSubscriptionDetail() {
 
         <div className="mt-4 space-y-3">
           {ALERT_KEYS.map((key) => (
-            <label
-              key={key}
-              htmlFor={`telegram-detail-${key}`}
-              className="flex items-center gap-2 text-sm text-ink"
-            >
-              <input
-                id={`telegram-detail-${key}`}
-                type="checkbox"
-                checked={alerts[key]}
-                disabled={!editable || busy}
-                onChange={(e) =>
-                  setAlerts({ ...alerts, [key]: e.target.checked })
-                }
-                className="size-4 rounded border-edge text-accent focus:ring-accent/20 disabled:opacity-50"
+            <div key={key} className="flex items-center gap-2">
+              <label
+                htmlFor={`telegram-detail-${key}`}
+                className="flex items-center gap-2 text-sm text-ink"
+              >
+                <input
+                  id={`telegram-detail-${key}`}
+                  type="checkbox"
+                  checked={alerts[key]}
+                  disabled={!editable || busy}
+                  onChange={(e) =>
+                    setAlerts({ ...alerts, [key]: e.target.checked })
+                  }
+                  className="size-4 rounded border-edge text-accent focus:ring-accent/20 disabled:opacity-50"
+                />
+                {alertLabels[key]}
+              </label>
+              <HelpTip
+                label={t("telegram.alertHelpLabel", { label: alertLabels[key] })}
+                text={alertHelp[key]}
               />
-              {alertLabels[key]}
-            </label>
+            </div>
           ))}
         </div>
 

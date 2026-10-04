@@ -6,6 +6,7 @@ import type {
   TelegramSubscription,
   TelegramSubscriptionStatus,
 } from "~/lib/api";
+import { HelpTip } from "~/components/HelpTip";
 import { useI18n } from "~/lib/i18n";
 import { useNotify } from "~/lib/notifications";
 import {
@@ -420,24 +421,42 @@ export default function Telegram() {
           />
         </Field>
         <div className="flex flex-wrap items-center gap-4 sm:col-span-3">
-          <Checkbox
-            id="telegram-alert-order"
-            label={t("telegram.alertOrders")}
-            checked={newAlertOrder}
-            onChange={setNewAlertOrder}
-          />
-          <Checkbox
-            id="telegram-alert-product"
-            label={t("telegram.alertProducts")}
-            checked={newAlertProduct}
-            onChange={setNewAlertProduct}
-          />
-          <Checkbox
-            id="telegram-alert-support"
-            label={t("telegram.alertSupport")}
-            checked={newAlertSupport}
-            onChange={setNewAlertSupport}
-          />
+          <span className="flex items-center gap-2">
+            <Checkbox
+              id="telegram-alert-order"
+              label={t("telegram.alertOrders")}
+              checked={newAlertOrder}
+              onChange={setNewAlertOrder}
+            />
+            <HelpTip
+              label={t("telegram.alertHelpLabel", { label: t("telegram.alertOrders") })}
+              text={t("telegram.alertOrdersHelp")}
+            />
+          </span>
+          <span className="flex items-center gap-2">
+            <Checkbox
+              id="telegram-alert-product"
+              label={t("telegram.alertProducts")}
+              checked={newAlertProduct}
+              onChange={setNewAlertProduct}
+            />
+            <HelpTip
+              label={t("telegram.alertHelpLabel", { label: t("telegram.alertProducts") })}
+              text={t("telegram.alertProductsHelp")}
+            />
+          </span>
+          <span className="flex items-center gap-2">
+            <Checkbox
+              id="telegram-alert-support"
+              label={t("telegram.alertSupport")}
+              checked={newAlertSupport}
+              onChange={setNewAlertSupport}
+            />
+            <HelpTip
+              label={t("telegram.alertHelpLabel", { label: t("telegram.alertSupport") })}
+              text={t("telegram.alertSupportHelp")}
+            />
+          </span>
           <button
             type="submit"
             disabled={adding}

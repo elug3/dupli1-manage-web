@@ -850,6 +850,12 @@ export const zhCN: Messages = {
     alertProductsShort: "商品",
     alertSupport: "客户咨询提醒",
     alertSupportShort: "咨询",
+    alertHelpLabel: "{label}包含哪些内容",
+    alertOrdersHelp:
+      "每个新订单、付款和订单状态变化（确认、发货、送达、取消等）都会发送消息，也包括退款和被支付服务拒绝的支付商回调。",
+    alertProductsHelp: "目录中创建、更新或删除商品，或上传商品图片时发送消息。",
+    alertSupportHelp:
+      "顾客通过客服机器人或商城聊天要求人工客服时发送消息，并附上咨询链接。非服务时间内静默发送，不会响提示音。",
     openDetails: "查看订阅详情",
     backToList: "← 返回 Telegram",
     detailTitleFallback: "Telegram 订阅",
