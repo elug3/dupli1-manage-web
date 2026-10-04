@@ -108,6 +108,8 @@ dupli1-products-export.zip
 }
 ```
 
+A clothing product also carries `"sizeChart": [{ "size": "M", "chestCm": 58, "lengthCm": 70.5 }]` (cm, see `app/lib/categories.ts`). Import sends it with the parent update and drops rows that have no measurement, since product refuses those. Bags and unmeasured products omit it.
+
 ### Identity rules
 
 | Field | Export | Import |

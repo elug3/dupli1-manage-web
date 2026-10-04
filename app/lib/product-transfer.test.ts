@@ -140,6 +140,36 @@ describe("parseManifestJson", () => {
     const noDims = parseManifestJson(JSON.stringify(emptyDims));
     expect(noDims.products[0]!.variants[0]!.dimensions).toBeUndefined();
   });
+
+  it("carries a clothing size chart and drops unusable rows", () => {
+    const jacket = minimalManifest({
+      products: [
+        {
+          name: "Puffer Jacket",
+          brandCode: "moncler",
+          styleCode: "maya",
+          material: "nylon",
+          category: "clothing",
+          subCategory: "padded",
+          sizeChart: [
+            { size: "M", chestCm: 58, lengthCm: 70.5, note: "x" },
+            { size: "L", chestCm: "61" },
+            { chestCm: 60 },
+          ],
+          variants: [{ colorCode: "blk", sizeCode: "m", images: [] }],
+        },
+      ],
+    });
+    const p = parseManifestJson(JSON.stringify(jacket)).products[0]!;
+    expect(p.category).toBe("clothing");
+    expect(p.subCategory).toBe("padded");
+    expect(p.sizeChart).toEqual([
+      { size: "M", chestCm: 58, lengthCm: 70.5 },
+    ]);
+
+    const bag = parseManifestJson(JSON.stringify(minimalManifest()));
+    expect(bag.products[0]!.sizeChart).toBeUndefined();
+  });
 });
 
 describe("formatGapLabel", () => {
