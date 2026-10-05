@@ -6,6 +6,7 @@ import {
   Scripts,
   ScrollRestoration,
   useLoaderData,
+  useRouteLoaderData,
 } from "react-router";
 
 import "./app.css";
@@ -17,6 +18,8 @@ import {
   type Locale,
 } from "~/lib/i18n";
 import { NotificationProvider } from "~/lib/notifications";
+import { sentryConfigScript } from "~/lib/sentry";
+import { loadSentryBrowserConfig } from "~/lib/server/sentry.server";
 import { THEME_BOOT_SCRIPT, ThemeProvider } from "~/lib/theme";
 
 export const links = () => [
@@ -34,10 +37,11 @@ export const links = () => [
 ];
 
 export async function loader({ request }: { request: Request }) {
-  return { locale: getLocaleFromRequest(request) };
+  return { locale: getLocaleFromRequest(request), sentry: loadSentryBrowserConfig() };
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
+  const sentry = useRouteLoaderData<typeof loader>("root")?.sentry;
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -51,6 +55,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+        {sentry && <script dangerouslySetInnerHTML={{ __html: sentryConfigScript(sentry) }} />}
         <Meta />
         <Links />
       </head>
