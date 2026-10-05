@@ -25,8 +25,8 @@ export default tseslint.config(
     },
   },
   {
-    // Node scripts: mock gateway, browser and session tests.
-    files: ["scripts/**/*.mjs", "*.config.{js,ts}"],
+    // Node scripts: mock gateway, browser and session tests, Sentry preload.
+    files: ["scripts/**/*.mjs", "*.config.{js,ts}", "instrument.server.mjs"],
     // Browser globals too: Playwright scripts run callbacks inside the page.
     languageOptions: { globals: { ...globals.node, ...globals.browser } },
   },
