@@ -23,6 +23,7 @@ import {
   updateProduct,
   uploadVariantImage,
 } from "./api";
+import { type SizeChartRow, mapSizeChart } from "./categories";
 
 export const MANIFEST_SCHEMA_VERSION = 1 as const;
 export const EXPORT_WARN_PRODUCT_COUNT = 50;
@@ -53,6 +54,8 @@ export interface TransferManifestProduct {
   style?: string;
   target?: string;
   attributes?: Record<string, string>;
+  /** Clothing size guide in cm; absent for bags and unmeasured products. */
+  sizeChart?: SizeChartRow[];
   brand?: string;
   variants: TransferManifestVariant[];
   exportedId?: string;
@@ -211,6 +214,7 @@ function productToManifestEntry(
     style: product.style,
     target: product.target,
     attributes: product.attributes,
+    sizeChart: product.sizeChart,
     brand: product.brand,
     variants,
     exportedId: product.id,
@@ -311,6 +315,12 @@ function parseDimensions(raw: unknown): SkuDimensions | undefined {
   return dimensionsEmpty(d) ? undefined : d;
 }
 
+/** Rows with no measurement are dropped: product refuses them, which would fail the whole product. */
+function parseSizeChart(raw: unknown): SizeChartRow[] | undefined {
+  const rows = mapSizeChart(raw)?.filter((row) => Object.keys(row).length > 1);
+  return rows && rows.length > 0 ? rows : undefined;
+}
+
 function parseManifestProduct(
   raw: unknown,
   index: number
@@ -398,6 +408,7 @@ function parseManifestProduct(
     style: typeof raw.style === "string" ? raw.style : undefined,
     target: typeof raw.target === "string" ? raw.target : undefined,
     attributes,
+    sizeChart: parseSizeChart(raw.sizeChart),
     brand: typeof raw.brand === "string" ? raw.brand : undefined,
     variants,
     exportedId: typeof raw.exportedId === "string" ? raw.exportedId : undefined,
@@ -761,6 +772,7 @@ export async function runImport(
         style: product.style ?? "",
         target: product.target ?? "",
         attributes: product.attributes ?? {},
+        ...(product.sizeChart ? { sizeChart: product.sizeChart } : {}),
         status: product.status ?? "active",
       });
 
