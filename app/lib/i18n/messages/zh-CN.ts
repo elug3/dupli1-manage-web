@@ -77,7 +77,6 @@ export const zhCN: Messages = {
   },
 
   login: {
-    metaTitle: "登录 | Dupli1 Admin",
     heading: "Dupli1 Admin",
     subtitle: "登录您的管理员账户",
     email: "邮箱",
@@ -90,7 +89,6 @@ export const zhCN: Messages = {
   },
 
   dashboard: {
-    metaTitle: "仪表盘 | Dupli1 Admin",
     title: "仪表盘",
     viewAllOrders: "查看全部订单",
     viewAllArrow: "查看全部 →",
@@ -131,7 +129,6 @@ export const zhCN: Messages = {
   products: {
     category_bags: "包袋",
     category_clothing: "服装",
-    metaTitle: "商品 | Dupli1 Admin",
     title: "商品",
     subtitle: "父级款式查询：GET /product/api/v1/products",
     newProduct: "新建商品",
@@ -193,7 +190,6 @@ export const zhCN: Messages = {
   productNew: {
     category: "类别",
     subCategory: "子类别",
-    metaTitle: "新建商品 | Dupli1 Admin",
     backToProducts: "← 返回商品",
     title: "新建商品",
     subtitlePrefix:
@@ -291,7 +287,6 @@ export const zhCN: Messages = {
     sizeChartSizeRequired: "填写了尺寸的行必须选择尺码",
     sizeChartDuplicateSize: "尺码 {size} 重复",
     sizeChartInvalidMeasurement: "尺码 {size}：尺寸必须是 0 到 {max} cm 之间的数字",
-    metaTitle: "商品 | Dupli1 Admin",
     backToProducts: "← 返回商品",
     productNotFound: "未找到商品",
     editStyle: "编辑款式",
@@ -383,7 +378,6 @@ export const zhCN: Messages = {
   },
 
   skuDetail: {
-    metaTitle: "SKU | Dupli1 Admin",
     heading: "SKU 详情",
     backToProduct: "← 返回商品",
     skuNotFound: "在此商品上未找到该 SKU",
@@ -460,7 +454,6 @@ export const zhCN: Messages = {
   },
 
   catalog: {
-    metaTitle: "目录主数据 | Dupli1 Admin",
     title: "目录主数据",
     subtitle:
       "用于组合人工 SKU 的代码 → 名称字典。代码不可更改；重命名仅更新显示标签。",
@@ -518,7 +511,6 @@ export const zhCN: Messages = {
   },
 
   orderDetail: {
-    metaTitle: "订单 | Dupli1 Admin",
     backToOrders: "← 订单列表",
     failedToLoad: "加载订单失败",
     notFound: "订单未找到",
@@ -566,7 +558,6 @@ export const zhCN: Messages = {
   },
 
   orders: {
-    metaTitle: "订单 | Dupli1 Admin",
     title: "订单",
     ordersTotal_one: "共 {count} 笔订单",
     ordersTotal_other: "共 {count} 笔订单",
@@ -642,7 +633,6 @@ export const zhCN: Messages = {
   },
 
   promotions: {
-    metaTitle: "促销码 | Dupli1 Admin",
     title: "促销码",
     subtitle: "通过商品服务管理：/product/api/v1/products/promotions",
 
@@ -782,7 +772,6 @@ export const zhCN: Messages = {
     errConditionNumber: "该条件需要填写数字",
   },
   analytics: {
-    metaTitle: "分析 | Dupli1 Admin",
     title: "分析",
     subtitle: "按周或按月查看销售额、访客和新客户（韩国时间）",
     failedToLoad: "加载分析失败",
@@ -839,7 +828,6 @@ export const zhCN: Messages = {
   },
 
   telegram: {
-    metaTitle: "Telegram | Dupli1 Admin",
     title: "Telegram",
     subtitle: "审批哪些人接收 Dupli1 机器人的运营告警",
     serviceStatus: "服务状态",
@@ -941,7 +929,6 @@ export const zhCN: Messages = {
   },
 
   users: {
-    metaTitle: "用户 | Dupli1 Admin",
     title: "用户",
     subtitle: "账户管理：GET /auth/api/v1/auth/users",
     newUser: "新建用户",
@@ -963,7 +950,6 @@ export const zhCN: Messages = {
   },
 
   userNew: {
-    metaTitle: "新建用户 | Dupli1 Admin",
     backToUsers: "← 返回用户",
     title: "新建用户",
     subtitle:
@@ -979,7 +965,6 @@ export const zhCN: Messages = {
   },
 
   userDetail: {
-    metaTitle: "用户 | Dupli1 Admin",
     backToUsers: "← 返回用户",
     userNotFound: "未找到用户",
     failedToLoad: "加载用户失败",
@@ -1062,7 +1047,6 @@ export const zhCN: Messages = {
   },
 
   settings: {
-    metaTitle: "设置 | Dupli1 Admin",
     title: "设置",
     subtitle: "管理商店配置",
     sectionGeneral: "常规",
@@ -1118,6 +1102,133 @@ export const zhCN: Messages = {
     gitCommit: "提交",
   },
 
+  support: {
+    title: "客服",
+    live: "实时",
+    notLive: "未连接",
+    inboxIntro: "网页和 Telegram 客户咨询：认领等待中的咨询并回复。服务时间为工作日 10:00–22:00（韩国时间），法定节假日休息。",
+    tabsLabel: "咨询类型",
+    tabInbox: "咨询",
+    tabQuestions: "商品咨询",
+    queueWaiting: "等待中",
+    queueMine: "我的",
+    queueClosed: "已完成",
+    channelAll: "全部",
+    channelWeb: "网页",
+    channelTelegram: "Telegram",
+    channelWebBadge: "网页",
+    orderPending: "待付款",
+    orderPaid: "已付款",
+    orderConfirmed: "已确认",
+    orderInTransit: "配送中",
+    orderDelivered: "已送达",
+    orderFulfilled: "已完成",
+    orderDisputed: "争议中",
+    orderCanceled: "已取消",
+    topicOrd: "订单与配送",
+    topicOrdEta: "配送时间",
+    topicOrdTrk: "物流查询",
+    topicOrdAdr: "修改地址",
+    topicPrd: "商品与库存",
+    topicRet: "换货与退货",
+    topicPay: "支付",
+    topicAgt: "转人工",
+    statusOpen: "等待中",
+    statusAssigned: "处理中",
+    statusAnswered: "已回复",
+    statusClosed: "已完成",
+    selectInquiry: "请在左侧选择一个咨询。",
+    noInquiries: "暂无咨询。",
+    assignedTo: "负责人 {name}",
+    unassigned: "未分配",
+    entry: "来源 {context}",
+    claim: "认领",
+    close: "结束",
+    undelivered: "回复已保存，但未送达客户（未发送）。客户可能已屏蔽机器人。",
+    replyPlaceholder: "输入回复",
+    attachCard: "附加卡片",
+    attachNone: "无",
+    attachProduct: "商品 · {name}",
+    attachOrder: "订单 · {label}",
+    sending: "发送中…",
+    sendReply: "发送回复",
+    noMessages: "暂无消息。",
+    agent: "客服",
+    customer: "客户",
+    notSent: "未发送",
+    read: "已读",
+    emailSent: "已发送邮件通知",
+    orderRef: "订单 {id}",
+    andMore: "{name} 等 {more} 件",
+    contextLabel: "客户信息",
+    customerHeading: "客户",
+    noEmail: "无邮箱",
+    viewAccount: "查看账户",
+    productHeading: "咨询商品",
+    stock: "库存 {qty}",
+    boughtBefore: "曾购买过此商品",
+    orderHeading: "咨询订单",
+    historyHeading: "购买记录",
+    paidOrders: "已付款订单",
+    orderCount: "{n} 单",
+    lifetimeSpend: "累计消费",
+    noOrders: "暂无订单。",
+    idRequired: "需要咨询编号",
+    replyRequired: "请输入回复内容",
+    unknownRequest: "未知请求",
+    actionFailed: "处理失败",
+    loadInquiriesFailed: "无法加载咨询",
+    loadInquiryFailed: "无法加载该咨询",
+    claimFailed: "认领失败",
+    replyFailed: "回复发送失败",
+    closeFailed: "结束失败",
+    loadProductFailed: "无法加载商品",
+    loadOrderFailed: "无法加载订单",
+    loadHistoryFailed: "无法加载购买记录",
+  },
+
+  productQuestions: {
+    intro: "来自商品页面的私密咨询。问题和回复仅提问客户和工作人员可见，首次回复后会通过邮件通知客户。",
+    queueWaiting: "待回复",
+    queueAnswered: "已回复",
+    queueHidden: "已隐藏",
+    typeAll: "全部",
+    typeSize: "尺码与版型",
+    typeStock: "库存与到货",
+    typeProduct: "商品信息",
+    typeOther: "其他",
+    selectQuestion: "请在左侧选择一个咨询。",
+    noQuestions: "暂无咨询。",
+    hide: "隐藏",
+    unhide: "取消隐藏",
+    customerQuestion: "客户问题",
+    fit: "体型 · {fit}",
+    usualSize: "平时 {size}",
+    hiddenNote: "此咨询已隐藏{by}。它只会从队列中移除，客户仍可看到自己的问题。",
+    answerBy: "回复 · {name}",
+    editAnswer: "修改回复",
+    answerLabel: "回复",
+    answerPlaceholder: "输入回复。仅提问客户可见。",
+    template: "模板",
+    templateLabel: "回复模板",
+    templateChoose: "选择",
+    templateKorean: "韩语",
+    templateEnglish: "英语",
+    tplSize: "尺码建议",
+    tplStock: "到货时间",
+    tplProduct: "商品信息",
+    tplChat: "引导至一对一咨询",
+    cancel: "取消",
+    saving: "提交中…",
+    submit: "提交回复",
+    emailNote: "提交后会向客户发送回复通知邮件，邮件中不包含回复内容。",
+    answerRequired: "请输入回复内容",
+    answerTooLong: "回复请控制在 {limit} 个字符以内",
+    loadFailed: "无法加载商品咨询",
+    loadOneFailed: "无法加载该咨询",
+    answerFailed: "回复提交失败",
+    hideFailed: "处理失败",
+  },
   errors: {
     oops: "出错了！",
     unexpected: "发生了意外错误。",

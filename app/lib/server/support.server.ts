@@ -6,6 +6,7 @@
  * customer data: it is fetched with the operator's own access token and
  * rendered server-side, never exposed as a browser-callable endpoint.
  */
+import { getLocaleFromRequest, translate, type MessageKey } from "~/lib/i18n";
 import { redirect } from "react-router";
 import { accessTokenFromSession } from "./auth-session";
 
@@ -146,7 +147,7 @@ export async function loadInquiries(
   const query = queueQuery(queue) + (channel === "all" ? "" : `&channel=${channel}`);
   const res = await supportFetch(request, `${INQUIRIES_PATH}${query}`);
   if (!res.ok) {
-    throw new Error(await readError(res, "Failed to load consultations"));
+    throw new Error(await readError(res, tr(request, "support.loadInquiriesFailed")));
   }
   const body = (await res.json()) as { inquiries?: SupportInquiry[] | null };
   return Array.isArray(body.inquiries) ? body.inquiries : [];
@@ -158,7 +159,7 @@ export async function loadInquiry(
 ): Promise<SupportInquiry> {
   const res = await supportFetch(request, `${INQUIRIES_PATH}/${encodeURIComponent(id)}`);
   if (!res.ok) {
-    throw new Error(await readError(res, "Failed to load the consultation"));
+    throw new Error(await readError(res, tr(request, "support.loadInquiryFailed")));
   }
   const body = (await res.json()) as { inquiry: SupportInquiry };
   return body.inquiry;
@@ -173,7 +174,7 @@ export async function claimInquiry(
     `${INQUIRIES_PATH}/${encodeURIComponent(id)}/assign`,
     { method: "POST" }
   );
-  if (!res.ok) throw new Error(await readError(res, "Failed to claim"));
+  if (!res.ok) throw new Error(await readError(res, tr(request, "support.claimFailed")));
   const body = (await res.json()) as { inquiry: SupportInquiry };
   return body.inquiry;
 }
@@ -198,7 +199,7 @@ export async function replyToInquiry(
     `${INQUIRIES_PATH}/${encodeURIComponent(id)}/reply`,
     { method: "POST", body: JSON.stringify({ body, ...attach }) }
   );
-  if (!res.ok) throw new Error(await readError(res, "Failed to send the reply"));
+  if (!res.ok) throw new Error(await readError(res, tr(request, "support.replyFailed")));
   const payload = (await res.json()) as ReplyResult;
   return payload;
 }
@@ -212,7 +213,7 @@ export async function closeInquiry(
     `${INQUIRIES_PATH}/${encodeURIComponent(id)}/close`,
     { method: "POST" }
   );
-  if (!res.ok) throw new Error(await readError(res, "Failed to close"));
+  if (!res.ok) throw new Error(await readError(res, tr(request, "support.closeFailed")));
   const body = (await res.json()) as { inquiry: SupportInquiry };
   return body.inquiry;
 }
@@ -327,14 +328,14 @@ async function loadCustomerOrders(request: Request, customerId: string): Promise
     request,
     `/api/v1/orders?customer_id=${encodeURIComponent(customerId)}`
   );
-  if (!res.ok) throw new Error(await readError(res, "주문 내역을 불러오지 못했습니다"));
+  if (!res.ok) throw new Error(await readError(res, tr(request, "support.loadHistoryFailed")));
   const body = (await res.json()) as { orders?: RawOrder[] | null };
   return Array.isArray(body.orders) ? body.orders : [];
 }
 
 async function loadOrder(request: Request, id: string): Promise<RawOrder> {
   const res = await supportFetch(request, `/api/v1/orders/${encodeURIComponent(id)}`);
-  if (!res.ok) throw new Error(await readError(res, "주문을 불러오지 못했습니다"));
+  if (!res.ok) throw new Error(await readError(res, tr(request, "support.loadOrderFailed")));
   return (await res.json()) as RawOrder;
 }
 
@@ -357,7 +358,7 @@ async function loadVariant(request: Request, skuId: string): Promise<ContextProd
     request,
     `/api/v1/products/variants/by-sku-id/${encodeURIComponent(skuId)}`
   );
-  if (!res.ok) throw new Error(await readError(res, "상품을 불러오지 못했습니다"));
+  if (!res.ok) throw new Error(await readError(res, tr(request, "support.loadProductFailed")));
   const v = (await res.json()) as RawVariant;
   return {
     product_id: v.productId,
@@ -370,6 +371,11 @@ async function loadVariant(request: Request, skuId: string): Promise<ContextProd
     status: v.status,
     available_qty: v.availableQty,
   };
+}
+
+/** A fallback error, in the operator's language. */
+function tr(request: Request, key: MessageKey): string {
+  return translate(getLocaleFromRequest(request), key);
 }
 
 function message(err: unknown, fallback: string): string {
@@ -411,19 +417,19 @@ export async function loadShopperContext(
 
   let product: ContextProduct | null = null;
   if (productResult.status === "fulfilled") product = productResult.value;
-  else errors.push(message(productResult.reason, "상품을 불러오지 못했습니다"));
+  else errors.push(message(productResult.reason, tr(request, "support.loadProductFailed")));
 
   let order: ContextOrder | null = null;
   if (orderResult.status === "fulfilled") {
     order = orderResult.value ? toContextOrder(orderResult.value) : null;
-  } else errors.push(message(orderResult.reason, "주문을 불러오지 못했습니다"));
+  } else errors.push(message(orderResult.reason, tr(request, "support.loadOrderFailed")));
 
   let history: PurchaseHistory | null = null;
   let bought = false;
   if (ordersResult.status === "fulfilled") {
     history = summarizeOrders(ordersResult.value);
     bought = boughtBefore(ordersResult.value, ref.skuId);
-  } else errors.push(message(ordersResult.reason, "주문 내역을 불러오지 못했습니다"));
+  } else errors.push(message(ordersResult.reason, tr(request, "support.loadHistoryFailed")));
 
   return { product, order, history, bought_before: bought, errors };
 }

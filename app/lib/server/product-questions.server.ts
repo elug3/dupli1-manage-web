@@ -6,7 +6,13 @@
  * transcript they are fetched with the operator's own token and rendered
  * server-side — never through a browser-callable endpoint.
  */
+import { getLocaleFromRequest, translate, type MessageKey } from "~/lib/i18n";
 import { readError, supportFetch } from "./support.server";
+
+/** The fallback error, in the operator's language. */
+function tr(request: Request, key: MessageKey): string {
+  return translate(getLocaleFromRequest(request), key);
+}
 
 const QUESTIONS_PATH = "/api/v1/support/product-questions";
 
@@ -66,14 +72,14 @@ export async function loadQuestions(
   type: QuestionType | null
 ): Promise<ProductQuestion[]> {
   const res = await supportFetch(request, `${QUESTIONS_PATH}${questionQueueQuery(queue, type)}`);
-  if (!res.ok) throw new Error(await readError(res, "상품 문의를 불러오지 못했습니다"));
+  if (!res.ok) throw new Error(await readError(res, tr(request, "productQuestions.loadFailed")));
   const body = (await res.json()) as { questions?: ProductQuestion[] | null };
   return Array.isArray(body.questions) ? body.questions : [];
 }
 
 export async function loadQuestion(request: Request, id: string): Promise<ProductQuestion> {
   const res = await supportFetch(request, `${QUESTIONS_PATH}/${encodeURIComponent(id)}`);
-  if (!res.ok) throw new Error(await readError(res, "문의를 불러오지 못했습니다"));
+  if (!res.ok) throw new Error(await readError(res, tr(request, "productQuestions.loadOneFailed")));
   return (await res.json()) as ProductQuestion;
 }
 
@@ -87,7 +93,7 @@ export async function answerQuestion(
     method: "POST",
     body: JSON.stringify({ answer }),
   });
-  if (!res.ok) throw new Error(await readError(res, "답변을 등록하지 못했습니다"));
+  if (!res.ok) throw new Error(await readError(res, tr(request, "productQuestions.answerFailed")));
   return (await res.json()) as ProductQuestion;
 }
 
@@ -101,6 +107,6 @@ export async function setQuestionHidden(
     method: "POST",
     body: JSON.stringify({ hidden }),
   });
-  if (!res.ok) throw new Error(await readError(res, "처리하지 못했습니다"));
+  if (!res.ok) throw new Error(await readError(res, tr(request, "productQuestions.hideFailed")));
   return (await res.json()) as ProductQuestion;
 }
