@@ -1,5 +1,7 @@
 # Dupli1 Internal VPN (WireGuard)
 
+> **Historical.** This VPN reached the AWS production VPC. Production moved to VENUS on 2026-09-27 and the admin is public at https://manage.dupli1.com through the Cloudflare Tunnel, so nothing here is in use.
+
 WireGuard VPN for accessing the Dupli1 production VPC (`10.0.0.0/16`) from outside AWS.
 
 ## Server

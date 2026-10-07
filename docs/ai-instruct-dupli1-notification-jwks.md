@@ -1,5 +1,7 @@
 # AI instruction: wire `AUTH_JWKS_URL` on `dupli1-notification` (ECS)
 
+> **Resolved.** Production moved to VENUS on 2026-09-27, where the `notification` service sets `AUTH_JWKS_URL` (backend `deploy/venus/docker-compose.yml`). The ECS steps below are historical.
+
 **Target repo:** [elug3/dupli1](https://github.com/elug3/dupli1) — service **`dupli1-notification`** + Terraform.  
 **Audience:** AI coding agents / operators applying the production fix.  
 **Symptom in manage-web:** `/telegram` shows **Failed to load Telegram subscriptions** (upstream `503` `auth not configured`).

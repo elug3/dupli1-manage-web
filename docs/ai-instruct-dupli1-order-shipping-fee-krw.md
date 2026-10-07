@@ -15,7 +15,7 @@
 | Operator env | `DUPLI1_ORDER_SHIPPING_FEE_WON` |
 | TypeScript | `shippingFeeWon` / `getShippingFeeWon` / `useShippingFeeWon` |
 
-The value is **whole KRW won** (zero-decimal). `30000` means ₩30,000. Default when the env is unset is **30000**. `0` means free delivery.
+The value is **whole KRW won** (zero-decimal). `30000` means ₩30,000. Default when the env is unset is **0** — free delivery (`DefaultShippingFeeWon` in backend `order/pkg/options.go`).
 
 `DUPLI1_ORDER_SHIPPING_FEE_KRW` and `DUPLI1_ORDER_SHIPPING_FEE_CENTS` remain **deprecated aliases** for the env var only. If more than one is set, WON wins over KRW over CENTS. Existing databases rename `shipping_fee_cents` / `shipping_fee_krw` → `shipping_fee_won` on migrate (values preserved).
 
@@ -24,7 +24,7 @@ The value is **whole KRW won** (zero-decimal). `30000` means ₩30,000. Default 
 ## Do not change
 
 - Money identifiers stay `*_won` / `KRW` / `Krw`. Do not revert JSON, Go, Postgres, or TypeScript names to `*_cents`.
-- The default amount (`30000`) or pricing rules (flat per order, no free-shipping threshold, coupons discount goods only).
+- The default amount (`0`, free) or pricing rules (flat per order, no free-shipping threshold, promotional codes discount goods only).
 - Display math: never divide by 100.
 
 ---
@@ -39,7 +39,7 @@ The value is **whole KRW won** (zero-decimal). `30000` means ₩30,000. Default 
 
 | Config | Behavior |
 |---|---|
-| Unset | ₩30,000 (Go default) |
+| Unset | Free (Go default `0`) |
 | `DUPLI1_ORDER_SHIPPING_FEE_WON=0` | Free |
 | `DUPLI1_ORDER_SHIPPING_FEE_CENTS` only | Still honored |
-| Both set | KRW name wins |
+| Several set | WON wins over KRW over CENTS |
