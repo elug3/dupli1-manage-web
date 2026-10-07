@@ -90,7 +90,7 @@ function gatewayBase(): string {
   ).replace(/\/$/, "");
 }
 
-async function readError(res: Response, fallback: string): Promise<string> {
+export async function readError(res: Response, fallback: string): Promise<string> {
   try {
     const body = (await res.json()) as { error?: string };
     return body.error ?? fallback;
@@ -99,7 +99,7 @@ async function readError(res: Response, fallback: string): Promise<string> {
   }
 }
 
-async function supportFetch(
+export async function supportFetch(
   request: Request,
   path: string,
   init: RequestInit = {}
@@ -385,12 +385,28 @@ export async function loadSupportContext(
   inquiry: SupportInquiry
 ): Promise<SupportContext | null> {
   if (inquiry.channel !== "web" || !inquiry.customer_id) return null;
+  return loadShopperContext(request, {
+    customerId: inquiry.customer_id,
+    skuId: inquiry.sku_id,
+    orderId: inquiry.order_id,
+  });
+}
+
+/**
+ * The context panel for any signed-in shopper: the product (by SKU) and order
+ * they asked about, and their purchase history. Shared by web consultations
+ * and product questions.
+ */
+export async function loadShopperContext(
+  request: Request,
+  ref: { customerId: string; skuId?: string; orderId?: string }
+): Promise<SupportContext> {
   const errors: string[] = [];
 
   const [productResult, orderResult, ordersResult] = await Promise.allSettled([
-    inquiry.sku_id ? loadVariant(request, inquiry.sku_id) : Promise.resolve(null),
-    inquiry.order_id ? loadOrder(request, inquiry.order_id) : Promise.resolve(null),
-    loadCustomerOrders(request, inquiry.customer_id),
+    ref.skuId ? loadVariant(request, ref.skuId) : Promise.resolve(null),
+    ref.orderId ? loadOrder(request, ref.orderId) : Promise.resolve(null),
+    loadCustomerOrders(request, ref.customerId),
   ]);
 
   let product: ContextProduct | null = null;
@@ -406,7 +422,7 @@ export async function loadSupportContext(
   let bought = false;
   if (ordersResult.status === "fulfilled") {
     history = summarizeOrders(ordersResult.value);
-    bought = boughtBefore(ordersResult.value, inquiry.sku_id);
+    bought = boughtBefore(ordersResult.value, ref.skuId);
   } else errors.push(message(ordersResult.reason, "주문 내역을 불러오지 못했습니다"));
 
   return { product, order, history, bought_before: bought, errors };

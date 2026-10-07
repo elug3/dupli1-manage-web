@@ -137,6 +137,11 @@ UI: `/support` loads and mutates via **SSR** `loader`/`action` (`app/lib/server/
 - **읽음:** a reply at or before `customer_last_read_at` is marked 읽음, and "메일 알림 보냄" shows when the unread-reply email went out (`notice_status: "sent"`).
 - **Live:** the `/support/events` resource route proxies only `GET /api/v1/support/inquiries/events` with the operator's token. Frames carry ids only, so the page reloads through its loader (`useRevalidator`, bursts coalesced) and the transcript still never crosses a browser-callable endpoint. The Live / Not live pill shows the stream's state.
 
+**Product questions** (상품 문의, backend [docs/support-product-questions.md](../dupli1/docs/support-product-questions.md)): `/support?tab=questions` is a second tab of the same page, SSR like the inbox (`app/lib/server/product-questions.server.ts`). Questions are **private** — only the asker and staff see them — so the queue is never browser-callable either.
+- `GET /api/v1/support/product-questions?queue=waiting|answered|hidden&type=size|stock|product|other` (`support.read`), `GET …/{id}`
+- `POST …/{id}/answer` `{ answer }` (`support.reply`; ≤2,000 chars; answering again replaces the text, only the first answer emails the shopper, and the email never holds the answer) and `POST …/{id}/hide` `{ hidden }` (takes it off the queue only; the shopper still sees it)
+- `?question=<id>` opens one; it is what the `alert_support` Telegram alert links to. The context panel is the web consultation's, via `loadShopperContext` (product by `sku_id`, purchase history). Answer templates are client-side openers.
+
 `npm run test:support:browser` drives all of this against `npm run mock:gateway` (`CHROMIUM_PATH` overrides Playwright's bundled browser).
 
 ### Inventory (`/inventory`)
