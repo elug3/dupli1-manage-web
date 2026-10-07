@@ -6,8 +6,8 @@ Status
 - `dupli1-manage-web` is the **admin/management dashboard** for the Dupli1 marketplace (React Router 7 + React 19 + Vite + Tailwind v4, SSR). It is the counterpart to `dupli1-web` (customer storefront) and talks to the same backend nginx gateway.
 - See [CLAUDE.md](CLAUDE.md) for the architecture, route map, backend API contracts, and standard commands (`npm run dev`, `npm run build`, `npm run typecheck`).
 - Product creates require existing catalog master codes (`brandCode`/`styleCode`, variant `colorCode`/`sizeCode`); manage dictionaries at `/catalog`.
-- Account types in the UI are `customer` | `manager` | `service`. Auth may still wire human operators as `admin` until [dupli1-auth is updated](docs/ai-instruct-dupli1-auth-account-type-manager.md) — see that AI instruct before changing naming in either repo.
-- Telegram tab (`/telegram`) needs `AUTH_JWKS_URL` on `dupli1-notification` in ECS. If the tab fails to load with `auth not configured`, apply [docs/ai-instruct-dupli1-notification-jwks.md](docs/ai-instruct-dupli1-notification-jwks.md) in the `dupli1` repo.
+- Account types in the UI are `customer` | `manager` | `service`. Auth stores human operators as `manager` ([the rename](docs/ai-instruct-dupli1-auth-account-type-manager.md) is done); `normalizeAccountType` still reads a legacy `admin` as `manager`.
+- Telegram tab (`/telegram`) needs `AUTH_JWKS_URL` on `dupli1-notification` (set in production on VENUS). If the tab fails to load with `auth not configured`, check that variable — background in [docs/ai-instruct-dupli1-notification-jwks.md](docs/ai-instruct-dupli1-notification-jwks.md).
 
 Agent interaction rules
 - Keep changes minimal and scoped. When creating or updating customization files, explain why each change is needed.
@@ -22,7 +22,7 @@ Where to find more info
 - Dependencies (`npm install`) are refreshed automatically by the cloud update script; no manual install needed on a fresh VM.
 - Dev server: `npm run dev` (defaults to `http://localhost:5173`). The sibling storefront (`dupli1-web`) also defaults to 5173, so when running both, start one on another port, e.g. `npm run dev -- --port 5174`.
 - This app needs the **`dupli1` backend running** (nginx gateway at `http://localhost:8080`). See `../dupli1/AGENTS.md` for starting Docker + `docker compose up`. The SSR server reads `DUPLI1_GATEWAY_URL` (default `http://localhost:8080`) for backend calls.
-- Product image `<img>` tags use `productImageSrc` so gateway MinIO URLs (`/product-images/…`) load via the manage-web origin. Production uses CloudFront (`images.dupli1.com`) from the product API — see CLAUDE.md “Product images”.
+- Product image `<img>` tags use `productImageSrc` so gateway MinIO URLs (`/product-images/…`) load via the manage-web origin. Production URLs are `https://dupli1.com/product-images/…` from the product API — see CLAUDE.md “Product images”.
 - Product prices and order totals display as **KRW only** (`STORE_CURRENCY` / `formatCurrency` / `formatWon` in `app/lib/i18n`). Settings currency is locked to KRW (not a multi-currency picker).
 - Money fields on the wire are **`*_won`** (`total_won`, `unit_price_won`, …), never `*_krw` or `*_cents`. Both are dead names the backend no longer emits; a fixture or client using one reads as `undefined` and renders an empty total. `*_krw` was canonical only 2026-09-09 → 09-14, so anything written then is stale.
 - Log in at `/login` with the seeded owner account `admin@dupli1.com` / `password`. A transient "bad gateway" banner can appear if the backend gateway isn't fully up yet — retry once the stack is healthy.

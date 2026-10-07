@@ -1,5 +1,7 @@
 # AI instruction: rename auth `account_type` `admin` → `manager`
 
+> **Done.** Auth stores operators as `manager` (`auth/pkg/domain/account_type.go`) and reads a stale `admin` row as `manager`. Kept as the record of the rename.
+
 **Target repo:** [elug3/dupli1](https://github.com/elug3/dupli1) — service **`dupli1-auth`** (`auth/`).  
 **Audience:** AI coding agents implementing the rename in the backend.  
 **Related frontend:** `dupli1-manage-web` displays/edits/sends `manager`. It still accepts legacy `admin` on read via `normalizeAccountType`.
