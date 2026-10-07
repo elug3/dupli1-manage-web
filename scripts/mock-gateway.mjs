@@ -13,6 +13,8 @@
  * Support's inbox is here too (`/api/v1/support/*`): a web consultation with
  * a product card and a Telegram one, plus the inbox stream.
  * `POST /__control/support-message` has the web shopper write again.
+ * Product questions (`/api/v1/support/product-questions*`) are seeded with a
+ * size question about the Eco Bag; `support-seed` resets them too.
  *
  * Products serve product's category rules (`/api/v1/products/catalog/*`):
  * bags take any size, clothing only XXS–XXL, and a PUT validates `sizeChart`
@@ -434,6 +436,72 @@ function seedSupport() {
 }
 seedSupport();
 
+// Product questions (상품 문의): private, so the console's queue is all there is.
+const questions = new Map();
+function seedQuestions() {
+  questions.clear();
+  const ref = productRef("sku_eco_blk");
+  const asked = new Date(Date.now() - 30 * 60_000).toISOString();
+  questions.set("pq_1", {
+    id: "pq_1", product_id: ref.product_id, sku_id: ref.sku_id, variant_label: `${ref.color} / OS`,
+    product_name: ref.name, customer_id: WEB_SHOPPER, customer_email: "shopper@example.com",
+    type: "size", body: "노트북 15인치 들어가나요?", fit: { height_cm: 165 }, status: "waiting",
+    created_at: asked, updated_at: asked,
+  });
+  questions.set("pq_2", {
+    id: "pq_2", product_id: ref.product_id, sku_id: ref.sku_id, variant_label: `${ref.color} / OS`,
+    product_name: ref.name, customer_id: WEB_SHOPPER, customer_email: "shopper@example.com",
+    type: "stock", body: "그린 재입고 되나요?", status: "answered", answer: "다음 주 입고 예정입니다.",
+    answered_by: "usr_mock_admin", answered_at: asked, created_at: asked, updated_at: asked,
+  });
+}
+seedQuestions();
+
+function handleQuestions(req, res, method, path, url) {
+  if (method === "GET" && path === "/api/v1/support/product-questions") {
+    const queue = url.searchParams.get("queue") || "waiting";
+    const type = url.searchParams.get("type");
+    const list = [...questions.values()].filter((q) => {
+      if (type && q.type !== type) return false;
+      if (queue === "hidden") return q.hidden;
+      if (queue === "answered") return !q.hidden && q.status === "answered";
+      return !q.hidden && q.status === "waiting";
+    });
+    send(res, 200, { questions: list });
+    return true;
+  }
+  const m = path.match(/^\/api\/v1\/support\/product-questions\/([^/]+)(?:\/(answer|hide))?$/);
+  if (!m) return false;
+  const question = questions.get(decodeURIComponent(m[1]));
+  if (!question) {
+    send(res, 404, { error: "question not found", code: "question_not_found" });
+    return true;
+  }
+  if (!m[2] && method === "GET") {
+    send(res, 200, question);
+    return true;
+  }
+  if (method !== "POST") return false;
+  return readBody(req)
+    .catch(() => ({}))
+    .then((body) => {
+      const now = new Date().toISOString();
+      if (m[2] === "answer") {
+        if (!body.answer?.trim()) {
+          send(res, 400, { error: "answer is required", code: "invalid_answer" });
+          return true;
+        }
+        Object.assign(question, { answer: body.answer.trim(), status: "answered", answered_by: "usr_mock_admin", answered_at: now });
+      } else {
+        const hidden = body.hidden ?? true;
+        Object.assign(question, hidden ? { hidden: true, hidden_by: "usr_mock_admin", hidden_at: now } : { hidden: false, hidden_by: undefined, hidden_at: undefined });
+      }
+      question.updated_at = now;
+      send(res, 200, question);
+      return true;
+    });
+}
+
 function inquiryView(inquiry, withTranscript) {
   const { transcript, ...rest } = inquiry;
   const last = [...transcript].reverse().find((m) => m.direction === "inbound");
@@ -471,6 +539,9 @@ async function handleSupport(req, res, method, path, url) {
   if (method === "GET" && path === "/api/v1/support/inquiries/events") {
     handleSupportEvents(req, res);
     return true;
+  }
+  if (path.startsWith("/api/v1/support/product-questions")) {
+    return handleQuestions(req, res, method, path, url);
   }
   if (method === "GET" && path === "/api/v1/support/inquiries") {
     const queue = url.searchParams.get("queue");
@@ -588,7 +659,8 @@ const server = http.createServer(async (req, res) => {
   }
   if (path === "/__control/support-seed" && method === "POST") {
     seedSupport();
-    return send(res, 200, { inquiries: inquiries.size });
+    seedQuestions();
+    return send(res, 200, { inquiries: inquiries.size, questions: questions.size });
   }
   if (path === "/__control/support-message" && method === "POST") {
     // The web shopper writes again; announced on the inbox stream with ids only.

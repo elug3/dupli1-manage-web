@@ -4,7 +4,8 @@
  *
  * Drives the real page against scripts/mock-gateway.mjs, which must be running:
  * the channel filter, the context panel (product, purchase history), a reply
- * carrying an order card, and the live stream reloading the transcript.
+ * carrying an order card, and the live stream reloading the transcript; then
+ * the 상품 문의 tab: queue, context, a templated answer, hiding, deep links.
  *
  *   node scripts/mock-gateway.mjs &
  *   DUPLI1_GATEWAY_URL=http://localhost:8080 npm run dev &
@@ -91,6 +92,35 @@ async function main() {
   await control("support-message", { body: "감사합니다", read: true });
   await page.waitForSelector("text=감사합니다", { timeout: 10000 });
   check("replies show 읽음 once read", (await page.locator("ol", { hasText: "읽음" }).count()) > 0);
+
+  console.log("\nProduct questions");
+  await page.goto(`${BASE}/support?tab=questions`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector("text=노트북 15인치 들어가나요?", { timeout: 15000 });
+  const queueText = (await page.textContent("ul")) ?? "";
+  check("waiting queue lists the unanswered question", queueText.includes("노트북"));
+  check("waiting queue leaves out the answered one", !queueText.includes("그린 재입고"));
+  await page.click("text=노트북 15인치 들어가나요?");
+  const qPanel = page.getByRole("complementary", { name: "고객 정보" });
+  await qPanel.waitFor({ timeout: 15000 });
+  const qAside = (await qPanel.textContent()) ?? "";
+  check("context names the shopper", qAside.includes("shopper@example.com"));
+  check("context shows the product", qAside.includes("Eco Bag"));
+  check("shows the shopper's fit", ((await page.textContent("section")) ?? "").includes("165cm"));
+  await page.getByLabel("답변 템플릿").selectOption({ label: "상품 정보" });
+  const templated = await page.getByLabel("답변", { exact: true }).inputValue();
+  check("template fills the answer", templated.startsWith("안녕하세요, DUPLI1입니다."));
+  await page.getByLabel("답변", { exact: true }).fill("15인치까지 들어갑니다.");
+  await page.click('button[value="answer"]');
+  await page.waitForSelector("text=답변 · usr_mock_admin", { timeout: 10000 });
+  check("answer saved and shown", (await page.locator("text=15인치까지 들어갑니다.").count()) > 0);
+  await page.click('button[value="hide"]');
+  await page.waitForSelector('button[value="unhide"]', { timeout: 10000 });
+  await page.goto(`${BASE}/support?tab=questions&queue=hidden`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector("text=노트북 15인치 들어가나요?", { timeout: 15000 });
+  check("hidden question is in the hidden queue", true);
+  await page.goto(`${BASE}/support?tab=questions&question=pq_2`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector("text=다음 주 입고 예정입니다.", { timeout: 15000 });
+  check("a ?question= link opens that question", true);
 
   if (SCREENSHOT) await page.screenshot({ path: SCREENSHOT, fullPage: true });
   check("no page errors", pageErrors.length === 0, pageErrors.join("; "));

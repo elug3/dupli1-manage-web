@@ -9,10 +9,22 @@ import {
 import { productImageSrc } from "~/lib/api";
 import { formatWon } from "~/lib/i18n/format";
 import {
+  answerQuestion,
+  isQuestionQueue,
+  isQuestionType,
+  loadQuestion,
+  loadQuestions,
+  setQuestionHidden,
+  type ProductQuestion,
+  type QuestionQueue,
+  type QuestionType,
+} from "~/lib/server/product-questions.server";
+import {
   claimInquiry,
   closeInquiry,
   loadInquiries,
   loadInquiry,
+  loadShopperContext,
   loadSupportContext,
   replyToInquiry,
   type ContextOrder,
@@ -30,12 +42,27 @@ export function meta() {
   return [{ title: "상담 | Dupli1 Admin" }];
 }
 
-export type SupportLoaderData = {
+export type SupportLoaderData = InboxLoaderData | QuestionsLoaderData;
+
+export type InboxLoaderData = {
+  tab: "inbox";
   queue: SupportQueue;
   channel: SupportChannelFilter;
   inquiries: SupportInquiry[];
   selected: SupportInquiry | null;
   /** Web inquiries only: who is asking and what they bought. */
+  context: SupportContext | null;
+  error: string | null;
+};
+
+/** `?tab=questions`: the 상품 문의 queue (backend docs/support-product-questions.md). */
+export type QuestionsLoaderData = {
+  tab: "questions";
+  queue: QuestionQueue;
+  type: QuestionType | null;
+  questions: ProductQuestion[];
+  selected: ProductQuestion | null;
+  /** The product asked about and the shopper's purchase history. */
   context: SupportContext | null;
   error: string | null;
 };
@@ -112,6 +139,7 @@ export async function loader({
   request,
 }: Route.LoaderArgs): Promise<SupportLoaderData> {
   const url = new URL(request.url);
+  if (url.searchParams.get("tab") === "questions") return questionsLoader(request, url);
   const queueParam = url.searchParams.get("queue");
   const queue: SupportQueue = isQueue(queueParam) ? queueParam : "waiting";
   const channelParam = url.searchParams.get("channel");
@@ -126,15 +154,49 @@ export async function loader({
       selectedId ? loadInquiry(request, selectedId) : Promise.resolve(null),
     ]);
     const context = selected ? await loadSupportContext(request, selected) : null;
-    return { queue, channel, inquiries, selected, context, error: null };
+    return { tab: "inbox", queue, channel, inquiries, selected, context, error: null };
   } catch (err: unknown) {
     return {
+      tab: "inbox",
       queue,
       channel,
       inquiries: [],
       selected: null,
       context: null,
       error: err instanceof Error ? err.message : "Failed to load consultations",
+    };
+  }
+}
+
+async function questionsLoader(request: Request, url: URL): Promise<QuestionsLoaderData> {
+  const queueParam = url.searchParams.get("queue");
+  const queue: QuestionQueue = isQuestionQueue(queueParam) ? queueParam : "waiting";
+  const typeParam = url.searchParams.get("type");
+  const type = isQuestionType(typeParam) ? typeParam : null;
+  // The alert and the reply-notice links name the question.
+  const selectedId = url.searchParams.get("question");
+
+  try {
+    const [questions, selected] = await Promise.all([
+      loadQuestions(request, queue, type),
+      selectedId ? loadQuestion(request, selectedId) : Promise.resolve(null),
+    ]);
+    const context = selected?.customer_id
+      ? await loadShopperContext(request, {
+          customerId: selected.customer_id,
+          skuId: selected.sku_id,
+        })
+      : null;
+    return { tab: "questions", queue, type, questions, selected, context, error: null };
+  } catch (err: unknown) {
+    return {
+      tab: "questions",
+      queue,
+      type,
+      questions: [],
+      selected: null,
+      context: null,
+      error: err instanceof Error ? err.message : "상품 문의를 불러오지 못했습니다",
     };
   }
 }
@@ -169,6 +231,19 @@ export async function action({
       }
       case "close":
         await closeInquiry(request, id);
+        return { ok: true, intent };
+      case "answer": {
+        const answer = String(formData.get("answer") ?? "").trim();
+        if (!answer) return { ok: false, intent, error: "답변 내용을 입력하세요" };
+        if ([...answer].length > ANSWER_LIMIT) {
+          return { ok: false, intent, error: `답변은 ${ANSWER_LIMIT.toLocaleString()}자 이내로 입력하세요` };
+        }
+        await answerQuestion(request, id, answer);
+        return { ok: true, intent };
+      }
+      case "hide":
+      case "unhide":
+        await setQuestionHidden(request, id, intent === "hide");
         return { ok: true, intent };
       default:
         return { ok: false, intent, error: "알 수 없는 요청입니다" };
@@ -223,8 +298,38 @@ function useInboxStream(): boolean {
 }
 
 export default function SupportPage() {
-  const { queue, channel, inquiries, selected, context, error } =
-    useLoaderData<SupportLoaderData>();
+  const data = useLoaderData<SupportLoaderData>();
+  return data.tab === "questions" ? <QuestionsView data={data} /> : <InboxView data={data} />;
+}
+
+/** 상담 | 상품 문의 — the two surfaces of the support inbox. */
+function SurfaceTabs({ current }: { current: SupportLoaderData["tab"] }) {
+  const tabs: { value: SupportLoaderData["tab"]; label: string; to: string }[] = [
+    { value: "inbox", label: "상담", to: "/support" },
+    { value: "questions", label: "상품 문의", to: "/support?tab=questions" },
+  ];
+  return (
+    <nav aria-label="문의 종류" className="flex gap-6 border-b border-edge">
+      {tabs.map((tab) => (
+        <Link
+          key={tab.value}
+          to={tab.to}
+          aria-current={current === tab.value ? "page" : undefined}
+          className={`-mb-px border-b-2 pb-2 text-sm transition ${
+            current === tab.value
+              ? "border-accent font-medium text-ink"
+              : "border-transparent text-soft hover:text-ink"
+          }`}
+        >
+          {tab.label}
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
+function InboxView({ data }: { data: InboxLoaderData }) {
+  const { queue, channel, inquiries, selected, context, error } = data;
   const [searchParams, setSearchParams] = useSearchParams();
   const live = useInboxStream();
 
@@ -267,6 +372,8 @@ export default function SupportPage() {
           평일 10:00~22:00이며 공휴일은 휴무입니다.
         </p>
       </header>
+
+      <SurfaceTabs current="inbox" />
 
       {error ? (
         <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
@@ -322,7 +429,12 @@ export default function SupportPage() {
           >
             {/* Keyed so a draft never carries over to another shopper. */}
             <InquiryDetail key={selected.id} inquiry={selected} context={context} />
-            {context ? <ContextPanel inquiry={selected} context={context} /> : null}
+            {context ? (
+              <ContextPanel
+                customer={{ id: selected.customer_id, email: selected.customer_email }}
+                context={context}
+              />
+            ) : null}
           </div>
         ) : (
           <p className="rounded-2xl border border-edge bg-panel px-4 py-10 text-center text-sm text-soft">
@@ -661,10 +773,10 @@ function referenceCard(message: SupportMessage) {
  * outside the chat.
  */
 function ContextPanel({
-  inquiry,
+  customer,
   context,
 }: {
-  inquiry: SupportInquiry;
+  customer: { id?: string; email?: string };
   context: SupportContext;
 }) {
   const { product, order, history } = context;
@@ -675,10 +787,10 @@ function ContextPanel({
     >
       <section className="space-y-1">
         <h3 className="text-xs font-medium uppercase tracking-wide text-soft">고객</h3>
-        <p className="break-all text-ink">{inquiry.customer_email ?? "이메일 없음"}</p>
-        {inquiry.customer_id ? (
+        <p className="break-all text-ink">{customer.email ?? "이메일 없음"}</p>
+        {customer.id ? (
           <Link
-            to={`/users/${encodeURIComponent(inquiry.customer_id)}`}
+            to={`/users/${encodeURIComponent(customer.id)}`}
             className="text-xs text-accent hover:underline"
           >
             계정 보기
@@ -828,4 +940,374 @@ function formatTime(value: string): string {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+// ── 상품 문의 ─────────────────────────────────────────────────────────────────
+//
+// Private product questions: a shopper asks about one variant from the
+// product page, staff answer here, and only that shopper ever sees the
+// answer. The first answer emails them a link back to the product.
+
+/** Support's `MaxAnswerRunes`. */
+const ANSWER_LIMIT = 2000;
+
+const QUESTION_QUEUES: { value: QuestionQueue; label: string }[] = [
+  { value: "waiting", label: "답변 대기" },
+  { value: "answered", label: "답변 완료" },
+  { value: "hidden", label: "숨김" },
+];
+
+const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
+  size: "사이즈·핏",
+  stock: "재고·입고",
+  product: "상품 정보",
+  other: "기타",
+};
+
+/** Openers per topic; staff finish the sentence. */
+const ANSWER_TEMPLATES: { label: string; body: string }[] = [
+  {
+    label: "사이즈 추천",
+    body: "안녕하세요, DUPLI1입니다.\n말씀해 주신 체형이라면 __ 사이즈를 권해드립니다. 실측 치수는 상품 페이지의 사이즈 가이드를 참고해 주세요.",
+  },
+  {
+    label: "입고 예정",
+    body: "안녕하세요, DUPLI1입니다.\n문의하신 옵션은 __ 입고 예정입니다. 입고되면 상품 페이지에서 바로 구매하실 수 있습니다.",
+  },
+  {
+    label: "상품 정보",
+    body: "안녕하세요, DUPLI1입니다.\n문의하신 내용 안내드립니다. ",
+  },
+  {
+    label: "1:1 상담 안내",
+    body: "안녕하세요, DUPLI1입니다.\n주문·배송 관련 내용은 마이페이지의 1:1 상담으로 문의해 주시면 빠르게 확인해 드리겠습니다.",
+  },
+];
+
+function QuestionsView({ data }: { data: QuestionsLoaderData }) {
+  const { queue, type, questions, selected, context, error } = data;
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  function update(patch: Record<string, string | null>) {
+    const params = new URLSearchParams(searchParams);
+    params.set("tab", "questions");
+    for (const [key, value] of Object.entries(patch)) {
+      if (value === null) params.delete(key);
+      else params.set(key, value);
+    }
+    setSearchParams(params);
+  }
+
+  return (
+    <div className="space-y-6">
+      <header className="space-y-1">
+        <h1 className="text-2xl font-semibold text-ink">상담</h1>
+        <p className="text-sm text-soft">
+          상품 페이지에서 남긴 비공개 문의입니다. 질문과 답변은 문의한 고객과
+          운영자만 볼 수 있고, 첫 답변이 등록되면 고객에게 메일로 알립니다.
+        </p>
+      </header>
+
+      <SurfaceTabs current="questions" />
+
+      {error ? (
+        <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          {error}
+        </p>
+      ) : null}
+
+      <nav className="flex flex-wrap items-center gap-2">
+        {QUESTION_QUEUES.map((tab) => (
+          <button
+            key={tab.value}
+            type="button"
+            onClick={() => update({ queue: tab.value, question: null })}
+            className={`rounded-full px-4 py-1.5 text-sm transition ${
+              queue === tab.value ? "bg-accent text-white" : "bg-panel text-soft hover:text-ink"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+        <span className="mx-1 h-5 w-px bg-edge" aria-hidden />
+        {([null, ...Object.keys(QUESTION_TYPE_LABELS)] as (QuestionType | null)[]).map((value) => (
+          <button
+            key={value ?? "all"}
+            type="button"
+            onClick={() => update({ type: value, question: null })}
+            className={`rounded-full border px-3 py-1 text-xs transition ${
+              type === value ? "border-accent text-accent" : "border-edge text-soft hover:text-ink"
+            }`}
+          >
+            {value ? QUESTION_TYPE_LABELS[value] : "전체"}
+          </button>
+        ))}
+      </nav>
+
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
+        <QuestionList
+          questions={questions}
+          selectedId={selected?.id ?? null}
+          onOpen={(id) => update({ question: id })}
+        />
+        {selected ? (
+          <div
+            className={
+              context ? "grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,18rem)]" : undefined
+            }
+          >
+            {/* Keyed so a draft never carries over to another question. */}
+            <QuestionDetail key={selected.id} question={selected} />
+            {context ? (
+              <ContextPanel
+                customer={{ id: selected.customer_id, email: selected.customer_email }}
+                context={context}
+              />
+            ) : null}
+          </div>
+        ) : (
+          <p className="rounded-2xl border border-edge bg-panel px-4 py-10 text-center text-sm text-soft">
+            왼쪽에서 문의를 선택하세요.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function QuestionList({
+  questions,
+  selectedId,
+  onOpen,
+}: {
+  questions: ProductQuestion[];
+  selectedId: string | null;
+  onOpen: (id: string) => void;
+}) {
+  if (questions.length === 0) {
+    return (
+      <p className="rounded-2xl border border-edge bg-panel px-4 py-10 text-center text-sm text-soft">
+        해당하는 문의가 없습니다.
+      </p>
+    );
+  }
+  return (
+    <ul className="space-y-2">
+      {questions.map((question) => (
+        <li key={question.id}>
+          <button
+            type="button"
+            onClick={() => onOpen(question.id)}
+            className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
+              selectedId === question.id
+                ? "border-accent bg-accent/5"
+                : "border-edge bg-panel hover:border-accent/40"
+            }`}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="truncate text-sm font-medium text-ink">
+                {question.product_name ?? question.product_id}
+              </span>
+              <QuestionStatusBadge question={question} />
+            </div>
+            <p className="mt-1 line-clamp-2 text-xs text-soft">{question.body}</p>
+            <p className="mt-1 text-[11px] text-soft">
+              {QUESTION_TYPE_LABELS[question.type] ?? question.type}
+              {question.variant_label ? ` · ${question.variant_label}` : ""} ·{" "}
+              {formatTime(question.created_at)}
+              {question.customer_email ? ` · ${question.customer_email}` : ""}
+            </p>
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function QuestionDetail({ question }: { question: ProductQuestion }) {
+  const fetcher = useFetcher<SupportActionData>();
+  const answered = question.status === "answered";
+  const [draft, setDraft] = useState(question.answer ?? "");
+  const [editing, setEditing] = useState(!answered);
+  const busy = fetcher.state !== "idle";
+  const result = fetcher.data;
+  const length = [...draft.trim()].length;
+  const fit = fitLine(question);
+
+  // A saved answer closes the editor; the loader brings the new text.
+  useEffect(() => {
+    if (fetcher.state === "idle" && result?.ok && result.intent === "answer") setEditing(false);
+  }, [fetcher.state, result]);
+
+  return (
+    <section className="space-y-4 rounded-2xl border border-edge bg-panel p-5">
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-lg font-medium text-ink">
+            <Link
+              to={`/products/${encodeURIComponent(question.product_id)}${
+                question.sku_id ? `/SKU/${encodeURIComponent(question.sku_id)}` : ""
+              }`}
+              className="hover:underline"
+            >
+              {question.product_name ?? question.product_id}
+            </Link>
+          </h2>
+          <p className="text-xs text-soft">
+            {QUESTION_TYPE_LABELS[question.type] ?? question.type}
+            {question.variant_label ? ` · ${question.variant_label}` : ""} ·{" "}
+            {formatTime(question.created_at)}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <QuestionStatusBadge question={question} />
+          <fetcher.Form method="post">
+            <input type="hidden" name="id" value={question.id} />
+            <button
+              name="intent"
+              value={question.hidden ? "unhide" : "hide"}
+              disabled={busy}
+              className="rounded-full border border-edge px-3 py-1.5 text-xs text-soft transition hover:text-ink disabled:opacity-50"
+            >
+              {question.hidden ? "숨김 해제" : "숨기기"}
+            </button>
+          </fetcher.Form>
+        </div>
+      </header>
+
+      <div className="rounded-xl bg-page px-4 py-3">
+        <p className="text-[11px] text-soft">고객 문의</p>
+        <p className="mt-1 whitespace-pre-wrap text-sm text-ink">{question.body}</p>
+        {fit ? <p className="mt-2 text-xs text-soft">체형 · {fit}</p> : null}
+      </div>
+
+      {question.hidden ? (
+        <p className="text-xs text-soft">
+          숨긴 문의입니다{question.hidden_by ? ` (${question.hidden_by})` : ""}. 대기 목록에서만
+          빠지며, 고객은 계속 자신의 문의를 볼 수 있습니다.
+        </p>
+      ) : null}
+
+      {answered && !editing ? (
+        <div className="rounded-xl bg-accent/10 px-4 py-3">
+          <p className="text-[11px] text-soft">
+            답변 · {question.answered_by ?? "상담원"}
+            {question.answered_at ? ` · ${formatTime(question.answered_at)}` : ""}
+          </p>
+          <p className="mt-1 whitespace-pre-wrap text-sm text-ink">{question.answer}</p>
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="mt-2 text-xs text-accent hover:underline"
+          >
+            답변 수정
+          </button>
+        </div>
+      ) : null}
+
+      {result?.error ? (
+        <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+          {result.error}
+        </p>
+      ) : null}
+
+      {editing ? (
+        <fetcher.Form method="post" className="space-y-2">
+          <input type="hidden" name="id" value={question.id} />
+          <textarea
+            name="answer"
+            aria-label="답변"
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            rows={6}
+            placeholder="답변을 입력하세요. 문의한 고객만 볼 수 있습니다."
+            className="w-full rounded-xl border border-edge bg-page px-4 py-2.5 text-sm text-ink outline-none transition placeholder:text-soft focus:border-accent focus:ring-2 focus:ring-accent/20"
+          />
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <label className="mr-auto flex items-center gap-2 text-xs text-soft">
+              템플릿
+              <select
+                aria-label="답변 템플릿"
+                value=""
+                onChange={(event) => {
+                  const template = ANSWER_TEMPLATES[Number(event.target.value)];
+                  if (template) setDraft(template.body);
+                }}
+                className="rounded-lg border border-edge bg-page px-2 py-1 text-xs text-ink"
+              >
+                <option value="">선택</option>
+                {ANSWER_TEMPLATES.map((template, index) => (
+                  <option key={template.label} value={index}>
+                    {template.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <span
+              className={`text-[11px] tabular-nums ${
+                length > ANSWER_LIMIT ? "text-rose-600" : "text-soft"
+              }`}
+            >
+              {length.toLocaleString()} / {ANSWER_LIMIT.toLocaleString()}
+            </span>
+            {answered ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setDraft(question.answer ?? "");
+                  setEditing(false);
+                }}
+                className="rounded-full border border-edge px-4 py-2 text-sm text-soft transition hover:text-ink"
+              >
+                취소
+              </button>
+            ) : null}
+            <button
+              name="intent"
+              value="answer"
+              disabled={busy || length === 0 || length > ANSWER_LIMIT}
+              className="rounded-full bg-accent px-5 py-2 text-sm text-white transition disabled:opacity-50"
+            >
+              {busy ? "등록 중…" : answered ? "답변 수정" : "답변 등록"}
+            </button>
+          </div>
+          {!answered ? (
+            <p className="text-[11px] text-soft">
+              등록하면 고객에게 답변 알림 메일이 갑니다. 메일에는 답변 내용이 들어가지
+              않습니다.
+            </p>
+          ) : null}
+        </fetcher.Form>
+      ) : null}
+    </section>
+  );
+}
+
+function QuestionStatusBadge({ question }: { question: ProductQuestion }) {
+  if (question.hidden) {
+    return (
+      <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] text-slate-600">숨김</span>
+    );
+  }
+  return question.status === "answered" ? (
+    <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] text-emerald-800">
+      답변 완료
+    </span>
+  ) : (
+    <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] text-amber-800">
+      답변 대기
+    </span>
+  );
+}
+
+function fitLine(question: ProductQuestion): string {
+  const fit = question.fit;
+  if (!fit) return "";
+  return [
+    fit.height_cm ? `${fit.height_cm}cm` : "",
+    fit.weight_kg ? `${fit.weight_kg}kg` : "",
+    fit.usual_size ? `평소 ${fit.usual_size}` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
