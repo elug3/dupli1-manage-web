@@ -6,6 +6,8 @@
  * the channel filter, the context panel (product, purchase history), a reply
  * carrying an order card, and the live stream reloading the transcript; then
  * the 상품 문의 tab: queue, context, a templated answer, hiding, deep links.
+ * It runs in Korean (the dupli1_locale cookie), then checks the questions tab
+ * in English.
  *
  *   node scripts/mock-gateway.mjs &
  *   DUPLI1_GATEWAY_URL=http://localhost:8080 npm run dev &
@@ -50,6 +52,9 @@ async function main() {
   await page.fill("#password", PASSWORD);
   await page.click('button[type="submit"]');
   await page.waitForURL((url) => url.pathname === "/", { timeout: 15000 });
+  const setLocale = (value) =>
+    page.context().addCookies([{ name: "dupli1_locale", value, url: BASE }]);
+  await setLocale("ko");
 
   console.log("Channel filter");
   await page.goto(`${BASE}/support?channel=web`, { waitUntil: "domcontentloaded" });
@@ -106,7 +111,7 @@ async function main() {
   check("context names the shopper", qAside.includes("shopper@example.com"));
   check("context shows the product", qAside.includes("Eco Bag"));
   check("shows the shopper's fit", ((await page.textContent("section")) ?? "").includes("165cm"));
-  await page.getByLabel("답변 템플릿").selectOption({ label: "상품 정보" });
+  await page.getByLabel("답변 템플릿").selectOption("ko-product");
   const templated = await page.getByLabel("답변", { exact: true }).inputValue();
   check("template fills the answer", templated.startsWith("안녕하세요, DUPLI1입니다."));
   await page.getByLabel("답변", { exact: true }).fill("15인치까지 들어갑니다.");
@@ -121,6 +126,22 @@ async function main() {
   await page.goto(`${BASE}/support?tab=questions&question=pq_2`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector("text=다음 주 입고 예정입니다.", { timeout: 15000 });
   check("a ?question= link opens that question", true);
+
+  console.log("\nProduct questions in English");
+  await setLocale("en");
+  await page.goto(`${BASE}/support?tab=questions&question=pq_2`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector("text=Product questions", { timeout: 15000 });
+  const english = (await page.textContent("main")) ?? (await page.textContent("body")) ?? "";
+  check("queue tabs are in English", english.includes("Awaiting answer") && english.includes("Answered"));
+  check("context panel is in English", english.includes("Purchase history"));
+  check("the shopper's words stay as written", english.includes("다음 주 입고 예정입니다."));
+  // pq_2 is answered, so the editor opens from its answer.
+  await page.click("text=Edit answer");
+  await page.getByLabel("Answer template").selectOption("en-stock");
+  check(
+    "English openers are offered",
+    (await page.getByLabel("Answer", { exact: true }).inputValue()).startsWith("Hello, this is DUPLI1.")
+  );
 
   if (SCREENSHOT) await page.screenshot({ path: SCREENSHOT, fullPage: true });
   check("no page errors", pageErrors.length === 0, pageErrors.join("; "));

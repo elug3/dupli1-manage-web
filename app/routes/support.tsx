@@ -7,6 +7,14 @@ import {
   useSearchParams,
 } from "react-router";
 import { productImageSrc } from "~/lib/api";
+import {
+  LOCALE_INTL,
+  getLocaleFromRequest,
+  translate,
+  useI18n,
+  type Locale,
+  type MessageKey,
+} from "~/lib/i18n";
 import { formatWon } from "~/lib/i18n/format";
 import {
   answerQuestion,
@@ -39,7 +47,7 @@ import {
 import type { Route } from "./+types/support";
 
 export function meta() {
-  return [{ title: "상담 | Dupli1 Admin" }];
+  return [{ title: "Support | Dupli1 Admin" }];
 }
 
 export type SupportLoaderData = InboxLoaderData | QuestionsLoaderData;
@@ -75,46 +83,58 @@ export type SupportActionData = {
   error?: string;
 };
 
-const QUEUES: { value: SupportQueue; label: string }[] = [
-  { value: "waiting", label: "대기" },
-  { value: "mine", label: "내 상담" },
-  { value: "closed", label: "완료" },
+type T = (key: MessageKey, vars?: Record<string, string | number>) => string;
+
+const QUEUES: { value: SupportQueue; label: MessageKey }[] = [
+  { value: "waiting", label: "support.queueWaiting" },
+  { value: "mine", label: "support.queueMine" },
+  { value: "closed", label: "support.queueClosed" },
 ];
 
-const CHANNELS: { value: SupportChannelFilter; label: string }[] = [
-  { value: "all", label: "전체" },
-  { value: "web", label: "웹" },
-  { value: "telegram", label: "텔레그램" },
+const CHANNELS: { value: SupportChannelFilter; label: MessageKey }[] = [
+  { value: "all", label: "support.channelAll" },
+  { value: "web", label: "support.channelWeb" },
+  { value: "telegram", label: "support.channelTelegram" },
 ];
 
-const ORDER_STATUS_LABELS: Record<string, string> = {
-  pending: "결제 대기",
-  paid: "결제 완료",
-  confirmed: "주문 확인",
-  in_transit: "배송 중",
-  delivered: "배송 완료",
-  fulfilled: "구매 확정",
-  disputed: "분쟁",
-  canceled: "취소",
+const ORDER_STATUS_LABELS: Record<string, MessageKey> = {
+  pending: "support.orderPending",
+  paid: "support.orderPaid",
+  confirmed: "support.orderConfirmed",
+  in_transit: "support.orderInTransit",
+  delivered: "support.orderDelivered",
+  fulfilled: "support.orderFulfilled",
+  disputed: "support.orderDisputed",
+  canceled: "support.orderCanceled",
 };
 
-const TOPIC_LABELS: Record<string, string> = {
-  ord: "주문·배송",
-  "ord.eta": "배송 기간",
-  "ord.trk": "배송 조회",
-  "ord.adr": "주소 변경",
-  prd: "상품·재고",
-  ret: "교환·반품",
-  pay: "결제",
-  agt: "상담원 연결",
+const TOPIC_LABELS: Record<string, MessageKey> = {
+  ord: "support.topicOrd",
+  "ord.eta": "support.topicOrdEta",
+  "ord.trk": "support.topicOrdTrk",
+  "ord.adr": "support.topicOrdAdr",
+  prd: "support.topicPrd",
+  ret: "support.topicRet",
+  pay: "support.topicPay",
+  agt: "support.topicAgt",
 };
 
-const STATUS_LABELS: Record<SupportInquiry["status"], string> = {
-  open: "대기",
-  assigned: "진행 중",
-  answered: "답변함",
-  closed: "완료",
+const STATUS_LABELS: Record<SupportInquiry["status"], MessageKey> = {
+  open: "support.statusOpen",
+  assigned: "support.statusAssigned",
+  answered: "support.statusAnswered",
+  closed: "support.statusClosed",
 };
+
+function orderStatusLabel(t: T, status: string): string {
+  const key = ORDER_STATUS_LABELS[status];
+  return key ? t(key) : status;
+}
+
+function topicLabel(t: T, topic: string): string {
+  const key = TOPIC_LABELS[topic];
+  return key ? t(key) : topic;
+}
 
 const STATUS_BADGE: Record<SupportInquiry["status"], string> = {
   open: "bg-amber-100 text-amber-800",
@@ -163,7 +183,10 @@ export async function loader({
       inquiries: [],
       selected: null,
       context: null,
-      error: err instanceof Error ? err.message : "Failed to load consultations",
+      error:
+        err instanceof Error
+          ? err.message
+          : translate(getLocaleFromRequest(request), "support.loadInquiriesFailed"),
     };
   }
 }
@@ -196,7 +219,10 @@ async function questionsLoader(request: Request, url: URL): Promise<QuestionsLoa
       questions: [],
       selected: null,
       context: null,
-      error: err instanceof Error ? err.message : "상품 문의를 불러오지 못했습니다",
+      error:
+        err instanceof Error
+          ? err.message
+          : translate(getLocaleFromRequest(request), "productQuestions.loadFailed"),
     };
   }
 }
@@ -204,10 +230,13 @@ async function questionsLoader(request: Request, url: URL): Promise<QuestionsLoa
 export async function action({
   request,
 }: Route.ActionArgs): Promise<SupportActionData> {
+  const locale = getLocaleFromRequest(request);
+  const t = (key: MessageKey, vars?: Record<string, string | number>) =>
+    translate(locale, key, vars);
   const formData = await request.formData();
   const intent = String(formData.get("intent") ?? "");
   const id = String(formData.get("id") ?? "").trim();
-  if (!id) return { ok: false, intent, error: "상담 번호가 필요합니다" };
+  if (!id) return { ok: false, intent, error: t("support.idRequired") };
 
   try {
     switch (intent) {
@@ -219,7 +248,7 @@ export async function action({
         const skuId = String(formData.get("sku_id") ?? "").trim();
         const orderId = String(formData.get("order_id") ?? "").trim();
         if (!body && !skuId && !orderId) {
-          return { ok: false, intent, error: "답변 내용을 입력하세요" };
+          return { ok: false, intent, error: t("support.replyRequired") };
         }
         const result = await replyToInquiry(request, id, body, {
           ...(skuId ? { sku_id: skuId } : {}),
@@ -234,9 +263,13 @@ export async function action({
         return { ok: true, intent };
       case "answer": {
         const answer = String(formData.get("answer") ?? "").trim();
-        if (!answer) return { ok: false, intent, error: "답변 내용을 입력하세요" };
+        if (!answer) return { ok: false, intent, error: t("productQuestions.answerRequired") };
         if ([...answer].length > ANSWER_LIMIT) {
-          return { ok: false, intent, error: `답변은 ${ANSWER_LIMIT.toLocaleString()}자 이내로 입력하세요` };
+          return {
+            ok: false,
+            intent,
+            error: t("productQuestions.answerTooLong", { limit: ANSWER_LIMIT.toLocaleString() }),
+          };
         }
         await answerQuestion(request, id, answer);
         return { ok: true, intent };
@@ -246,13 +279,13 @@ export async function action({
         await setQuestionHidden(request, id, intent === "hide");
         return { ok: true, intent };
       default:
-        return { ok: false, intent, error: "알 수 없는 요청입니다" };
+        return { ok: false, intent, error: t("support.unknownRequest") };
     }
   } catch (err: unknown) {
     return {
       ok: false,
       intent,
-      error: err instanceof Error ? err.message : "처리에 실패했습니다",
+      error: err instanceof Error ? err.message : t("support.actionFailed"),
     };
   }
 }
@@ -304,12 +337,13 @@ export default function SupportPage() {
 
 /** 상담 | 상품 문의 — the two surfaces of the support inbox. */
 function SurfaceTabs({ current }: { current: SupportLoaderData["tab"] }) {
+  const { t } = useI18n();
   const tabs: { value: SupportLoaderData["tab"]; label: string; to: string }[] = [
-    { value: "inbox", label: "상담", to: "/support" },
-    { value: "questions", label: "상품 문의", to: "/support?tab=questions" },
+    { value: "inbox", label: t("support.tabInbox"), to: "/support" },
+    { value: "questions", label: t("support.tabQuestions"), to: "/support?tab=questions" },
   ];
   return (
-    <nav aria-label="문의 종류" className="flex gap-6 border-b border-edge">
+    <nav aria-label={t("support.tabsLabel")} className="flex gap-6 border-b border-edge">
       {tabs.map((tab) => (
         <Link
           key={tab.value}
@@ -330,6 +364,7 @@ function SurfaceTabs({ current }: { current: SupportLoaderData["tab"] }) {
 
 function InboxView({ data }: { data: InboxLoaderData }) {
   const { queue, channel, inquiries, selected, context, error } = data;
+  const { t } = useI18n();
   const [searchParams, setSearchParams] = useSearchParams();
   const live = useInboxStream();
 
@@ -358,19 +393,16 @@ function InboxView({ data }: { data: InboxLoaderData }) {
     <div className="space-y-6">
       <header className="space-y-1">
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-semibold text-ink">상담</h1>
+          <h1 className="text-2xl font-semibold text-ink">{t("support.title")}</h1>
           <span
             className={`rounded-full px-2.5 py-0.5 text-[11px] ${
               live ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"
             }`}
           >
-            {live ? "Live" : "Not live"}
+            {live ? t("support.live") : t("support.notLive")}
           </span>
         </div>
-        <p className="text-sm text-soft">
-          웹·텔레그램 고객 상담 — 대기 중인 문의를 맡고 답변합니다. 상담 시간은
-          평일 10:00~22:00이며 공휴일은 휴무입니다.
-        </p>
+        <p className="text-sm text-soft">{t("support.inboxIntro")}</p>
       </header>
 
       <SurfaceTabs current="inbox" />
@@ -393,7 +425,7 @@ function InboxView({ data }: { data: InboxLoaderData }) {
                 : "bg-panel text-soft hover:text-ink"
             }`}
           >
-            {tab.label}
+            {t(tab.label)}
           </button>
         ))}
         <span className="mx-1 h-5 w-px bg-edge" aria-hidden />
@@ -408,7 +440,7 @@ function InboxView({ data }: { data: InboxLoaderData }) {
                 : "border-edge text-soft hover:text-ink"
             }`}
           >
-            {tab.label}
+            {t(tab.label)}
           </button>
         ))}
       </nav>
@@ -438,7 +470,7 @@ function InboxView({ data }: { data: InboxLoaderData }) {
           </div>
         ) : (
           <p className="rounded-2xl border border-edge bg-panel px-4 py-10 text-center text-sm text-soft">
-            왼쪽에서 상담을 선택하세요.
+            {t("support.selectInquiry")}
           </p>
         )}
       </div>
@@ -455,10 +487,11 @@ function InquiryList({
   selectedId: string | null;
   onOpen: (id: string) => void;
 }) {
+  const { t, locale } = useI18n();
   if (inquiries.length === 0) {
     return (
       <p className="rounded-2xl border border-edge bg-panel px-4 py-10 text-center text-sm text-soft">
-        해당하는 상담이 없습니다.
+        {t("support.noInquiries")}
       </p>
     );
   }
@@ -479,7 +512,7 @@ function InquiryList({
             <div className="flex items-center justify-between gap-2">
               <span className="flex items-center gap-1.5 text-sm font-medium text-ink">
                 <ChannelBadge inquiry={inquiry} />
-                {TOPIC_LABELS[inquiry.topic] ?? inquiry.topic}
+                {topicLabel(t, inquiry.topic)}
               </span>
               <StatusBadge status={inquiry.status} />
             </div>
@@ -489,7 +522,7 @@ function InquiryList({
               </p>
             ) : null}
             <p className="mt-1 text-[11px] text-soft">
-              {formatTime(inquiry.opened_at)}
+              {formatTime(locale, inquiry.opened_at)}
               {inquiry.username ? ` · @${inquiry.username}` : ""}
               {inquiry.customer_email ? ` · ${inquiry.customer_email}` : ""}
               {/* The entry language is recorded even though the bot answers in
@@ -513,13 +546,14 @@ function InquiryDetail({
   inquiry: SupportInquiry;
   context: SupportContext | null;
 }) {
+  const { t, locale } = useI18n();
   const fetcher = useFetcher<SupportActionData>();
   const [draft, setDraft] = useState("");
   const [attach, setAttach] = useState("");
   const busy = fetcher.state !== "idle";
   const result = fetcher.data;
   const web = isWeb(inquiry);
-  const attachOptions = web ? attachChoices(inquiry, context) : [];
+  const attachOptions = web ? attachChoices(t, locale, inquiry, context) : [];
   const [attachKind, attachId] = attach.split(":", 2);
 
   return (
@@ -528,12 +562,17 @@ function InquiryDetail({
         <div>
           <h2 className="flex items-center gap-2 text-lg font-medium text-ink">
             <ChannelBadge inquiry={inquiry} />
-            {TOPIC_LABELS[inquiry.topic] ?? inquiry.topic}
+            {topicLabel(t, inquiry.topic)}
           </h2>
           <p className="text-xs text-soft">
-            {formatTime(inquiry.opened_at)}
-            {inquiry.assigned_to ? ` · 담당 ${inquiry.assigned_to}` : " · 미배정"}
-            {inquiry.entry_context ? ` · 유입 ${inquiry.entry_context}` : ""}
+            {formatTime(locale, inquiry.opened_at)}
+            {" · "}
+            {inquiry.assigned_to
+              ? t("support.assignedTo", { name: inquiry.assigned_to })
+              : t("support.unassigned")}
+            {inquiry.entry_context
+              ? ` · ${t("support.entry", { context: inquiry.entry_context })}`
+              : ""}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -546,7 +585,7 @@ function InquiryDetail({
               disabled={busy}
               className="rounded-full border border-edge px-3 py-1.5 text-xs text-ink transition hover:border-accent disabled:opacity-50"
             >
-              맡기
+              {t("support.claim")}
             </button>
           </fetcher.Form>
           {inquiry.status !== "closed" ? (
@@ -558,7 +597,7 @@ function InquiryDetail({
                 disabled={busy}
                 className="rounded-full border border-edge px-3 py-1.5 text-xs text-soft transition hover:text-ink disabled:opacity-50"
               >
-                완료
+                {t("support.close")}
               </button>
             </fetcher.Form>
           ) : null}
@@ -577,8 +616,7 @@ function InquiryDetail({
       ) : null}
       {result?.intent === "reply" && result.ok && result.delivered === false ? (
         <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-          답변이 저장되었지만 고객에게 전달되지 않았습니다 (미전송). 고객이 봇을
-          차단했을 수 있습니다.
+          {t("support.undelivered")}
         </p>
       ) : null}
 
@@ -601,20 +639,20 @@ function InquiryDetail({
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             rows={3}
-            placeholder="답변을 입력하세요"
+            placeholder={t("support.replyPlaceholder")}
             className="w-full rounded-xl border border-edge bg-page px-4 py-2.5 text-sm text-ink outline-none transition placeholder:text-soft focus:border-accent focus:ring-2 focus:ring-accent/20"
           />
           <div className="flex flex-wrap items-center justify-end gap-2">
             {attachOptions.length > 0 ? (
               <label className="mr-auto flex items-center gap-2 text-xs text-soft">
-                카드 첨부
+                {t("support.attachCard")}
                 <select
-                  aria-label="카드 첨부"
+                  aria-label={t("support.attachCard")}
                   value={attach}
                   onChange={(event) => setAttach(event.target.value)}
                   className="max-w-[16rem] rounded-lg border border-edge bg-page px-2 py-1 text-xs text-ink"
                 >
-                  <option value="">없음</option>
+                  <option value="">{t("support.attachNone")}</option>
                   {attachOptions.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
@@ -629,7 +667,7 @@ function InquiryDetail({
               disabled={busy || (draft.trim() === "" && attach === "")}
               className="rounded-full bg-accent px-5 py-2 text-sm text-white transition disabled:opacity-50"
             >
-              {busy ? "보내는 중…" : "답변 보내기"}
+              {busy ? t("support.sending") : t("support.sendReply")}
             </button>
           </div>
         </fetcher.Form>
@@ -640,6 +678,8 @@ function InquiryDetail({
 
 /** Cards a reply can carry: the product and order in context, recent orders. */
 function attachChoices(
+  t: T,
+  locale: Locale,
   inquiry: SupportInquiry,
   context: SupportContext | null
 ): { value: string; label: string }[] {
@@ -651,13 +691,20 @@ function attachChoices(
     choices.push({ value, label });
   };
   if (context?.product) {
-    add(`sku:${context.product.sku_id}`, `상품 · ${context.product.name}`);
+    add(`sku:${context.product.sku_id}`, t("support.attachProduct", { name: context.product.name }));
   } else if (inquiry.sku_id) {
-    add(`sku:${inquiry.sku_id}`, `상품 · ${inquiry.sku_id}`);
+    add(`sku:${inquiry.sku_id}`, t("support.attachProduct", { name: inquiry.sku_id }));
   }
-  if (inquiry.order_id) add(`order:${inquiry.order_id}`, `주문 · ${inquiry.order_id}`);
+  if (inquiry.order_id) {
+    add(`order:${inquiry.order_id}`, t("support.attachOrder", { label: inquiry.order_id }));
+  }
   for (const order of context?.history?.recent ?? []) {
-    add(`order:${order.id}`, `주문 · ${orderLabel(order)} · ${formatDay(order.created_at)}`);
+    add(
+      `order:${order.id}`,
+      t("support.attachOrder", {
+        label: `${orderLabel(t, order)} · ${formatDay(locale, order.created_at)}`,
+      })
+    );
   }
   return choices;
 }
@@ -670,8 +717,9 @@ function Transcript({
   /** Web only: replies at or before this were read by the shopper. */
   lastReadAt?: string;
 }) {
+  const { t, locale } = useI18n();
   if (messages.length === 0) {
-    return <p className="text-sm text-soft">아직 대화 내용이 없습니다.</p>;
+    return <p className="text-sm text-soft">{t("support.noMessages")}</p>;
   }
   const readUntil = lastReadAt ? new Date(lastReadAt).getTime() : NaN;
 
@@ -681,7 +729,7 @@ function Transcript({
         if (message.kind === "system") {
           return (
             <li key={message.id} className="text-center text-[11px] text-soft">
-              {message.body} · {formatTime(message.created_at)}
+              {message.body} · {formatTime(locale, message.created_at)}
             </li>
           );
         }
@@ -691,7 +739,7 @@ function Transcript({
           outbound &&
           !Number.isNaN(readUntil) &&
           new Date(message.created_at).getTime() <= readUntil;
-        const card = referenceCard(message);
+        const card = referenceCard(t, message);
         return (
           <li
             key={message.id}
@@ -703,11 +751,11 @@ function Transcript({
           >
             {card ?? <p className="whitespace-pre-wrap">{message.body}</p>}
             <p className="mt-1 text-[11px] text-soft">
-              {outbound ? message.author ?? "상담원" : "고객"} ·{" "}
-              {formatTime(message.created_at)}
-              {failed ? " · 미전송" : ""}
-              {read ? " · 읽음" : ""}
-              {outbound && message.notice_status === "sent" ? " · 메일 알림 보냄" : ""}
+              {outbound ? message.author ?? t("support.agent") : t("support.customer")} ·{" "}
+              {formatTime(locale, message.created_at)}
+              {failed ? ` · ${t("support.notSent")}` : ""}
+              {read ? ` · ${t("support.read")}` : ""}
+              {outbound && message.notice_status === "sent" ? ` · ${t("support.emailSent")}` : ""}
             </p>
           </li>
         );
@@ -716,7 +764,7 @@ function Transcript({
   );
 }
 
-function referenceCard(message: SupportMessage) {
+function referenceCard(t: T, message: SupportMessage) {
   if (!message.ref) return null;
   if (message.kind === "product_ref") {
     const ref = message.ref as ProductRef;
@@ -752,13 +800,16 @@ function referenceCard(message: SupportMessage) {
           to={`/orders/${encodeURIComponent(ref.order_id)}`}
           className="font-medium hover:underline"
         >
-          주문 {ref.order_id}
+          {t("support.orderRef", { id: ref.order_id })}
         </Link>
         <p className="text-xs text-soft">
-          {ORDER_STATUS_LABELS[ref.status] ?? ref.status} ·{" "}
-          {formatWon("ko", ref.total_won)}
+          {orderStatusLabel(t, ref.status)} · {formatWon("ko", ref.total_won)}
           {ref.first_item_name
-            ? ` · ${ref.first_item_name}${ref.item_count > 1 ? ` 외 ${ref.item_count - 1}` : ""}`
+            ? ` · ${
+                ref.item_count > 1
+                  ? t("support.andMore", { name: ref.first_item_name, more: ref.item_count - 1 })
+                  : ref.first_item_name
+              }`
             : ""}
         </p>
       </div>
@@ -780,27 +831,32 @@ function ContextPanel({
   context: SupportContext;
 }) {
   const { product, order, history } = context;
+  const { t } = useI18n();
   return (
     <aside
-      aria-label="고객 정보"
+      aria-label={t("support.contextLabel")}
       className="space-y-4 rounded-2xl border border-edge bg-panel p-5 text-sm"
     >
       <section className="space-y-1">
-        <h3 className="text-xs font-medium uppercase tracking-wide text-soft">고객</h3>
-        <p className="break-all text-ink">{customer.email ?? "이메일 없음"}</p>
+        <h3 className="text-xs font-medium uppercase tracking-wide text-soft">
+          {t("support.customerHeading")}
+        </h3>
+        <p className="break-all text-ink">{customer.email ?? t("support.noEmail")}</p>
         {customer.id ? (
           <Link
             to={`/users/${encodeURIComponent(customer.id)}`}
             className="text-xs text-accent hover:underline"
           >
-            계정 보기
+            {t("support.viewAccount")}
           </Link>
         ) : null}
       </section>
 
       {product ? (
         <section className="space-y-1">
-          <h3 className="text-xs font-medium uppercase tracking-wide text-soft">문의 상품</h3>
+          <h3 className="text-xs font-medium uppercase tracking-wide text-soft">
+            {t("support.productHeading")}
+          </h3>
           <div className="flex items-center gap-3">
             {product.image_url ? (
               <img
@@ -822,34 +878,40 @@ function ContextPanel({
               <p className="text-xs text-soft">
                 {formatWon("ko", product.price_won)}
                 {typeof product.available_qty === "number"
-                  ? ` · 재고 ${product.available_qty}`
+                  ? ` · ${t("support.stock", { qty: product.available_qty })}`
                   : ""}
               </p>
             </div>
           </div>
           {context.bought_before ? (
-            <p className="text-xs text-emerald-700">이 상품을 구매한 적이 있습니다</p>
+            <p className="text-xs text-emerald-700">{t("support.boughtBefore")}</p>
           ) : null}
         </section>
       ) : null}
 
       {order ? (
         <section className="space-y-1">
-          <h3 className="text-xs font-medium uppercase tracking-wide text-soft">문의 주문</h3>
+          <h3 className="text-xs font-medium uppercase tracking-wide text-soft">
+            {t("support.orderHeading")}
+          </h3>
           <OrderLine order={order} />
         </section>
       ) : null}
 
       {history ? (
         <section className="space-y-2">
-          <h3 className="text-xs font-medium uppercase tracking-wide text-soft">구매 내역</h3>
+          <h3 className="text-xs font-medium uppercase tracking-wide text-soft">
+            {t("support.historyHeading")}
+          </h3>
           <dl className="grid grid-cols-2 gap-2">
             <div className="rounded-xl bg-page px-3 py-2">
-              <dt className="text-[11px] text-soft">결제한 주문</dt>
-              <dd className="font-medium text-ink">{history.order_count}건</dd>
+              <dt className="text-[11px] text-soft">{t("support.paidOrders")}</dt>
+              <dd className="font-medium text-ink">
+                {t("support.orderCount", { n: history.order_count })}
+              </dd>
             </div>
             <div className="rounded-xl bg-page px-3 py-2">
-              <dt className="text-[11px] text-soft">누적 결제</dt>
+              <dt className="text-[11px] text-soft">{t("support.lifetimeSpend")}</dt>
               <dd className="font-medium text-ink">
                 {formatWon("ko", history.total_spent_won)}
               </dd>
@@ -864,7 +926,7 @@ function ContextPanel({
               ))}
             </ul>
           ) : (
-            <p className="text-xs text-soft">주문 내역이 없습니다.</p>
+            <p className="text-xs text-soft">{t("support.noOrders")}</p>
           )}
         </section>
       ) : null}
@@ -880,30 +942,32 @@ function ContextPanel({
   );
 }
 
-function orderLabel(order: ContextOrder): string {
+function orderLabel(t: T, order: ContextOrder): string {
   const name = order.first_item_name ?? order.id;
-  return order.item_count > 1 ? `${name} 외 ${order.item_count - 1}` : name;
+  return order.item_count > 1 ? t("support.andMore", { name, more: order.item_count - 1 }) : name;
 }
 
 function OrderLine({ order }: { order: ContextOrder }) {
+  const { t, locale } = useI18n();
   return (
     <Link
       to={`/orders/${encodeURIComponent(order.id)}`}
       className="block rounded-xl border border-edge px-3 py-2 transition hover:border-accent/40"
     >
-      <p className="truncate text-xs font-medium text-ink">{orderLabel(order)}</p>
+      <p className="truncate text-xs font-medium text-ink">{orderLabel(t, order)}</p>
       <p className="text-[11px] text-soft">
-        {ORDER_STATUS_LABELS[order.status] ?? order.status} ·{" "}
-        {formatWon("ko", order.total_won)} · {formatTime(order.created_at)}
+        {orderStatusLabel(t, order.status)} · {formatWon("ko", order.total_won)} ·{" "}
+        {formatTime(locale, order.created_at)}
       </p>
     </Link>
   );
 }
 
 function ChannelBadge({ inquiry }: { inquiry: SupportInquiry }) {
+  const { t } = useI18n();
   return isWeb(inquiry) ? (
     <span className="rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-medium text-violet-800">
-      웹
+      {t("support.channelWebBadge")}
     </span>
   ) : (
     <span className="rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-medium text-sky-800">
@@ -913,27 +977,29 @@ function ChannelBadge({ inquiry }: { inquiry: SupportInquiry }) {
 }
 
 function StatusBadge({ status }: { status: SupportInquiry["status"] }) {
+  const { t } = useI18n();
   return (
     <span className={`rounded-full px-2.5 py-0.5 text-[11px] ${STATUS_BADGE[status]}`}>
-      {STATUS_LABELS[status]}
+      {t(STATUS_LABELS[status])}
     </span>
   );
 }
 
-function formatDay(value: string): string {
+// Times are always KST, the shop's clock, whatever the operator's language.
+function formatDay(locale: Locale, value: string): string {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleDateString("ko-KR", {
+  return parsed.toLocaleDateString(LOCALE_INTL[locale], {
     timeZone: "Asia/Seoul",
     month: "2-digit",
     day: "2-digit",
   });
 }
 
-function formatTime(value: string): string {
+function formatTime(locale: Locale, value: string): string {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleString("ko-KR", {
+  return parsed.toLocaleString(LOCALE_INTL[locale], {
     timeZone: "Asia/Seoul",
     month: "2-digit",
     day: "2-digit",
@@ -951,41 +1017,91 @@ function formatTime(value: string): string {
 /** Support's `MaxAnswerRunes`. */
 const ANSWER_LIMIT = 2000;
 
-const QUESTION_QUEUES: { value: QuestionQueue; label: string }[] = [
-  { value: "waiting", label: "답변 대기" },
-  { value: "answered", label: "답변 완료" },
-  { value: "hidden", label: "숨김" },
+const QUESTION_QUEUES: { value: QuestionQueue; label: MessageKey }[] = [
+  { value: "waiting", label: "productQuestions.queueWaiting" },
+  { value: "answered", label: "productQuestions.queueAnswered" },
+  { value: "hidden", label: "productQuestions.queueHidden" },
 ];
 
-const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
-  size: "사이즈·핏",
-  stock: "재고·입고",
-  product: "상품 정보",
-  other: "기타",
+const QUESTION_TYPE_LABELS: Record<QuestionType, MessageKey> = {
+  size: "productQuestions.typeSize",
+  stock: "productQuestions.typeStock",
+  product: "productQuestions.typeProduct",
+  other: "productQuestions.typeOther",
 };
 
-/** Openers per topic; staff finish the sentence. */
-const ANSWER_TEMPLATES: { label: string; body: string }[] = [
+function questionTypeLabel(t: T, type: string): string {
+  const key = QUESTION_TYPE_LABELS[type as QuestionType];
+  return key ? t(key) : type;
+}
+
+type AnswerTemplate = { id: string; label: MessageKey; body: string };
+
+/**
+ * Openers per topic; staff finish the sentence. The body is what the shopper
+ * reads, so it follows the shopper's language, not the console's: each opener
+ * comes in Korean and in English, whichever language the operator uses.
+ */
+const ANSWER_TEMPLATES: { group: MessageKey; templates: AnswerTemplate[] }[] = [
   {
-    label: "사이즈 추천",
-    body: "안녕하세요, DUPLI1입니다.\n말씀해 주신 체형이라면 __ 사이즈를 권해드립니다. 실측 치수는 상품 페이지의 사이즈 가이드를 참고해 주세요.",
+    group: "productQuestions.templateKorean",
+    templates: [
+      {
+        id: "ko-size",
+        label: "productQuestions.tplSize",
+        body: "안녕하세요, DUPLI1입니다.\n말씀해 주신 체형이라면 __ 사이즈를 권해드립니다. 실측 치수는 상품 페이지의 사이즈 가이드를 참고해 주세요.",
+      },
+      {
+        id: "ko-stock",
+        label: "productQuestions.tplStock",
+        body: "안녕하세요, DUPLI1입니다.\n문의하신 옵션은 __ 입고 예정입니다. 입고되면 상품 페이지에서 바로 구매하실 수 있습니다.",
+      },
+      {
+        id: "ko-product",
+        label: "productQuestions.tplProduct",
+        body: "안녕하세요, DUPLI1입니다.\n문의하신 내용 안내드립니다. ",
+      },
+      {
+        id: "ko-chat",
+        label: "productQuestions.tplChat",
+        body: "안녕하세요, DUPLI1입니다.\n주문·배송 관련 내용은 마이페이지의 1:1 상담으로 문의해 주시면 빠르게 확인해 드리겠습니다.",
+      },
+    ],
   },
   {
-    label: "입고 예정",
-    body: "안녕하세요, DUPLI1입니다.\n문의하신 옵션은 __ 입고 예정입니다. 입고되면 상품 페이지에서 바로 구매하실 수 있습니다.",
-  },
-  {
-    label: "상품 정보",
-    body: "안녕하세요, DUPLI1입니다.\n문의하신 내용 안내드립니다. ",
-  },
-  {
-    label: "1:1 상담 안내",
-    body: "안녕하세요, DUPLI1입니다.\n주문·배송 관련 내용은 마이페이지의 1:1 상담으로 문의해 주시면 빠르게 확인해 드리겠습니다.",
+    group: "productQuestions.templateEnglish",
+    templates: [
+      {
+        id: "en-size",
+        label: "productQuestions.tplSize",
+        body: "Hello, this is DUPLI1.\nFor the measurements you gave, we recommend size __. The size guide on the product page lists the garment measurements.",
+      },
+      {
+        id: "en-stock",
+        label: "productQuestions.tplStock",
+        body: "Hello, this is DUPLI1.\nThe option you asked about is expected back in stock on __. You can buy it from the product page as soon as it arrives.",
+      },
+      {
+        id: "en-product",
+        label: "productQuestions.tplProduct",
+        body: "Hello, this is DUPLI1.\nHere is the information you asked for: ",
+      },
+      {
+        id: "en-chat",
+        label: "productQuestions.tplChat",
+        body: "Hello, this is DUPLI1.\nFor questions about an order or delivery, please message us through 1:1 chat on My Page and we will look into it right away.",
+      },
+    ],
   },
 ];
+
+const TEMPLATE_BODIES = new Map(
+  ANSWER_TEMPLATES.flatMap((group) => group.templates.map((tpl) => [tpl.id, tpl.body] as const))
+);
 
 function QuestionsView({ data }: { data: QuestionsLoaderData }) {
   const { queue, type, questions, selected, context, error } = data;
+  const { t } = useI18n();
   const [searchParams, setSearchParams] = useSearchParams();
 
   function update(patch: Record<string, string | null>) {
@@ -1001,11 +1117,8 @@ function QuestionsView({ data }: { data: QuestionsLoaderData }) {
   return (
     <div className="space-y-6">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold text-ink">상담</h1>
-        <p className="text-sm text-soft">
-          상품 페이지에서 남긴 비공개 문의입니다. 질문과 답변은 문의한 고객과
-          운영자만 볼 수 있고, 첫 답변이 등록되면 고객에게 메일로 알립니다.
-        </p>
+        <h1 className="text-2xl font-semibold text-ink">{t("support.title")}</h1>
+        <p className="text-sm text-soft">{t("productQuestions.intro")}</p>
       </header>
 
       <SurfaceTabs current="questions" />
@@ -1026,7 +1139,7 @@ function QuestionsView({ data }: { data: QuestionsLoaderData }) {
               queue === tab.value ? "bg-accent text-white" : "bg-panel text-soft hover:text-ink"
             }`}
           >
-            {tab.label}
+            {t(tab.label)}
           </button>
         ))}
         <span className="mx-1 h-5 w-px bg-edge" aria-hidden />
@@ -1039,7 +1152,7 @@ function QuestionsView({ data }: { data: QuestionsLoaderData }) {
               type === value ? "border-accent text-accent" : "border-edge text-soft hover:text-ink"
             }`}
           >
-            {value ? QUESTION_TYPE_LABELS[value] : "전체"}
+            {value ? t(QUESTION_TYPE_LABELS[value]) : t("productQuestions.typeAll")}
           </button>
         ))}
       </nav>
@@ -1067,7 +1180,7 @@ function QuestionsView({ data }: { data: QuestionsLoaderData }) {
           </div>
         ) : (
           <p className="rounded-2xl border border-edge bg-panel px-4 py-10 text-center text-sm text-soft">
-            왼쪽에서 문의를 선택하세요.
+            {t("productQuestions.selectQuestion")}
           </p>
         )}
       </div>
@@ -1084,10 +1197,11 @@ function QuestionList({
   selectedId: string | null;
   onOpen: (id: string) => void;
 }) {
+  const { t, locale } = useI18n();
   if (questions.length === 0) {
     return (
       <p className="rounded-2xl border border-edge bg-panel px-4 py-10 text-center text-sm text-soft">
-        해당하는 문의가 없습니다.
+        {t("productQuestions.noQuestions")}
       </p>
     );
   }
@@ -1112,9 +1226,9 @@ function QuestionList({
             </div>
             <p className="mt-1 line-clamp-2 text-xs text-soft">{question.body}</p>
             <p className="mt-1 text-[11px] text-soft">
-              {QUESTION_TYPE_LABELS[question.type] ?? question.type}
+              {questionTypeLabel(t, question.type)}
               {question.variant_label ? ` · ${question.variant_label}` : ""} ·{" "}
-              {formatTime(question.created_at)}
+              {formatTime(locale, question.created_at)}
               {question.customer_email ? ` · ${question.customer_email}` : ""}
             </p>
           </button>
@@ -1125,6 +1239,7 @@ function QuestionList({
 }
 
 function QuestionDetail({ question }: { question: ProductQuestion }) {
+  const { t, locale } = useI18n();
   const fetcher = useFetcher<SupportActionData>();
   const answered = question.status === "answered";
   const [draft, setDraft] = useState(question.answer ?? "");
@@ -1132,7 +1247,7 @@ function QuestionDetail({ question }: { question: ProductQuestion }) {
   const busy = fetcher.state !== "idle";
   const result = fetcher.data;
   const length = [...draft.trim()].length;
-  const fit = fitLine(question);
+  const fit = fitLine(t, question);
 
   // A saved answer closes the editor; the loader brings the new text.
   useEffect(() => {
@@ -1154,9 +1269,9 @@ function QuestionDetail({ question }: { question: ProductQuestion }) {
             </Link>
           </h2>
           <p className="text-xs text-soft">
-            {QUESTION_TYPE_LABELS[question.type] ?? question.type}
+            {questionTypeLabel(t, question.type)}
             {question.variant_label ? ` · ${question.variant_label}` : ""} ·{" "}
-            {formatTime(question.created_at)}
+            {formatTime(locale, question.created_at)}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -1169,30 +1284,31 @@ function QuestionDetail({ question }: { question: ProductQuestion }) {
               disabled={busy}
               className="rounded-full border border-edge px-3 py-1.5 text-xs text-soft transition hover:text-ink disabled:opacity-50"
             >
-              {question.hidden ? "숨김 해제" : "숨기기"}
+              {question.hidden ? t("productQuestions.unhide") : t("productQuestions.hide")}
             </button>
           </fetcher.Form>
         </div>
       </header>
 
       <div className="rounded-xl bg-page px-4 py-3">
-        <p className="text-[11px] text-soft">고객 문의</p>
+        <p className="text-[11px] text-soft">{t("productQuestions.customerQuestion")}</p>
         <p className="mt-1 whitespace-pre-wrap text-sm text-ink">{question.body}</p>
-        {fit ? <p className="mt-2 text-xs text-soft">체형 · {fit}</p> : null}
+        {fit ? <p className="mt-2 text-xs text-soft">{t("productQuestions.fit", { fit })}</p> : null}
       </div>
 
       {question.hidden ? (
         <p className="text-xs text-soft">
-          숨긴 문의입니다{question.hidden_by ? ` (${question.hidden_by})` : ""}. 대기 목록에서만
-          빠지며, 고객은 계속 자신의 문의를 볼 수 있습니다.
+          {t("productQuestions.hiddenNote", {
+            by: question.hidden_by ? ` (${question.hidden_by})` : "",
+          })}
         </p>
       ) : null}
 
       {answered && !editing ? (
         <div className="rounded-xl bg-accent/10 px-4 py-3">
           <p className="text-[11px] text-soft">
-            답변 · {question.answered_by ?? "상담원"}
-            {question.answered_at ? ` · ${formatTime(question.answered_at)}` : ""}
+            {t("productQuestions.answerBy", { name: question.answered_by ?? t("support.agent") })}
+            {question.answered_at ? ` · ${formatTime(locale, question.answered_at)}` : ""}
           </p>
           <p className="mt-1 whitespace-pre-wrap text-sm text-ink">{question.answer}</p>
           <button
@@ -1200,7 +1316,7 @@ function QuestionDetail({ question }: { question: ProductQuestion }) {
             onClick={() => setEditing(true)}
             className="mt-2 text-xs text-accent hover:underline"
           >
-            답변 수정
+            {t("productQuestions.editAnswer")}
           </button>
         </div>
       ) : null}
@@ -1216,30 +1332,34 @@ function QuestionDetail({ question }: { question: ProductQuestion }) {
           <input type="hidden" name="id" value={question.id} />
           <textarea
             name="answer"
-            aria-label="답변"
+            aria-label={t("productQuestions.answerLabel")}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             rows={6}
-            placeholder="답변을 입력하세요. 문의한 고객만 볼 수 있습니다."
+            placeholder={t("productQuestions.answerPlaceholder")}
             className="w-full rounded-xl border border-edge bg-page px-4 py-2.5 text-sm text-ink outline-none transition placeholder:text-soft focus:border-accent focus:ring-2 focus:ring-accent/20"
           />
           <div className="flex flex-wrap items-center justify-end gap-2">
             <label className="mr-auto flex items-center gap-2 text-xs text-soft">
-              템플릿
+              {t("productQuestions.template")}
               <select
-                aria-label="답변 템플릿"
+                aria-label={t("productQuestions.templateLabel")}
                 value=""
                 onChange={(event) => {
-                  const template = ANSWER_TEMPLATES[Number(event.target.value)];
-                  if (template) setDraft(template.body);
+                  const body = TEMPLATE_BODIES.get(event.target.value);
+                  if (body) setDraft(body);
                 }}
                 className="rounded-lg border border-edge bg-page px-2 py-1 text-xs text-ink"
               >
-                <option value="">선택</option>
-                {ANSWER_TEMPLATES.map((template, index) => (
-                  <option key={template.label} value={index}>
-                    {template.label}
-                  </option>
+                <option value="">{t("productQuestions.templateChoose")}</option>
+                {ANSWER_TEMPLATES.map((group) => (
+                  <optgroup key={group.group} label={t(group.group)}>
+                    {group.templates.map((template) => (
+                      <option key={template.id} value={template.id}>
+                        {t(template.label)}
+                      </option>
+                    ))}
+                  </optgroup>
                 ))}
               </select>
             </label>
@@ -1259,7 +1379,7 @@ function QuestionDetail({ question }: { question: ProductQuestion }) {
                 }}
                 className="rounded-full border border-edge px-4 py-2 text-sm text-soft transition hover:text-ink"
               >
-                취소
+                {t("productQuestions.cancel")}
               </button>
             ) : null}
             <button
@@ -1268,14 +1388,15 @@ function QuestionDetail({ question }: { question: ProductQuestion }) {
               disabled={busy || length === 0 || length > ANSWER_LIMIT}
               className="rounded-full bg-accent px-5 py-2 text-sm text-white transition disabled:opacity-50"
             >
-              {busy ? "등록 중…" : answered ? "답변 수정" : "답변 등록"}
+              {busy
+                ? t("productQuestions.saving")
+                : answered
+                  ? t("productQuestions.editAnswer")
+                  : t("productQuestions.submit")}
             </button>
           </div>
           {!answered ? (
-            <p className="text-[11px] text-soft">
-              등록하면 고객에게 답변 알림 메일이 갑니다. 메일에는 답변 내용이 들어가지
-              않습니다.
-            </p>
+            <p className="text-[11px] text-soft">{t("productQuestions.emailNote")}</p>
           ) : null}
         </fetcher.Form>
       ) : null}
@@ -1284,29 +1405,32 @@ function QuestionDetail({ question }: { question: ProductQuestion }) {
 }
 
 function QuestionStatusBadge({ question }: { question: ProductQuestion }) {
+  const { t } = useI18n();
   if (question.hidden) {
     return (
-      <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] text-slate-600">숨김</span>
+      <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] text-slate-600">
+        {t("productQuestions.queueHidden")}
+      </span>
     );
   }
   return question.status === "answered" ? (
     <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] text-emerald-800">
-      답변 완료
+      {t("productQuestions.queueAnswered")}
     </span>
   ) : (
     <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] text-amber-800">
-      답변 대기
+      {t("productQuestions.queueWaiting")}
     </span>
   );
 }
 
-function fitLine(question: ProductQuestion): string {
+function fitLine(t: T, question: ProductQuestion): string {
   const fit = question.fit;
   if (!fit) return "";
   return [
     fit.height_cm ? `${fit.height_cm}cm` : "",
     fit.weight_kg ? `${fit.weight_kg}kg` : "",
-    fit.usual_size ? `평소 ${fit.usual_size}` : "",
+    fit.usual_size ? t("productQuestions.usualSize", { size: fit.usual_size }) : "",
   ]
     .filter(Boolean)
     .join(" · ");

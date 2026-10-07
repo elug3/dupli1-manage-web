@@ -75,7 +75,6 @@ export const en = {
   },
 
   login: {
-    metaTitle: "Sign in | Dupli1 Admin",
     heading: "Dupli1 Admin",
     subtitle: "Sign in to your admin account",
     email: "Email",
@@ -88,7 +87,6 @@ export const en = {
   },
 
   dashboard: {
-    metaTitle: "Dashboard | Dupli1 Admin",
     title: "Dashboard",
     viewAllOrders: "View all orders",
     viewAllArrow: "View all →",
@@ -129,7 +127,6 @@ export const en = {
   products: {
     category_bags: "Bags",
     category_clothing: "Clothing",
-    metaTitle: "Products | Dupli1 Admin",
     title: "Products",
     subtitle: "Parent styles via GET /product/api/v1/products",
     newProduct: "New product",
@@ -192,7 +189,6 @@ export const en = {
   productNew: {
     category: "Category",
     subCategory: "Subcategory",
-    metaTitle: "New Product | Dupli1 Admin",
     backToProducts: "← Back to products",
     title: "New product",
     subtitlePrefix:
@@ -290,7 +286,6 @@ export const en = {
     sizeChartSizeRequired: "Every measured row needs a size",
     sizeChartDuplicateSize: "Size {size} appears twice",
     sizeChartInvalidMeasurement: "Size {size}: measurements must be numbers between 0 and {max} cm",
-    metaTitle: "Product | Dupli1 Admin",
     backToProducts: "← Back to products",
     productNotFound: "Product not found",
     editStyle: "Edit style",
@@ -384,7 +379,6 @@ export const en = {
   },
 
   skuDetail: {
-    metaTitle: "SKU | Dupli1 Admin",
     heading: "SKU detail",
     backToProduct: "← Back to product",
     skuNotFound: "SKU not found on this product",
@@ -461,7 +455,6 @@ export const en = {
   },
 
   catalog: {
-    metaTitle: "Catalog masters | Dupli1 Admin",
     title: "Catalog masters",
     subtitle:
       "Code → name dictionaries used to compose human SKUs. Codes are immutable; rename updates display labels only.",
@@ -519,7 +512,6 @@ export const en = {
   },
 
   orderDetail: {
-    metaTitle: "Order | Dupli1 Admin",
     backToOrders: "← Orders",
     failedToLoad: "Failed to load order",
     notFound: "Order not found",
@@ -567,7 +559,6 @@ export const en = {
   },
 
   orders: {
-    metaTitle: "Orders | Dupli1 Admin",
     title: "Orders",
     ordersTotal_one: "{count} order total",
     ordersTotal_other: "{count} orders total",
@@ -643,7 +634,6 @@ export const en = {
   },
 
   promotions: {
-    metaTitle: "Promotional codes | Dupli1 Admin",
     title: "Promotional codes",
     subtitle:
       "Managed via the product service at /product/api/v1/products/promotions",
@@ -786,7 +776,6 @@ export const en = {
     errConditionNumber: "This condition needs a number",
   },
   analytics: {
-    metaTitle: "Analytics | Dupli1 Admin",
     title: "Analytics",
     subtitle: "Sales, visitors and new customers by week or month, in Korea time",
     failedToLoad: "Failed to load analytics",
@@ -843,7 +832,6 @@ export const en = {
   },
 
   telegram: {
-    metaTitle: "Telegram | Dupli1 Admin",
     title: "Telegram",
     subtitle: "Approve who receives ops alerts from the Dupli1 bot",
     serviceStatus: "Service status",
@@ -948,7 +936,6 @@ export const en = {
   },
 
   users: {
-    metaTitle: "Users | Dupli1 Admin",
     title: "Users",
     subtitle: "Manage accounts via GET /auth/api/v1/auth/users",
     newUser: "New user",
@@ -970,7 +957,6 @@ export const en = {
   },
 
   userNew: {
-    metaTitle: "New User | Dupli1 Admin",
     backToUsers: "← Back to users",
     title: "New user",
     subtitle:
@@ -986,7 +972,6 @@ export const en = {
   },
 
   userDetail: {
-    metaTitle: "User | Dupli1 Admin",
     backToUsers: "← Back to users",
     userNotFound: "User not found",
     failedToLoad: "Failed to load user",
@@ -1069,7 +1054,6 @@ export const en = {
   },
 
   settings: {
-    metaTitle: "Settings | Dupli1 Admin",
     title: "Settings",
     subtitle: "Manage your store configuration",
     sectionGeneral: "General",
@@ -1125,6 +1109,133 @@ export const en = {
     gitCommit: "Commit",
   },
 
+  support: {
+    title: "Support",
+    live: "Live",
+    notLive: "Not live",
+    inboxIntro: "Web and Telegram consultations: claim a waiting inquiry and answer it. Service hours are weekdays 10:00–22:00 KST, closed on public holidays.",
+    tabsLabel: "Inquiry type",
+    tabInbox: "Consultations",
+    tabQuestions: "Product questions",
+    queueWaiting: "Waiting",
+    queueMine: "Mine",
+    queueClosed: "Closed",
+    channelAll: "All",
+    channelWeb: "Web",
+    channelTelegram: "Telegram",
+    channelWebBadge: "Web",
+    orderPending: "Awaiting payment",
+    orderPaid: "Paid",
+    orderConfirmed: "Confirmed",
+    orderInTransit: "In transit",
+    orderDelivered: "Delivered",
+    orderFulfilled: "Completed",
+    orderDisputed: "Disputed",
+    orderCanceled: "Canceled",
+    topicOrd: "Orders & delivery",
+    topicOrdEta: "Delivery time",
+    topicOrdTrk: "Tracking",
+    topicOrdAdr: "Address change",
+    topicPrd: "Products & stock",
+    topicRet: "Exchanges & returns",
+    topicPay: "Payment",
+    topicAgt: "Talk to a person",
+    statusOpen: "Waiting",
+    statusAssigned: "In progress",
+    statusAnswered: "Answered",
+    statusClosed: "Closed",
+    selectInquiry: "Select a consultation on the left.",
+    noInquiries: "No consultations here.",
+    assignedTo: "Assigned to {name}",
+    unassigned: "Unassigned",
+    entry: "From {context}",
+    claim: "Claim",
+    close: "Close",
+    undelivered: "The reply was saved but never reached the customer (not sent). They may have blocked the bot.",
+    replyPlaceholder: "Write a reply",
+    attachCard: "Attach card",
+    attachNone: "None",
+    attachProduct: "Product · {name}",
+    attachOrder: "Order · {label}",
+    sending: "Sending…",
+    sendReply: "Send reply",
+    noMessages: "No messages yet.",
+    agent: "Agent",
+    customer: "Customer",
+    notSent: "Not sent",
+    read: "Read",
+    emailSent: "Email notice sent",
+    orderRef: "Order {id}",
+    andMore: "{name} + {more} more",
+    contextLabel: "Customer details",
+    customerHeading: "Customer",
+    noEmail: "No email",
+    viewAccount: "View account",
+    productHeading: "Product asked about",
+    stock: "Stock {qty}",
+    boughtBefore: "Has bought this product before",
+    orderHeading: "Order asked about",
+    historyHeading: "Purchase history",
+    paidOrders: "Paid orders",
+    orderCount: "{n}",
+    lifetimeSpend: "Lifetime spend",
+    noOrders: "No orders yet.",
+    idRequired: "An inquiry id is required",
+    replyRequired: "Write a reply first",
+    unknownRequest: "Unknown request",
+    actionFailed: "Something went wrong",
+    loadInquiriesFailed: "Failed to load consultations",
+    loadInquiryFailed: "Failed to load the consultation",
+    claimFailed: "Failed to claim",
+    replyFailed: "Failed to send the reply",
+    closeFailed: "Failed to close",
+    loadProductFailed: "Failed to load the product",
+    loadOrderFailed: "Failed to load the order",
+    loadHistoryFailed: "Failed to load the purchase history",
+  },
+
+  productQuestions: {
+    intro: "Private questions left on product pages. Only the asking customer and staff see the question and the answer, and the customer gets an email when the first answer is posted.",
+    queueWaiting: "Awaiting answer",
+    queueAnswered: "Answered",
+    queueHidden: "Hidden",
+    typeAll: "All",
+    typeSize: "Size & fit",
+    typeStock: "Stock & restock",
+    typeProduct: "Product details",
+    typeOther: "Other",
+    selectQuestion: "Select a question on the left.",
+    noQuestions: "No questions here.",
+    hide: "Hide",
+    unhide: "Unhide",
+    customerQuestion: "Customer question",
+    fit: "Fit · {fit}",
+    usualSize: "usually {size}",
+    hiddenNote: "This question is hidden{by}. It only leaves the queue; the customer still sees their question.",
+    answerBy: "Answer · {name}",
+    editAnswer: "Edit answer",
+    answerLabel: "Answer",
+    answerPlaceholder: "Write an answer. Only the asking customer sees it.",
+    template: "Template",
+    templateLabel: "Answer template",
+    templateChoose: "Choose",
+    templateKorean: "In Korean",
+    templateEnglish: "In English",
+    tplSize: "Size advice",
+    tplStock: "Restock date",
+    tplProduct: "Product details",
+    tplChat: "Use 1:1 chat",
+    cancel: "Cancel",
+    saving: "Saving…",
+    submit: "Post answer",
+    emailNote: "Posting emails the customer a notice. The email does not include the answer.",
+    answerRequired: "Write an answer first",
+    answerTooLong: "Keep the answer within {limit} characters",
+    loadFailed: "Failed to load product questions",
+    loadOneFailed: "Failed to load the question",
+    answerFailed: "Failed to post the answer",
+    hideFailed: "Failed to update the question",
+  },
   errors: {
     oops: "Oops!",
     unexpected: "An unexpected error occurred.",

@@ -77,7 +77,6 @@ export const ko: Messages = {
   },
 
   login: {
-    metaTitle: "로그인 | Dupli1 Admin",
     heading: "Dupli1 Admin",
     subtitle: "관리자 계정으로 로그인하세요",
     email: "이메일",
@@ -90,7 +89,6 @@ export const ko: Messages = {
   },
 
   dashboard: {
-    metaTitle: "대시보드 | Dupli1 Admin",
     title: "대시보드",
     viewAllOrders: "모든 주문 보기",
     viewAllArrow: "모두 보기 →",
@@ -131,7 +129,6 @@ export const ko: Messages = {
   products: {
     category_bags: "가방",
     category_clothing: "의류",
-    metaTitle: "상품 | Dupli1 Admin",
     title: "상품",
     subtitle: "상위 스타일 조회: GET /product/api/v1/products",
     newProduct: "새 상품",
@@ -195,7 +192,6 @@ export const ko: Messages = {
   productNew: {
     category: "카테고리",
     subCategory: "하위 카테고리",
-    metaTitle: "새 상품 | Dupli1 Admin",
     backToProducts: "← 상품으로 돌아가기",
     title: "새 상품",
     subtitlePrefix:
@@ -293,7 +289,6 @@ export const ko: Messages = {
     sizeChartSizeRequired: "치수를 입력한 행에는 사이즈가 필요합니다",
     sizeChartDuplicateSize: "사이즈 {size}가 두 번 있습니다",
     sizeChartInvalidMeasurement: "사이즈 {size}: 치수는 0~{max} cm 사이의 숫자여야 합니다",
-    metaTitle: "상품 | Dupli1 Admin",
     backToProducts: "← 상품으로 돌아가기",
     productNotFound: "상품을 찾을 수 없습니다",
     editStyle: "스타일 편집",
@@ -386,7 +381,6 @@ export const ko: Messages = {
   },
 
   skuDetail: {
-    metaTitle: "SKU | Dupli1 Admin",
     heading: "SKU 상세",
     backToProduct: "← 상품으로 돌아가기",
     skuNotFound: "이 상품에서 SKU를 찾을 수 없습니다",
@@ -463,7 +457,6 @@ export const ko: Messages = {
   },
 
   catalog: {
-    metaTitle: "카탈로그 마스터 | Dupli1 Admin",
     title: "카탈로그 마스터",
     subtitle:
       "사람이 읽는 SKU 조합에 사용되는 코드 → 이름 사전입니다. 코드는 변경할 수 없으며, 이름 변경은 표시 라벨만 업데이트합니다.",
@@ -521,7 +514,6 @@ export const ko: Messages = {
   },
 
   orderDetail: {
-    metaTitle: "주문 | Dupli1 Admin",
     backToOrders: "← 주문 목록",
     failedToLoad: "주문을 불러오지 못했습니다",
     notFound: "주문을 찾을 수 없습니다",
@@ -569,7 +561,6 @@ export const ko: Messages = {
   },
 
   orders: {
-    metaTitle: "주문 | Dupli1 Admin",
     title: "주문",
     ordersTotal_one: "총 {count}건의 주문",
     ordersTotal_other: "총 {count}건의 주문",
@@ -646,7 +637,6 @@ export const ko: Messages = {
   },
 
   promotions: {
-    metaTitle: "프로모션 코드 | Dupli1 Admin",
     title: "프로모션 코드",
     subtitle: "상품 서비스에서 관리: /product/api/v1/products/promotions",
 
@@ -787,7 +777,6 @@ export const ko: Messages = {
     errConditionNumber: "이 조건에는 숫자가 필요합니다",
   },
   analytics: {
-    metaTitle: "분석 | Dupli1 Admin",
     title: "분석",
     subtitle: "주간 또는 월간 매출, 방문자, 신규 고객 (한국 시간 기준)",
     failedToLoad: "분석을 불러오지 못했습니다",
@@ -844,7 +833,6 @@ export const ko: Messages = {
   },
 
   telegram: {
-    metaTitle: "텔레그램 | Dupli1 Admin",
     title: "텔레그램",
     subtitle: "Dupli1 봇의 운영 알림 수신자를 승인합니다",
     serviceStatus: "서비스 상태",
@@ -949,7 +937,6 @@ export const ko: Messages = {
   },
 
   users: {
-    metaTitle: "사용자 | Dupli1 Admin",
     title: "사용자",
     subtitle: "계정 관리: GET /auth/api/v1/auth/users",
     newUser: "새 사용자",
@@ -971,7 +958,6 @@ export const ko: Messages = {
   },
 
   userNew: {
-    metaTitle: "새 사용자 | Dupli1 Admin",
     backToUsers: "← 사용자로 돌아가기",
     title: "새 사용자",
     subtitle:
@@ -987,7 +973,6 @@ export const ko: Messages = {
   },
 
   userDetail: {
-    metaTitle: "사용자 | Dupli1 Admin",
     backToUsers: "← 사용자로 돌아가기",
     userNotFound: "사용자를 찾을 수 없습니다",
     failedToLoad: "사용자를 불러오지 못했습니다",
@@ -1070,7 +1055,6 @@ export const ko: Messages = {
   },
 
   settings: {
-    metaTitle: "설정 | Dupli1 Admin",
     title: "설정",
     subtitle: "스토어 구성을 관리합니다",
     sectionGeneral: "일반",
@@ -1126,6 +1110,133 @@ export const ko: Messages = {
     gitCommit: "커밋",
   },
 
+  support: {
+    title: "상담",
+    live: "Live",
+    notLive: "Not live",
+    inboxIntro: "웹·텔레그램 고객 상담 — 대기 중인 문의를 맡고 답변합니다. 상담 시간은 평일 10:00~22:00이며 공휴일은 휴무입니다.",
+    tabsLabel: "문의 종류",
+    tabInbox: "상담",
+    tabQuestions: "상품 문의",
+    queueWaiting: "대기",
+    queueMine: "내 상담",
+    queueClosed: "완료",
+    channelAll: "전체",
+    channelWeb: "웹",
+    channelTelegram: "텔레그램",
+    channelWebBadge: "웹",
+    orderPending: "결제 대기",
+    orderPaid: "결제 완료",
+    orderConfirmed: "주문 확인",
+    orderInTransit: "배송 중",
+    orderDelivered: "배송 완료",
+    orderFulfilled: "구매 확정",
+    orderDisputed: "분쟁",
+    orderCanceled: "취소",
+    topicOrd: "주문·배송",
+    topicOrdEta: "배송 기간",
+    topicOrdTrk: "배송 조회",
+    topicOrdAdr: "주소 변경",
+    topicPrd: "상품·재고",
+    topicRet: "교환·반품",
+    topicPay: "결제",
+    topicAgt: "상담원 연결",
+    statusOpen: "대기",
+    statusAssigned: "진행 중",
+    statusAnswered: "답변함",
+    statusClosed: "완료",
+    selectInquiry: "왼쪽에서 상담을 선택하세요.",
+    noInquiries: "해당하는 상담이 없습니다.",
+    assignedTo: "담당 {name}",
+    unassigned: "미배정",
+    entry: "유입 {context}",
+    claim: "맡기",
+    close: "완료",
+    undelivered: "답변이 저장되었지만 고객에게 전달되지 않았습니다 (미전송). 고객이 봇을 차단했을 수 있습니다.",
+    replyPlaceholder: "답변을 입력하세요",
+    attachCard: "카드 첨부",
+    attachNone: "없음",
+    attachProduct: "상품 · {name}",
+    attachOrder: "주문 · {label}",
+    sending: "보내는 중…",
+    sendReply: "답변 보내기",
+    noMessages: "아직 대화 내용이 없습니다.",
+    agent: "상담원",
+    customer: "고객",
+    notSent: "미전송",
+    read: "읽음",
+    emailSent: "메일 알림 보냄",
+    orderRef: "주문 {id}",
+    andMore: "{name} 외 {more}",
+    contextLabel: "고객 정보",
+    customerHeading: "고객",
+    noEmail: "이메일 없음",
+    viewAccount: "계정 보기",
+    productHeading: "문의 상품",
+    stock: "재고 {qty}",
+    boughtBefore: "이 상품을 구매한 적이 있습니다",
+    orderHeading: "문의 주문",
+    historyHeading: "구매 내역",
+    paidOrders: "결제한 주문",
+    orderCount: "{n}건",
+    lifetimeSpend: "누적 결제",
+    noOrders: "주문 내역이 없습니다.",
+    idRequired: "상담 번호가 필요합니다",
+    replyRequired: "답변 내용을 입력하세요",
+    unknownRequest: "알 수 없는 요청입니다",
+    actionFailed: "처리에 실패했습니다",
+    loadInquiriesFailed: "상담 목록을 불러오지 못했습니다",
+    loadInquiryFailed: "상담을 불러오지 못했습니다",
+    claimFailed: "맡기지 못했습니다",
+    replyFailed: "답변을 보내지 못했습니다",
+    closeFailed: "완료하지 못했습니다",
+    loadProductFailed: "상품을 불러오지 못했습니다",
+    loadOrderFailed: "주문을 불러오지 못했습니다",
+    loadHistoryFailed: "주문 내역을 불러오지 못했습니다",
+  },
+
+  productQuestions: {
+    intro: "상품 페이지에서 남긴 비공개 문의입니다. 질문과 답변은 문의한 고객과 운영자만 볼 수 있고, 첫 답변이 등록되면 고객에게 메일로 알립니다.",
+    queueWaiting: "답변 대기",
+    queueAnswered: "답변 완료",
+    queueHidden: "숨김",
+    typeAll: "전체",
+    typeSize: "사이즈·핏",
+    typeStock: "재고·입고",
+    typeProduct: "상품 정보",
+    typeOther: "기타",
+    selectQuestion: "왼쪽에서 문의를 선택하세요.",
+    noQuestions: "해당하는 문의가 없습니다.",
+    hide: "숨기기",
+    unhide: "숨김 해제",
+    customerQuestion: "고객 문의",
+    fit: "체형 · {fit}",
+    usualSize: "평소 {size}",
+    hiddenNote: "숨긴 문의입니다{by}. 대기 목록에서만 빠지며, 고객은 계속 자신의 문의를 볼 수 있습니다.",
+    answerBy: "답변 · {name}",
+    editAnswer: "답변 수정",
+    answerLabel: "답변",
+    answerPlaceholder: "답변을 입력하세요. 문의한 고객만 볼 수 있습니다.",
+    template: "템플릿",
+    templateLabel: "답변 템플릿",
+    templateChoose: "선택",
+    templateKorean: "한국어",
+    templateEnglish: "영어",
+    tplSize: "사이즈 추천",
+    tplStock: "입고 예정",
+    tplProduct: "상품 정보",
+    tplChat: "1:1 상담 안내",
+    cancel: "취소",
+    saving: "등록 중…",
+    submit: "답변 등록",
+    emailNote: "등록하면 고객에게 답변 알림 메일이 갑니다. 메일에는 답변 내용이 들어가지 않습니다.",
+    answerRequired: "답변 내용을 입력하세요",
+    answerTooLong: "답변은 {limit}자 이내로 입력하세요",
+    loadFailed: "상품 문의를 불러오지 못했습니다",
+    loadOneFailed: "문의를 불러오지 못했습니다",
+    answerFailed: "답변을 등록하지 못했습니다",
+    hideFailed: "처리하지 못했습니다",
+  },
   errors: {
     oops: "오류!",
     unexpected: "예기치 않은 오류가 발생했습니다.",

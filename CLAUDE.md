@@ -142,7 +142,9 @@ UI: `/support` loads and mutates via **SSR** `loader`/`action` (`app/lib/server/
 - `POST …/{id}/answer` `{ answer }` (`support.reply`; ≤2,000 chars; answering again replaces the text, only the first answer emails the shopper, and the email never holds the answer) and `POST …/{id}/hide` `{ hidden }` (takes it off the queue only; the shopper still sees it)
 - `?question=<id>` opens one; it is what the `alert_support` Telegram alert links to. The context panel is the web consultation's, via `loadShopperContext` (product by `sku_id`, purchase history). Answer templates are client-side openers.
 
-`npm run test:support:browser` drives all of this against `npm run mock:gateway` (`CHROMIUM_PATH` overrides Playwright's bundled browser).
+The whole `/support` page (inbox, product questions, context panel, action errors) follows the console language through `support.*` and `productQuestions.*` messages; times stay in KST. Answer templates come in Korean and English whatever the console language, because the body is what the shopper reads.
+
+`npm run test:support:browser` drives all of this against `npm run mock:gateway` (`CHROMIUM_PATH` overrides Playwright's bundled browser). It runs in Korean via the `dupli1_locale` cookie, then checks the questions tab in English.
 
 ### Inventory (`/inventory`)
 
