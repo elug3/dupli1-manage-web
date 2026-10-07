@@ -13,6 +13,7 @@ import {
   getInventoryBySkuId,
   getManageProduct,
   parseDimensionsInput,
+  parseVariantPriceInput,
   productImageSrc,
   setInventory,
   updateVariant,
@@ -186,7 +187,15 @@ export default function SkuDetail() {
           ))}
         </dl>
 
-        <PriceSection product={product} />
+        <PriceSection
+          productId={product.id}
+          product={product}
+          variant={variant}
+          onSaved={async () => {
+            await load();
+            notify(t("skuDetail.priceSaved", { sku: variant.sku }));
+          }}
+        />
 
         <StockSection
           sku={variant.sku}
@@ -233,16 +242,69 @@ export default function SkuDetail() {
   );
 }
 
-function PriceSection({ product }: { product: Product }) {
+function PriceSection({
+  productId,
+  product,
+  variant,
+  onSaved,
+}: {
+  productId: string;
+  product: Product;
+  variant: ProductVariant;
+  onSaved: () => Promise<void>;
+}) {
   const { t, formatCurrency } = useI18n();
-  const officialLabel =
+  const { notify } = useNotify();
+  const [price, setPrice] = useState(variant.priceOverride?.toString() ?? "");
+  const [official, setOfficial] = useState(
+    variant.officialPriceOverride?.toString() ?? ""
+  );
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setPrice(variant.priceOverride?.toString() ?? "");
+    setOfficial(variant.officialPriceOverride?.toString() ?? "");
+  }, [variant]);
+
+  const parentPrice =
+    product.price != null ? formatCurrency(product.price) : t("common.emptyValue");
+  const parentOfficial =
     product.officialPrice != null && product.officialPrice > 0
       ? formatCurrency(product.officialPrice)
       : t("common.emptyValue");
-  const priceLabel =
-    product.price != null
-      ? formatCurrency(product.price)
-      : t("common.emptyValue");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const nextPrice = parseVariantPriceInput(price);
+    const nextOfficial = parseVariantPriceInput(official);
+    if (nextPrice.error || nextOfficial.error) {
+      notify(t("skuDetail.invalidPrice"), "error");
+      return;
+    }
+    setSaving(true);
+    try {
+      // null clears the override (inherit); the API merge keeps omitted fields.
+      await updateVariant(productId, variant.sku, {
+        priceOverride: nextPrice.value,
+        officialPriceOverride: nextOfficial.value,
+      });
+      await onSaved();
+    } catch (err) {
+      notify(
+        err instanceof Error
+          ? err.message
+          : t("productDetail.failedToUpdateVariant"),
+        "error"
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const inherits = variant.priceOverride == null;
+  const dirty =
+    price !== (variant.priceOverride?.toString() ?? "") ||
+    official !== (variant.officialPriceOverride?.toString() ?? "");
 
   return (
     <section className="space-y-3 border-t border-edge-soft pt-6">
@@ -250,13 +312,57 @@ function PriceSection({ product }: { product: Product }) {
         {t("skuDetail.price")}
       </h2>
       <p className="text-sm text-muted">
-        {t("skuDetail.currentOfficialPrice", { price: officialLabel })}
+        {t("skuDetail.currentOfficialPrice", {
+          price:
+            variant.officialPrice != null && variant.officialPrice > 0
+              ? formatCurrency(variant.officialPrice)
+              : t("common.emptyValue"),
+        })}
         {" · "}
-        {t("skuDetail.currentPrice", { price: priceLabel })}
+        {t("skuDetail.currentPrice", { price: formatCurrency(variant.price) })}
+        {" · "}
+        <span className="font-semibold text-ink">
+          {inherits ? t("skuDetail.inheritsParent") : t("skuDetail.ownPrice")}
+        </span>
       </p>
-      <p className="text-xs text-faint">
-        {t("productDetail.priceOnParentHint")}
-      </p>
+      <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
+        <label className="space-y-1.5">
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted">
+            {t("skuDetail.priceOverride")}
+          </span>
+          <input
+            inputMode="numeric"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            placeholder={t("skuDetail.inheritPlaceholder", { price: parentPrice })}
+            className={fieldCls}
+          />
+        </label>
+        <label className="space-y-1.5">
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted">
+            {t("skuDetail.officialPriceOverride")}
+          </span>
+          <input
+            inputMode="numeric"
+            value={official}
+            onChange={(e) => setOfficial(e.target.value)}
+            placeholder={t("skuDetail.inheritPlaceholder", {
+              price: parentOfficial,
+            })}
+            className={fieldCls}
+          />
+        </label>
+        <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
+          <button
+            type="submit"
+            disabled={saving || !dirty}
+            className="rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+          >
+            {saving ? t("common.saving") : t("skuDetail.savePrice")}
+          </button>
+          <p className="text-xs text-faint">{t("skuDetail.priceOverrideHint")}</p>
+        </div>
+      </form>
       <Link
         to={`/products/${encodeURIComponent(product.id)}`}
         className="inline-flex text-sm font-semibold text-accent hover:underline"

@@ -3,6 +3,7 @@ import {
   type Order,
   conversionRate,
   orderHasFulfillment,
+  parseVariantPriceInput,
   permissionGrants,
   productImageSrc,
 } from "./api";
@@ -117,5 +118,23 @@ describe("conversionRate", () => {
 
   it("has no rate without visitors", () => {
     expect(conversionRate(3, 0)).toBeNull();
+  });
+});
+
+describe("parseVariantPriceInput", () => {
+  it("treats blank as inherit", () => {
+    expect(parseVariantPriceInput("")).toEqual({ value: null });
+    expect(parseVariantPriceInput("  ")).toEqual({ value: null });
+  });
+
+  it("accepts whole won, with thousands separators", () => {
+    expect(parseVariantPriceInput("380000")).toEqual({ value: 380000 });
+    expect(parseVariantPriceInput("380,000")).toEqual({ value: 380000 });
+  });
+
+  it("rejects zero, negatives and fractions (the API reads 0 as clear)", () => {
+    for (const bad of ["0", "-5", "10.5", "abc", "1e5"]) {
+      expect(parseVariantPriceInput(bad)).toEqual({ error: "INVALID_PRICE" });
+    }
   });
 });
