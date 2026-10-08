@@ -58,10 +58,12 @@ export interface Product {
   name: string;
   category: string;
   /**
-   * Actual sale price (KRW won) on the parent product.
-   * Variants echo this on read; create/update variant ignores price.
+   * Actual sale price (KRW won) on the parent product. A SKU inherits it
+   * unless it has its own `priceOverride`.
    */
   price?: number;
+  /** Lowest effective price across active SKUs; present only when SKUs differ. */
+  priceFrom?: number;
   /** Reference / list price on the parent (not charged). */
   officialPrice?: number;
   stock?: number;
@@ -117,13 +119,14 @@ export interface ProductVariant {
   colorCode?: string;
   sizeCode?: string;
   editionCode?: string;
-  /**
-   * Echo of parent officialPrice (API still includes it for cart clients).
-   * Not stored or writable on the variant.
-   */
+  /** Effective official price: the SKU's own override, else the parent's. */
   officialPrice?: number;
-  /** Echo of parent sale price (not stored on the variant). */
+  /** Effective sale price (what cart/order charge): the override, else the parent's. */
   price: number;
+  /** This SKU's own sale price (whole won); absent = inherits the parent's. */
+  priceOverride?: number;
+  /** This SKU's own official price (whole won); absent = inherits the parent's. */
+  officialPriceOverride?: number;
   status: string;
   imageUrls: string[];
   /** Physical measurements in mm; omit when unset. */
@@ -313,6 +316,8 @@ function mapVariant(hit: ProductSearchHit): ProductVariant {
       hitNumber(hit, "sellingPrice") ??
       hitNumber(hit, "selling_price"),
     price: hitNumber(hit, "price") ?? 0,
+    priceOverride: hitNumber(hit, "priceOverride"),
+    officialPriceOverride: hitNumber(hit, "officialPriceOverride"),
     status: hitString(hit, "status") ?? "active",
     imageUrls: hitStringArray(hit, "imageUrls") ?? [],
     dimensions: mapDimensions(hit.dimensions),
@@ -500,6 +505,7 @@ export function mapProduct(
       hitNumber(hit, "priceFrom") ??
       hitNumber(hit, "price_from") ??
       hitNumber(hit, "unit_price_won"),
+    priceFrom: hitNumber(hit, "priceFrom"),
     officialPrice:
       hitNumber(hit, "officialPrice") ??
       hitNumber(hit, "official_price") ??
@@ -759,6 +765,14 @@ export interface CreateVariantInput {
   status?: string;
   /** Optional physical size in mm. */
   dimensions?: SkuDimensions;
+  /** Optional own prices (whole won); omit to inherit the parent's. */
+  priceOverride?: number | null;
+  officialPriceOverride?: number | null;
+}
+
+/** Wire value for a price override: a positive amount sets it, 0 clears it. */
+function overrideWire(value: number | null): number {
+  return value == null ? 0 : value;
 }
 
 export async function createVariant(
@@ -775,6 +789,10 @@ export async function createVariant(
   };
   if (input.dimensions && !dimensionsEmpty(input.dimensions)) {
     body.dimensions = input.dimensions;
+  }
+  if (input.priceOverride != null) body.priceOverride = input.priceOverride;
+  if (input.officialPriceOverride != null) {
+    body.officialPriceOverride = input.officialPriceOverride;
   }
   const res = await authedFetch(
     productPath(
@@ -802,6 +820,29 @@ export interface UpdateVariantInput {
    * Pass `null` to omit from the JSON body.
    */
   dimensions?: SkuDimensions | Record<string, never> | null;
+  /**
+   * Own sale / official price (whole won). Omit (`undefined`) to keep,
+   * `null` to clear back to the parent's price, a positive number to set.
+   */
+  priceOverride?: number | null;
+  officialPriceOverride?: number | null;
+}
+
+export type VariantPriceInput =
+  | { value: number | null; error?: undefined }
+  | { error: "INVALID_PRICE" };
+
+/**
+ * Parses a SKU price field: blank means inherit the parent's price (`null`),
+ * otherwise a whole-won amount of at least 1 (the API reads 0 as "clear").
+ */
+export function parseVariantPriceInput(raw: string): VariantPriceInput {
+  const text = raw.trim().replace(/,/g, "");
+  if (text === "") return { value: null };
+  if (!/^\d+$/.test(text)) return { error: "INVALID_PRICE" };
+  const n = Number(text);
+  if (!Number.isSafeInteger(n) || n < 1) return { error: "INVALID_PRICE" };
+  return { value: n };
 }
 
 export async function updateVariant(
@@ -816,6 +857,12 @@ export async function updateVariant(
   if (input.imageUrls !== undefined) body.imageUrls = input.imageUrls;
   if (input.dimensions !== undefined && input.dimensions !== null) {
     body.dimensions = input.dimensions;
+  }
+  if (input.priceOverride !== undefined) {
+    body.priceOverride = overrideWire(input.priceOverride);
+  }
+  if (input.officialPriceOverride !== undefined) {
+    body.officialPriceOverride = overrideWire(input.officialPriceOverride);
   }
   const res = await authedFetch(
     productPath(
