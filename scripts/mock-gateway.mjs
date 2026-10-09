@@ -19,6 +19,8 @@
  * Products serve product's category rules (`/api/v1/products/catalog/*`):
  * bags take any size, clothing only XXS–XXL, and a PUT validates `sizeChart`
  * against the category (omitted keeps it, `[]` clears it).
+ * Variant image upload and `PUT …/variants/{sku}` keep `imageUrls` as product
+ * does; `scripts/test-product-images-browser.mjs` drives them.
  */
 import http from "node:http";
 
@@ -74,6 +76,7 @@ makeUser(VALID_EMAIL, "manager", ["*"], { user_id: "usr_mock_admin" });
 }
 
 const products = new Map();
+const uploadedImages = new Map();
 const stock = new Map();
 
 const APPAREL_SIZES = ["XXS", "XS", "S", "M", "L", "XL", "XXL"];
@@ -193,6 +196,38 @@ function readBody(req) {
       } catch {
         reject(new Error("Invalid JSON"));
       }
+    });
+    req.on("error", reject);
+  });
+}
+
+/** The `image` part of a multipart upload: `{ filename, type, data }`. */
+function readMultipartFile(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    req.on("data", (c) => chunks.push(c));
+    req.on("end", () => {
+      const boundary = /boundary=(?:"([^"]+)"|([^;]+))/.exec(req.headers["content-type"] ?? "");
+      if (!boundary) return resolve(null);
+      const buf = Buffer.concat(chunks);
+      const delim = Buffer.from(`--${boundary[1] ?? boundary[2]}`);
+      let start = buf.indexOf(delim);
+      while (start !== -1) {
+        const next = buf.indexOf(delim, start + delim.length);
+        if (next === -1) break;
+        const part = buf.subarray(start + delim.length + 2, next - 2);
+        const headerEnd = part.indexOf("\r\n\r\n");
+        const headers = part.subarray(0, headerEnd).toString();
+        if (/name="image"/.test(headers)) {
+          return resolve({
+            filename: /filename="([^"]*)"/.exec(headers)?.[1] || "image",
+            type: /content-type:\s*([^\r\n]+)/i.exec(headers)?.[1] ?? "application/octet-stream",
+            data: part.subarray(headerEnd + 4),
+          });
+        }
+        start = next;
+      }
+      resolve(null);
     });
     req.on("error", reject);
   });
@@ -826,6 +861,46 @@ const server = http.createServer(async (req, res) => {
     return send(res, 200, [{ code: "BLK", name: "Black" }, { code: "GRN", name: "Green" }]);
   }
   if (method === "GET" && path === "/api/v1/products/catalog/editions") return send(res, 200, []);
+
+  // Variant images. An upload appends with a read-modify-write across a short
+  // delay, as product does, so two uploads in flight lose one image: the
+  // console must send them one at a time. Bytes are served back from
+  // `/product-images/mock/…` under the uploaded file name.
+  m = path.match(/^\/product-images\/mock\/(.+)$/);
+  if (m && method === "GET") {
+    const img = uploadedImages.get(decodeURIComponent(m[1]));
+    if (!img) return send(res, 404, { error: "not found" });
+    res.writeHead(200, { "Content-Type": img.type, "Content-Length": img.data.length });
+    return res.end(img.data);
+  }
+  m = path.match(/^\/api\/v1\/products\/([^/]+)\/variants\/([^/]+)\/images$/);
+  if (m && method === "POST") {
+    const variant = products
+      .get(decodeURIComponent(m[1]))
+      ?.variants.find((v) => v.sku === decodeURIComponent(m[2]));
+    if (!variant) return send(res, 404, { error: "variant not found" });
+    const part = await readMultipartFile(req);
+    if (!part) return send(res, 400, { error: "missing image field" });
+    const before = [...variant.imageUrls];
+    await new Promise((r) => setTimeout(r, 150));
+    const key = `${uploadedImages.size + 1}-${part.filename}`;
+    uploadedImages.set(key, part);
+    variant.imageUrls = [...before, `http://localhost:${PORT}/product-images/mock/${encodeURIComponent(key)}`];
+    return send(res, 200, variant);
+  }
+  m = path.match(/^\/api\/v1\/products\/([^/]+)\/variants\/([^/]+)$/);
+  if (m && method === "PUT") {
+    const variant = products
+      .get(decodeURIComponent(m[1]))
+      ?.variants.find((v) => v.sku === decodeURIComponent(m[2]));
+    if (!variant) return send(res, 404, { error: "variant not found" });
+    const body = await readBody(req).catch(() => ({}));
+    // Product merges: an empty imageUrls means "keep", not "clear".
+    if (Array.isArray(body.imageUrls) && body.imageUrls.length > 0) {
+      variant.imageUrls = body.imageUrls;
+    }
+    return send(res, 200, variant);
+  }
 
   // Products and stock, with product's delete rules: a SKU goes only with
   // an empty stock row, and a product not while any SKU has stock reserved.

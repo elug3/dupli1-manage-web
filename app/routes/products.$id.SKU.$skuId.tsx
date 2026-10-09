@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import {
   type Product,
   type ProductVariant,
-  LastImageDeleteError,
   deleteVariantImage,
   dimensionsEmpty,
   findVariant,
@@ -14,7 +13,7 @@ import {
   getManageProduct,
   parseDimensionsInput,
   parseVariantPriceInput,
-  productImageSrc,
+  reorderVariantImages,
   setInventory,
   updateVariant,
   uploadVariantImage,
@@ -23,13 +22,13 @@ import { isClothingCategory } from "~/lib/categories";
 import { useI18n } from "~/lib/i18n";
 import { useNotify } from "~/lib/notifications";
 import { DangerZone } from "~/components/DeleteConfirmDialog";
+import { ImageGalleryEditor } from "~/components/ImageGalleryEditor";
 import { SkuDeleteDialog } from "~/components/ProductDeleteDialogs";
 
 export function meta() {
   return [{ title: "SKU | Dupli1 Admin" }];
 }
 
-const MAX_IMAGE_BYTES = 50 * 1024 * 1024;
 const fieldCls =
   "w-full rounded-xl border border-edge bg-panel px-4 py-2.5 text-sm text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20";
 
@@ -452,110 +451,28 @@ function ImagesSection({
   onUploaded: (variant: ProductVariant) => void;
 }) {
   const { t } = useI18n();
-  const { notify } = useNotify();
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
-  const [deletingUrl, setDeletingUrl] = useState<string | null>(null);
-
-  async function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      notify(t("common.pleaseChooseImageFile"), "error");
-      e.target.value = "";
-      return;
-    }
-    if (file.size > MAX_IMAGE_BYTES) {
-      notify(t("common.imageMustBe50MiBOrSmaller"), "error");
-      e.target.value = "";
-      return;
-    }
-    setUploading(true);
-    try {
-      const updated = await uploadVariantImage(productId, variant.sku, file);
-      onUploaded(updated);
-      notify(t("productDetail.variantImageUploaded"));
-    } catch (err) {
-      notify(
-        err instanceof Error ? err.message : t("productDetail.uploadFailed"),
-        "error"
-      );
-    } finally {
-      setUploading(false);
-      e.target.value = "";
-    }
-  }
-
-  async function handleDelete(url: string) {
-    if (!window.confirm(t("productDetail.deleteImageConfirm"))) return;
-    setDeletingUrl(url);
-    try {
-      const updated = await deleteVariantImage(
-        productId,
-        variant.sku,
-        url,
-        variant.imageUrls
-      );
-      onUploaded(updated);
-      notify(t("productDetail.imageDeleted"));
-    } catch (err) {
-      notify(
-        err instanceof LastImageDeleteError
-          ? t("productDetail.cannotDeleteLastImage")
-          : err instanceof Error
-            ? err.message
-            : t("productDetail.failedToDeleteImage"),
-        "error"
-      );
-    } finally {
-      setDeletingUrl(null);
-    }
-  }
 
   return (
     <section className="space-y-3 border-t border-edge-soft pt-6">
       <h2 className="text-xs font-semibold uppercase tracking-wide text-faint">
         {t("productDetail.images")}
       </h2>
-      {variant.imageUrls.length > 0 ? (
-        <div className="flex flex-wrap gap-3">
-          {variant.imageUrls.map((url) => (
-            <div key={url} className="relative">
-              <img
-                src={productImageSrc(url)}
-                alt=""
-                className="h-28 w-28 rounded-xl border border-edge object-cover"
-              />
-              <button
-                type="button"
-                disabled={deletingUrl === url}
-                onClick={() => void handleDelete(url)}
-                className="absolute right-1 top-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-white disabled:opacity-60"
-              >
-                {deletingUrl === url ? "…" : t("common.delete")}
-              </button>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-sm text-muted">{t("productDetail.noImagesYet")}</p>
-      )}
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={handleChange}
-        disabled={uploading}
+      <ImageGalleryEditor
+        urls={variant.imageUrls}
+        uploadOne={async (file) => {
+          onUploaded(await uploadVariantImage(productId, variant.sku, file));
+        }}
+        saveOrder={async (next) => {
+          onUploaded(
+            await reorderVariantImages(productId, variant.sku, variant.imageUrls, next)
+          );
+        }}
+        remove={async (url) => {
+          onUploaded(
+            await deleteVariantImage(productId, variant.sku, url, variant.imageUrls)
+          );
+        }}
       />
-      <button
-        type="button"
-        disabled={uploading}
-        onClick={() => inputRef.current?.click()}
-        className="rounded-xl border border-dashed border-edge px-4 py-2.5 text-sm font-semibold text-accent hover:border-accent/40 disabled:opacity-60"
-      >
-        {uploading ? t("common.uploading") : t("productDetail.uploadImage")}
-      </button>
     </section>
   );
 }

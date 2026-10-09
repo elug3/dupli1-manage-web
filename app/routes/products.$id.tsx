@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import {
   type CatalogCodeName,
@@ -11,7 +11,6 @@ import {
   attributesFromRows,
   createVariant,
   deleteVariantImage,
-  LastImageDeleteError,
   dimensionsEmpty,
   formatDimensionsMm,
   formatVariantOption,
@@ -25,7 +24,7 @@ import {
   listEditions,
   listSizes,
   parseDimensionsInput,
-  productImageSrc,
+  reorderVariantImages,
   productSkuPath,
   productVariants,
   setInventory,
@@ -57,12 +56,12 @@ import { useI18n } from "~/lib/i18n";
 import { useNotify } from "~/lib/notifications";
 import { ProductExportButton } from "~/components/ProductExportButton";
 import { DangerZone } from "~/components/DeleteConfirmDialog";
+import { ImageGalleryEditor } from "~/components/ImageGalleryEditor";
 import {
   ProductDeleteDialog,
   SkuDeleteDialog,
 } from "~/components/ProductDeleteDialogs";
 
-const MAX_IMAGE_BYTES = 50 * 1024 * 1024;
 const LOW_STOCK_THRESHOLD = 5;
 const inputCls =
   "rounded-lg border border-edge px-2 py-1.5 text-sm outline-none focus:border-accent";
@@ -1922,101 +1921,24 @@ function VariantImageUpload({
   variant: ProductVariant;
   onUploaded: (variant: ProductVariant) => void;
 }) {
-  const { notify } = useNotify();
-  const { t } = useI18n();
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
-  const [deletingUrl, setDeletingUrl] = useState<string | null>(null);
-
-  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      notify(t("common.pleaseChooseImageFile"), "error");
-      e.target.value = "";
-      return;
-    }
-
-    if (file.size > MAX_IMAGE_BYTES) {
-      notify(t("common.imageMustBe50MiBOrSmaller"), "error");
-      e.target.value = "";
-      return;
-    }
-
-    setUploading(true);
-    try {
-      const updated = await uploadVariantImage(productId, variant.sku, file);
-      onUploaded(updated);
-      notify(t("productDetail.variantImageUploaded"));
-    } catch (err) {
-      notify(
-        err instanceof Error ? err.message : t("productDetail.uploadFailed"),
-        "error"
-      );
-    } finally {
-      setUploading(false);
-      e.target.value = "";
-    }
-  }
-
-  async function handleDelete(url: string) {
-    if (!window.confirm(t("productDetail.deleteImageConfirm"))) return;
-    setDeletingUrl(url);
-    try {
-      const updated = await deleteVariantImage(
-        productId,
-        variant.sku,
-        url,
-        variant.imageUrls
-      );
-      onUploaded(updated);
-      notify(t("productDetail.imageDeleted"));
-    } catch (err) {
-      notify(
-        err instanceof LastImageDeleteError
-          ? t("productDetail.cannotDeleteLastImage")
-          : err instanceof Error
-            ? err.message
-            : t("productDetail.failedToDeleteImage"),
-        "error"
-      );
-    } finally {
-      setDeletingUrl(null);
-    }
-  }
-
   return (
-    <div className="space-y-2">
-      {variant.imageUrls.length > 0 && (
-        <ProductImageGrid
-          urls={variant.imageUrls}
-          deletingUrl={deletingUrl}
-          onDelete={handleDelete}
-          compact
-        />
-      )}
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={handleFileChange}
-        disabled={uploading}
-      />
-      <button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        disabled={uploading}
-        className="text-xs font-semibold text-accent hover:underline disabled:opacity-60"
-      >
-        {uploading
-          ? t("common.uploading")
-          : t("productDetail.uploadWithCount", {
-              count: variant.imageUrls.length,
-            })}
-      </button>
-    </div>
+    <ImageGalleryEditor
+      compact
+      urls={variant.imageUrls}
+      uploadOne={async (file) => {
+        onUploaded(await uploadVariantImage(productId, variant.sku, file));
+      }}
+      saveOrder={async (next) => {
+        onUploaded(
+          await reorderVariantImages(productId, variant.sku, variant.imageUrls, next)
+        );
+      }}
+      remove={async (url) => {
+        onUploaded(
+          await deleteVariantImage(productId, variant.sku, url, variant.imageUrls)
+        );
+      }}
+    />
   );
 }
 
@@ -2029,210 +1951,28 @@ function LegacyProductImages({
   variant: ProductVariant;
   onUploaded: (product: Product) => void;
 }) {
-  const { notify } = useNotify();
   const { t } = useI18n();
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
-  const [deletingUrl, setDeletingUrl] = useState<string | null>(null);
-
-  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      notify(t("common.pleaseChooseImageFile"), "error");
-      e.target.value = "";
-      return;
-    }
-
-    if (file.size > MAX_IMAGE_BYTES) {
-      notify(t("common.imageMustBe50MiBOrSmaller"), "error");
-      e.target.value = "";
-      return;
-    }
-
-    setUploading(true);
-    try {
-      const updated = await uploadProductImage(productId, file);
-      onUploaded(updated);
-      notify(t("productDetail.imageUploaded"));
-    } catch (err) {
-      notify(
-        err instanceof Error ? err.message : t("productDetail.uploadFailed"),
-        "error"
-      );
-    } finally {
-      setUploading(false);
-      e.target.value = "";
-    }
-  }
-
-  async function handleDelete(url: string) {
-    if (!window.confirm(t("productDetail.deleteImageConfirm"))) return;
-    setDeletingUrl(url);
-    try {
-      await deleteVariantImage(
-        productId,
-        variant.sku,
-        url,
-        variant.imageUrls
-      );
-      const refreshed = await getManageProduct(productId);
-      onUploaded(refreshed);
-      notify(t("productDetail.imageDeleted"));
-    } catch (err) {
-      notify(
-        err instanceof LastImageDeleteError
-          ? t("productDetail.cannotDeleteLastImage")
-          : err instanceof Error
-            ? err.message
-            : t("productDetail.failedToDeleteImage"),
-        "error"
-      );
-    } finally {
-      setDeletingUrl(null);
-    }
-  }
-
-  const imageUrls = variant.imageUrls;
 
   return (
     <div className="mt-6 border-t border-edge-soft pt-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-faint">
-            {t("productDetail.images")}
-          </h2>
-          <p className="mt-1 text-sm text-muted">
-            {t("productDetail.imagesHint")}
-          </p>
-        </div>
-        <div>
-          <input
-            ref={inputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleFileChange}
-            disabled={uploading}
-          />
-          <button
-            type="button"
-            onClick={() => inputRef.current?.click()}
-            disabled={uploading}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-accent-hover disabled:opacity-60 sm:w-auto"
-          >
-            {uploading
-              ? t("common.uploading")
-              : t("productDetail.uploadImage")}
-          </button>
-        </div>
-      </div>
-
-      {imageUrls.length > 0 ? (
-        <div className="mt-4">
-          <ProductImageGrid
-            urls={imageUrls}
-            deletingUrl={deletingUrl}
-            onDelete={handleDelete}
-          />
-        </div>
-      ) : (
-        <div className="mt-4 rounded-xl border border-dashed border-edge bg-subtle px-4 py-10 text-center text-sm text-faint">
-          {t("productDetail.noImagesYet")}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ProductImageGrid({
-  urls,
-  deletingUrl,
-  onDelete,
-  compact = false,
-}: {
-  urls: string[];
-  deletingUrl: string | null;
-  onDelete: (url: string) => void;
-  compact?: boolean;
-}) {
-  const { t } = useI18n();
-
-  return (
-    <div
-      className={
-        compact
-          ? "grid grid-cols-2 gap-1.5"
-          : "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
-      }
-    >
-      {urls.map((url) => (
-        <div
-          key={url}
-          className={[
-            "group relative aspect-square overflow-hidden border border-edge bg-subtle",
-            compact ? "rounded-lg" : "rounded-xl",
-          ].join(" ")}
-        >
-          <a
-            href={productImageSrc(url)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block size-full"
-          >
-            <img
-              src={productImageSrc(url)}
-              alt=""
-              className="size-full object-cover transition group-hover:scale-105"
-            />
-          </a>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onDelete(url);
-            }}
-            disabled={deletingUrl === url}
-            title={t("productDetail.deleteImage")}
-            aria-label={t("productDetail.deleteImage")}
-            className={[
-              "absolute right-1.5 top-1.5 z-10 flex items-center justify-center rounded-full bg-black/55 text-white shadow-sm transition hover:bg-red-600 disabled:opacity-60",
-              compact ? "size-6" : "size-8",
-            ].join(" ")}
-          >
-            {deletingUrl === url ? (
-              <span
-                className={[
-                  "animate-spin rounded-full border-2 border-white border-t-transparent",
-                  compact ? "size-3" : "size-3.5",
-                ].join(" ")}
-              />
-            ) : (
-              <DeleteImageIcon compact={compact} />
-            )}
-          </button>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function DeleteImageIcon({ compact }: { compact?: boolean }) {
-  return (
-    <svg
-      className={compact ? "size-3" : "size-3.5"}
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M6 6l12 12M18 6L6 18"
-        stroke="currentColor"
-        strokeWidth="2.2"
-        strokeLinecap="round"
+      <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-faint">
+        {t("productDetail.images")}
+      </h2>
+      <ImageGalleryEditor
+        urls={variant.imageUrls}
+        hint={t("productDetail.imagesHint")}
+        uploadOne={async (file) => {
+          onUploaded(await uploadProductImage(productId, file));
+        }}
+        saveOrder={async (next) => {
+          await reorderVariantImages(productId, variant.sku, variant.imageUrls, next);
+          onUploaded(await getManageProduct(productId));
+        }}
+        remove={async (url) => {
+          await deleteVariantImage(productId, variant.sku, url, variant.imageUrls);
+          onUploaded(await getManageProduct(productId));
+        }}
       />
-    </svg>
+    </div>
   );
 }

@@ -67,6 +67,8 @@ export const ko: Messages = {
     requestFailed: "요청 실패",
     pleaseChooseImageFile: "이미지 파일을 선택해 주세요",
     imageMustBe50MiBOrSmaller: "이미지는 50 MiB 이하여야 합니다",
+    imageFilesSkipped_one: "{count}개 파일을 건너뛰었습니다: 이미지가 아니거나 50 MiB 초과",
+    imageFilesSkipped_other: "{count}개 파일을 건너뛰었습니다: 이미지가 아니거나 50 MiB 초과",
     failedToLoadCatalogMasters: "카탈로그 마스터를 불러오지 못했습니다",
     enterValidPrice: "유효한 가격을 입력하세요",
     dismissNotification: "알림 닫기",
@@ -244,7 +246,7 @@ export const ko: Messages = {
     initialStockPlaceholder: "이 SKU의 재고 수량",
     image: "이미지",
     imageHint:
-      "선택 사항. SKU 추가 시 이 SKU에 업로드됩니다 (최대 50 MiB).",
+      "선택 사항. 여러 장을 고를 수 있으며, SKU 추가 시 보이는 순서대로 이 SKU에 업로드됩니다 (장당 최대 50 MiB).",
     chooseImage: "이미지 선택",
     styleCodeAndNameRequired: "스타일 코드와 이름은 필수입니다",
     styleCreated: "스타일 {code}이(가) 생성되었습니다",
@@ -256,7 +258,7 @@ export const ko: Messages = {
     enterValidPrice: "상위 상품의 유효한 가격을 입력하세요",
     productCreated: "상품이 생성되었습니다: {name}",
     productCreatedButImageFailed:
-      "SKU는 생성되었지만 이미지 업로드에 실패했습니다: {error}. 상품 페이지에서 다시 시도할 수 있습니다.",
+      "SKU는 생성되었지만 이미지 {total}장 중 {done}장만 업로드되었습니다: {error}. 나머지는 상품 페이지에서 추가할 수 있습니다.",
     masterMissing:
       "브랜드, 스타일, 색상 또는 사이즈 코드가 카탈로그 마스터에 없습니다. 먼저 카탈로그에서 생성하세요.",
     duplicateExists:
@@ -378,6 +380,21 @@ export const ko: Messages = {
     cannotDeleteLastImage:
       "마지막 이미지는 아직 삭제할 수 없습니다 — 대체 이미지를 업로드한 뒤 이 이미지를 삭제하세요",
     noImagesYet: "아직 이미지가 없습니다.",
+    chooseImages: "이미지 추가",
+    mainImage: "대표",
+    moveEarlier: "앞으로 이동",
+    moveLater: "뒤로 이동",
+    dragToReorder: "드래그해서 순서 변경",
+    imageOrderSaved: "이미지 순서를 저장했습니다",
+    failedToSaveImageOrder: "이미지 순서 저장에 실패했습니다",
+    uploadQueueHint: "드래그하거나 화살표로 순서를 정한 뒤 업로드하세요. 현재 이미지 뒤에 이 순서대로 추가됩니다.",
+    uploadQueued_one: "이미지 {count}장 업로드",
+    uploadQueued_other: "이미지 {count}장 업로드",
+    uploadingProgress: "업로드 중 {done}/{total}…",
+    imagesUploaded_one: "이미지 {count}장을 업로드했습니다",
+    imagesUploaded_other: "이미지 {count}장을 업로드했습니다",
+    uploadStopped: "{total}장 중 {done}장 업로드 후 중단됨: {error}. 나머지는 대기열에 남아 있습니다.",
+    clearQueue: "비우기",
   },
 
   skuDetail: {
