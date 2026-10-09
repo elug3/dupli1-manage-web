@@ -1,5 +1,6 @@
 import { authedFetch } from "./auth";
 import { publishOrderUpdate } from "./order-updates";
+import { isSameImageSet } from "./image-upload";
 import {
   authPath,
   inventoryPath,
@@ -907,6 +908,24 @@ export async function deleteVariantImage(
     throw new LastImageDeleteError();
   }
   return updateVariant(productId, sku, { imageUrls: next });
+}
+
+/**
+ * Saves a new order for a variant's gallery; the first image is the one the
+ * storefront shows first. `nextUrls` must be a reordering of `currentUrls`:
+ * the PUT replaces the whole list, so a stale or partial list would drop or
+ * resurrect images. Product realigns the listing thumbnails by URL.
+ */
+export async function reorderVariantImages(
+  productId: string,
+  sku: string,
+  currentUrls: string[],
+  nextUrls: string[]
+): Promise<ProductVariant> {
+  if (!isSameImageSet(currentUrls, nextUrls)) {
+    throw new Error("Image list changed; reload and try again");
+  }
+  return updateVariant(productId, sku, { imageUrls: nextUrls });
 }
 
 export async function deleteVariant(

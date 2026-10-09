@@ -30,12 +30,16 @@ import {
 } from "~/lib/categories";
 import { useI18n } from "~/lib/i18n";
 import { useNotify } from "~/lib/notifications";
+import { uploadInOrder } from "~/lib/image-upload";
+import {
+  ImageUploadQueue,
+  useImageFilePicker,
+} from "~/components/ImageGalleryEditor";
 
 export function meta() {
   return [{ title: "New Product | Dupli1 Admin" }];
 }
 
-const MAX_IMAGE_BYTES = 50 * 1024 * 1024;
 
 const inputCls =
   "w-full rounded-xl border border-edge bg-panel px-4 py-2.5 text-sm text-ink outline-none transition placeholder:text-soft focus:border-accent focus:ring-2 focus:ring-accent/20";
@@ -86,8 +90,7 @@ export default function NewProduct() {
   const [widthMm, setWidthMm] = useState("");
   const [heightMm, setHeightMm] = useState("");
   const [depthMm, setDepthMm] = useState("");
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [addingSku, setAddingSku] = useState(false);
 
   // Bags stays the default and only option if categories cannot load.
@@ -200,44 +203,14 @@ export default function NewProduct() {
     };
   }, [step, allowedSizes, notify, t]);
 
-  useEffect(() => {
-    if (!imageFile) {
-      setImagePreviewUrl(null);
-      return;
-    }
-    const url = URL.createObjectURL(imageFile);
-    setImagePreviewUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [imageFile]);
-
   function clearImage() {
-    setImageFile(null);
+    setImageFiles([]);
     if (imageInputRef.current) imageInputRef.current.value = "";
   }
 
-  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) {
-      setImageFile(null);
-      return;
-    }
-
-    if (!file.type.startsWith("image/")) {
-      notify(t("common.pleaseChooseImageFile"), "error");
-      e.target.value = "";
-      setImageFile(null);
-      return;
-    }
-
-    if (file.size > MAX_IMAGE_BYTES) {
-      notify(t("common.imageMustBe50MiBOrSmaller"), "error");
-      e.target.value = "";
-      setImageFile(null);
-      return;
-    }
-
-    setImageFile(file);
-  }
+  const handleImageChange = useImageFilePicker((files) =>
+    setImageFiles((prev) => [...prev, ...files])
+  );
 
   async function handleCreateStyle(e: React.FormEvent) {
     e.preventDefault();
@@ -377,15 +350,19 @@ export default function NewProduct() {
         }
       }
 
-      if (imageFile) {
-        try {
-          await uploadVariantImage(createdProductId, variant.sku, imageFile);
-        } catch (err) {
+      if (imageFiles.length > 0) {
+        // One at a time, in the order shown, so the SKU's gallery keeps it.
+        const result = await uploadInOrder(imageFiles, (file) =>
+          uploadVariantImage(createdProductId, variant.sku, file).then(() => {})
+        );
+        if (result.error) {
           notify(
             t("productNew.productCreatedButImageFailed", {
+              done: result.done,
+              total: imageFiles.length,
               error:
-                err instanceof Error
-                  ? err.message
+                result.error instanceof Error
+                  ? result.error.message
                   : t("productNew.unknownError"),
             }),
             "error"
@@ -873,54 +850,43 @@ export default function NewProduct() {
                   id="image"
                   type="file"
                   accept="image/*"
+                  multiple
                   className="hidden"
                   onChange={handleImageChange}
                   disabled={addingSku}
                 />
-                {imageFile && imagePreviewUrl ? (
-                  <div className="flex items-start gap-3 rounded-xl border border-edge bg-subtle p-3">
-                    <img
-                      src={imagePreviewUrl}
-                      alt=""
-                      className="h-20 w-20 shrink-0 rounded-lg object-cover"
+                {imageFiles.length > 0 && (
+                  <div className="space-y-2 rounded-xl border border-edge bg-subtle p-3">
+                    <ImageUploadQueue
+                      files={imageFiles}
+                      onChange={setImageFiles}
+                      markMain
+                      disabled={addingSku}
                     />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-ink">
-                        {imageFile.name}
-                      </p>
-                      <p className="mt-0.5 text-xs text-faint">
-                        {(imageFile.size / 1024).toFixed(1)} KB
-                      </p>
-                      <div className="mt-2 flex flex-wrap gap-3">
-                        <button
-                          type="button"
-                          onClick={() => imageInputRef.current?.click()}
-                          disabled={addingSku}
-                          className="text-xs font-semibold text-accent hover:underline disabled:opacity-60"
-                        >
-                          {t("common.replace")}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={clearImage}
-                          disabled={addingSku}
-                          className="text-xs font-semibold text-faint hover:underline disabled:opacity-60"
-                        >
-                          {t("common.remove")}
-                        </button>
-                      </div>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={clearImage}
+                      disabled={addingSku}
+                      className="text-xs font-semibold text-faint hover:underline disabled:opacity-60"
+                    >
+                      {t("productDetail.clearQueue")}
+                    </button>
                   </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => imageInputRef.current?.click()}
-                    disabled={addingSku}
-                    className="inline-flex w-full items-center justify-center rounded-xl border border-dashed border-edge bg-subtle px-4 py-8 text-sm font-semibold text-accent transition hover:border-accent/40 hover:bg-panel disabled:opacity-60"
-                  >
-                    {t("productNew.chooseImage")}
-                  </button>
                 )}
+                <button
+                  type="button"
+                  onClick={() => imageInputRef.current?.click()}
+                  disabled={addingSku}
+                  className={
+                    imageFiles.length > 0
+                      ? "text-xs font-semibold text-accent hover:underline disabled:opacity-60"
+                      : "inline-flex w-full items-center justify-center rounded-xl border border-dashed border-edge bg-subtle px-4 py-8 text-sm font-semibold text-accent transition hover:border-accent/40 hover:bg-panel disabled:opacity-60"
+                  }
+                >
+                  {imageFiles.length > 0
+                    ? t("productDetail.chooseImages")
+                    : t("productNew.chooseImage")}
+                </button>
               </div>
 
               <button
