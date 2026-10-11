@@ -65,6 +65,8 @@ export const en = {
     requestFailed: "request failed",
     pleaseChooseImageFile: "Please choose an image file",
     imageMustBe50MiBOrSmaller: "Image must be 50 MiB or smaller",
+    imageFilesSkipped_one: "{count} file skipped: not an image or over 50 MiB",
+    imageFilesSkipped_other: "{count} files skipped: not an image or over 50 MiB",
     failedToLoadCatalogMasters: "Failed to load catalog masters",
     enterValidPrice: "Enter a valid price",
     dismissNotification: "Dismiss notification",
@@ -241,8 +243,8 @@ export const en = {
     initialStockPlaceholder: "Inventory quantity for this SKU",
     image: "Image",
     imageHint:
-      "Optional. Uploaded to this SKU when you add it (max 50 MiB).",
-    chooseImage: "Choose image",
+      "Optional. Choose one or more; they are uploaded to this SKU in the order shown when you add it (max 50 MiB each).",
+    chooseImage: "Choose images",
     styleCodeAndNameRequired: "Style code and name are required",
     styleCreated: "Style {code} created",
     failedToCreateStyle: "Failed to create style",
@@ -253,7 +255,7 @@ export const en = {
     enterValidPrice: "Enter a valid price for the parent product",
     productCreated: "Product created: {name}",
     productCreatedButImageFailed:
-      "SKU created, but image upload failed: {error}. You can retry from the product page.",
+      "SKU created, but only {done} of {total} images uploaded: {error}. You can add the rest from the product page.",
     masterMissing:
       "A brand, style, color, or size code is missing from catalog masters. Create it under Catalog first.",
     duplicateExists:
@@ -376,6 +378,21 @@ export const en = {
     cannotDeleteLastImage:
       "Cannot remove the last image yet — upload a replacement first, then delete this one",
     noImagesYet: "No images yet.",
+    chooseImages: "Add images",
+    mainImage: "Main",
+    moveEarlier: "Move earlier",
+    moveLater: "Move later",
+    dragToReorder: "Drag to reorder",
+    imageOrderSaved: "Image order saved",
+    failedToSaveImageOrder: "Failed to save image order",
+    uploadQueueHint: "Set the order by dragging or with the arrows, then upload. They are added after the current images, in this order.",
+    uploadQueued_one: "Upload {count} image",
+    uploadQueued_other: "Upload {count} images",
+    uploadingProgress: "Uploading {done}/{total}…",
+    imagesUploaded_one: "{count} image uploaded",
+    imagesUploaded_other: "{count} images uploaded",
+    uploadStopped: "Uploaded {done} of {total}, then stopped: {error}. The rest are still queued.",
+    clearQueue: "Clear",
   },
 
   skuDetail: {

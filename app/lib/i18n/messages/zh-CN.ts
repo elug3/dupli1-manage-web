@@ -67,6 +67,8 @@ export const zhCN: Messages = {
     requestFailed: "请求失败",
     pleaseChooseImageFile: "请选择图片文件",
     imageMustBe50MiBOrSmaller: "图片大小不得超过 50 MiB",
+    imageFilesSkipped_one: "已跳过 {count} 个文件：不是图片或超过 50 MiB",
+    imageFilesSkipped_other: "已跳过 {count} 个文件：不是图片或超过 50 MiB",
     failedToLoadCatalogMasters: "加载目录主数据失败",
     enterValidPrice: "请输入有效价格",
     dismissNotification: "关闭通知",
@@ -242,7 +244,7 @@ export const zhCN: Messages = {
     initialStockPlaceholder: "此 SKU 的库存数量",
     image: "图片",
     imageHint:
-      "可选。添加 SKU 时上传到该 SKU（最大 50 MiB）。",
+      "可选。可选择多张，添加 SKU 时按显示顺序上传到该 SKU（每张最大 50 MiB）。",
     chooseImage: "选择图片",
     styleCodeAndNameRequired: "款式代码和名称为必填项",
     styleCreated: "已创建款式 {code}",
@@ -254,7 +256,7 @@ export const zhCN: Messages = {
     enterValidPrice: "请为父级商品输入有效价格",
     productCreated: "商品已创建：{name}",
     productCreatedButImageFailed:
-      "SKU 已创建，但图片上传失败：{error}。您可在商品页面重试。",
+      "SKU 已创建，但 {total} 张图片中仅上传了 {done} 张：{error}。其余可在商品页面添加。",
     masterMissing:
       "品牌、款式、颜色或尺码代码在目录主数据中缺失。请先在目录中创建。",
     duplicateExists:
@@ -375,6 +377,21 @@ export const zhCN: Messages = {
     cannotDeleteLastImage:
       "暂无法删除最后一张图片 — 请先上传替换图，然后再删除此图",
     noImagesYet: "暂无图片。",
+    chooseImages: "添加图片",
+    mainImage: "主图",
+    moveEarlier: "前移",
+    moveLater: "后移",
+    dragToReorder: "拖动以调整顺序",
+    imageOrderSaved: "图片顺序已保存",
+    failedToSaveImageOrder: "保存图片顺序失败",
+    uploadQueueHint: "拖动或用箭头设置顺序后上传。图片将按此顺序添加到现有图片之后。",
+    uploadQueued_one: "上传 {count} 张图片",
+    uploadQueued_other: "上传 {count} 张图片",
+    uploadingProgress: "正在上传 {done}/{total}…",
+    imagesUploaded_one: "已上传 {count} 张图片",
+    imagesUploaded_other: "已上传 {count} 张图片",
+    uploadStopped: "已上传 {total} 张中的 {done} 张后中止：{error}。其余仍在队列中。",
+    clearQueue: "清空",
   },
 
   skuDetail: {
