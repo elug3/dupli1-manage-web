@@ -64,7 +64,10 @@ export default function Products() {
 
   const qParam = paramValue(searchParams, "q");
   const category = paramValue(searchParams, "category");
+  const subcategory = paramValue(searchParams, "subcategory");
+  // A legacy name-substring filter; the brand select sets brand_code.
   const brand = paramValue(searchParams, "brand");
+  const brandCode = paramValue(searchParams, "brand_code");
   const status = paramValue(searchParams, "status");
   const sort = paramValue(searchParams, "sort") || "newest";
   const order = paramValue(searchParams, "order");
@@ -133,7 +136,9 @@ export default function Products() {
     searchProducts({
       q: qParam || undefined,
       category: category || undefined,
+      subcategory: subcategory || undefined,
       brand: brand || undefined,
+      brandCode: brandCode || undefined,
       status: status || undefined,
       sort: effectiveSort,
       order: effectiveOrder,
@@ -160,7 +165,7 @@ export default function Products() {
     return () => {
       cancelled = true;
     };
-  }, [qParam, category, brand, status, sort, order, offset, t]);
+  }, [qParam, category, subcategory, brand, brandCode, status, sort, order, offset, t]);
 
   const categories = useMemo(() => {
     const cats = new Set<string>(KNOWN_CATEGORIES);
@@ -172,8 +177,25 @@ export default function Products() {
     return ["all", ...Array.from(cats).sort()];
   }, [products, category, categoryRows]);
 
+  // Subcategories of the chosen category, or of every category when none is.
+  const subCategoryOptions = useMemo(() => {
+    const rows = category
+      ? categoryRows.filter((c) => c.code === category)
+      : categoryRows;
+    const seen = new Set<string>();
+    return rows.flatMap((c) =>
+      c.subCategories.filter((s) => {
+        if (seen.has(s.code)) return false;
+        seen.add(s.code);
+        return true;
+      })
+    );
+  }, [categoryRows, category]);
+
   const activeCategory = category || "all";
-  const hasActiveFilters = Boolean(qParam || category || brand || status);
+  const hasActiveFilters = Boolean(
+    qParam || category || subcategory || brand || brandCode || status
+  );
   const pageStart = total === 0 ? 0 : offset + 1;
   const pageEnd = Math.min(offset + products.length, total);
   const canPrev = offset > 0;
@@ -234,7 +256,9 @@ export default function Products() {
             listQuery={{
               q: qParam || undefined,
               category: category || undefined,
+              subcategory: subcategory || undefined,
               brand: brand || undefined,
+              brandCode: brandCode || undefined,
               status: status || undefined,
               sort: sort || undefined,
               order: order || undefined,
@@ -249,7 +273,10 @@ export default function Products() {
             key={cat}
             type="button"
             onClick={() =>
-              updateFilters({ category: cat === "all" ? null : cat })
+              updateFilters({
+                category: cat === "all" ? null : cat,
+                subcategory: null,
+              })
             }
             className={[
               "rounded-full px-4 py-1.5 text-sm font-medium capitalize transition",
@@ -304,20 +331,48 @@ export default function Products() {
               {t("products.filterBrand")}
             </span>
             <select
-              value={brand}
-              onChange={(e) => updateFilters({ brand: e.target.value || null })}
+              value={brandCode}
+              onChange={(e) =>
+                updateFilters({ brand_code: e.target.value || null, brand: null })
+              }
               className={`w-full ${filterSelectCls}`}
             >
-              <option value="">{t("products.brandAll")}</option>
+              <option value="">
+                {brand && !brandCode ? brand : t("products.brandAll")}
+              </option>
               {brands.map((b) => (
-                <option key={b.code} value={b.name}>
+                <option key={b.code} value={b.code}>
                   {b.name}
                 </option>
               ))}
             </select>
           </label>
 
-          <label className="space-y-1.5 sm:col-span-2 lg:col-span-2">
+          <label className="space-y-1.5">
+            <span className="text-xs font-semibold uppercase tracking-wide text-faint">
+              {t("products.filterSubcategory")}
+            </span>
+            <select
+              value={subcategory}
+              onChange={(e) =>
+                updateFilters({ subcategory: e.target.value || null })
+              }
+              className={`w-full ${filterSelectCls}`}
+            >
+              <option value="">{t("products.subcategoryAll")}</option>
+              {subcategory &&
+                !subCategoryOptions.some((s) => s.code === subcategory) && (
+                  <option value={subcategory}>{subcategory}</option>
+                )}
+              {subCategoryOptions.map((s) => (
+                <option key={s.code} value={s.code}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="space-y-1.5 sm:col-span-1 lg:col-span-3">
             <span className="text-xs font-semibold uppercase tracking-wide text-faint">
               {t("products.filterSort")}
             </span>

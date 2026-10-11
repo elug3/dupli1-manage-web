@@ -1065,6 +1065,9 @@ const server = http.createServer(async (req, res) => {
       undated_customers: 37,
     });
   }
+  if (method === "GET" && path === "/api/v1/products/reports/catalog") {
+    return send(res, 200, mockCatalogReport(url.searchParams.get("status") ?? ""));
+  }
   if (method === "GET" && path === "/api/v1/products/reports/visitors") {
     const granularity = url.searchParams.get("granularity") ?? "week";
     const periods = reportPeriods(granularity).map(([start, end], i) => {
@@ -1110,3 +1113,80 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, () => {
   console.log(`Mock gateway listening on http://localhost:${PORT}`);
 });
+
+// GET /api/v1/products/reports/catalog: the numbers from the Figma design.
+// Brand × subcategory products; SKUs and units scale from them per brand.
+function mockCatalogReport(status) {
+  const subs = [
+    ["bags", "Bags", [["handbags", "Handbags"], ["tote", "Tote"], ["shoulder", "Shoulder"], ["cross", "Crossbody"], ["mini", "Mini"]]],
+    ["clothing", "Clothing", [["padded", "Padded Jackets"], ["jackets", "Jackets"]]],
+  ];
+  const grid = [
+    ["PRD", "Prada", [6, 5, 4, 3, 2, 1, 2], 3.2, 10],
+    ["GUC", "Gucci", [5, 4, 3, 3, 2, 0, 2], 3.2, 10],
+    ["MON", "Moncler", [0, 0, 0, 0, 0, 12, 6], 3.7, 12],
+    ["LV", "Louis Vuitton", [5, 5, 3, 3, 1, 0, 0], 3.1, 10],
+    ["CHA", "Chanel", [4, 3, 4, 2, 2, 0, 0], 3.1, 9],
+    ["HER", "Hermès", [4, 3, 1, 1, 1, 0, 0], 2.9, 6],
+    ["BV", "Bottega Veneta", [2, 2, 2, 3, 0, 0, 0], 3, 9],
+    ["BUR", "Burberry", [0, 0, 0, 0, 0, 5, 4], 3.6, 11],
+    ["CEL", "Celine", [2, 2, 2, 2, 0, 0, 0], 3, 10],
+    ["FND", "Fendi", [0, 0, 0, 0, 0, 0, 0], 0, 0],
+    ["", "Vintage Archive", [0, 0, 0, 0, 0, 0, 0], 0, 0, 1],
+  ];
+  const scale = status === "draft" ? 0.12 : status === "archived" ? 0 : status === "active" ? 0.88 : 1;
+  const tally = (p, skuPer, unitPer) => {
+    const products = Math.round(p * scale);
+    const skus = Math.round(products * skuPer);
+    return { products, skus, units: skus * unitPer, reserved: Math.floor(skus / 12) };
+  };
+  const add = (a, b) => {
+    for (const k of ["products", "skus", "units", "reserved"]) a[k] += b[k];
+  };
+  const zero = () => ({ products: 0, skus: 0, units: 0, reserved: 0 });
+  const totals = zero();
+  const brands = [];
+  const cells = [];
+  const subTotals = new Map();
+  const cols = subs.flatMap(([cat, , list]) => list.map(([code]) => [cat, code]));
+  for (const [code, name, counts, skuPer, unitPer, unsorted] of grid) {
+    const b = { code, name, ...zero() };
+    counts.forEach((p, i) => {
+      const cell = tally(p, skuPer, unitPer);
+      const [category, sub] = cols[i];
+      const key = `${category}/${sub}`;
+      if (!subTotals.has(key)) subTotals.set(key, zero());
+      add(subTotals.get(key), cell);
+      add(b, cell);
+      if (cell.products > 0) cells.push({ brand_code: code, brand: name, category, sub_category: sub, ...cell });
+    });
+    if (unsorted && scale > 0) {
+      const cell = { products: unsorted, skus: 2, units: 3, reserved: 0 };
+      if (!subTotals.has("bags/")) subTotals.set("bags/", zero());
+      add(subTotals.get("bags/"), cell);
+      add(b, cell);
+      cells.push({ brand_code: "", brand: name, category: "bags", sub_category: "", ...cell });
+    }
+    add(totals, b);
+    brands.push(b);
+  }
+  brands.sort((a, b) => b.products - a.products || a.name.localeCompare(b.name));
+  const categories = subs.map(([code, name, list]) => {
+    const c = { code, name, ...zero(), sub_categories: [] };
+    const all = code === "bags" && subTotals.has("bags/") ? [...list, ["", ""]] : list;
+    for (const [sub, subName] of all) {
+      const t = subTotals.get(`${code}/${sub}`) ?? zero();
+      add(c, t);
+      c.sub_categories.push({ code: sub, name: subName, ...t });
+    }
+    return c;
+  });
+  return {
+    ...(status ? { status } : {}),
+    totals,
+    products_by_status: { active: 114, draft: 15, archived: 0 },
+    brands,
+    categories,
+    cells,
+  };
+}

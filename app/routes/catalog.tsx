@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router";
 import {
   type CatalogCodeName,
   type CatalogStyle,
@@ -115,13 +116,21 @@ export default function CatalogMasters() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-bold text-ink sm:text-2xl">
-          {t("catalog.title")}
-        </h1>
-        <p className="mt-0.5 text-sm text-muted">
-          {t("catalog.subtitle")}
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-ink sm:text-2xl">
+            {t("catalog.title")}
+          </h1>
+          <p className="mt-0.5 text-sm text-muted">
+            {t("catalog.subtitle")}
+          </p>
+        </div>
+        <Link
+          to="/catalog/overview"
+          className="inline-flex shrink-0 items-center justify-center rounded-xl border border-edge bg-surface px-4 py-2.5 text-sm font-semibold text-ink shadow-sm transition hover:border-accent/40 hover:text-accent"
+        >
+          {t("catalog.overviewLink")}
+        </Link>
       </div>
 
       {error && (
