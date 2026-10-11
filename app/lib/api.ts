@@ -33,7 +33,11 @@ export interface ProductSearchResponse {
 export interface ProductListQuery {
   q?: string;
   category?: string;
+  subcategory?: string;
+  /** Name substring (legacy); prefer `brandCode`. */
   brand?: string;
+  /** Exact brand master code. */
+  brandCode?: string;
   color?: string;
   size?: string;
   material?: string;
@@ -565,7 +569,9 @@ export async function searchProducts(
   };
   set("q", query.q);
   set("category", query.category);
+  set("subcategory", query.subcategory);
   set("brand", query.brand);
+  set("brand_code", query.brandCode);
   set("color", query.color);
   set("size", query.size);
   set("material", query.material);
@@ -2429,6 +2435,66 @@ export async function getVisitorReport(
   if (res.status === 403) return null;
   if (!res.ok) throw new Error(await readError(res, "Failed to load visitor report"));
   return (await res.json()) as VisitorReport;
+}
+
+/** Products (styles), every SKU of them, and stock on those SKUs. */
+export interface CatalogTally {
+  products: number;
+  skus: number;
+  /** Stock on hand; `reserved` of it is held for open orders. */
+  units: number;
+  reserved: number;
+}
+
+export type CatalogCountBy = "products" | "skus" | "units";
+
+export interface CatalogBrandCount extends CatalogTally {
+  /** Brand master code; `""` for a brand a product names without a master. */
+  code: string;
+  name: string;
+}
+
+export interface CatalogSubCategoryCount extends CatalogTally {
+  /** `""` holds products with no subcategory. */
+  code: string;
+  name: string;
+}
+
+export interface CatalogCategoryCount extends CatalogTally {
+  code: string;
+  name: string;
+  sub_categories: CatalogSubCategoryCount[];
+}
+
+export interface CatalogCell extends CatalogTally {
+  brand_code: string;
+  brand: string;
+  category: string;
+  sub_category: string;
+}
+
+/**
+ * The catalog overview: counts per brand, category/subcategory and brand ×
+ * subcategory. Every brand master and taxonomy subcategory is listed, with
+ * zeros when empty; `cells` holds non-empty pairs only.
+ */
+export interface CatalogReport {
+  status?: string;
+  totals: CatalogTally;
+  /** Whole catalog, whatever `status` narrowed the rest to. */
+  products_by_status: Record<string, number>;
+  brands: CatalogBrandCount[];
+  categories: CatalogCategoryCount[];
+  cells: CatalogCell[];
+}
+
+/** Catalog overview (`product.read`). `null` when the caller lacks it. */
+export async function getCatalogReport(status?: string): Promise<CatalogReport | null> {
+  const q = status ? `?${new URLSearchParams({ status })}` : "";
+  const res = await authedFetch(productPath(`/api/v1/products/reports/catalog${q}`));
+  if (res.status === 403) return null;
+  if (!res.ok) throw new Error(await readError(res, "Failed to load catalog overview"));
+  return (await res.json()) as CatalogReport;
 }
 
 /**

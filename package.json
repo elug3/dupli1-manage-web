@@ -15,6 +15,7 @@
     "test:orders:browser": "node scripts/test-order-stream-browser.mjs",
     "test:support:browser": "node scripts/test-support-browser.mjs",
     "test:images:browser": "node scripts/test-product-images-browser.mjs",
+    "test:catalog:browser": "node scripts/test-catalog-overview-browser.mjs",
     "test:session": "node scripts/test-session-refresh.mjs",
     "test:session:shared": "node scripts/test-session-shared.mjs",
     "mock:gateway": "node scripts/mock-gateway.mjs"
