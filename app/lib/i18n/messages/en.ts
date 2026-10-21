@@ -398,6 +398,12 @@ export const en = {
   },
 
   skuDetail: {
+    imagesOwnHint:
+      "Shoppers see these photos when they pick this SKU, and on other {color} SKUs that have no photos of their own.",
+    imagesSameColorHint:
+      "No photos yet: shoppers see the photos of {sku}, the same color. Upload here only if this size should look different.",
+    imagesDefaultHint:
+      "No photos yet: shoppers see the product's main photos. Photos uploaded here also show on other SKUs in this color that have none.",
     heading: "SKU detail",
     backToProduct: "← Back to product",
     skuNotFound: "SKU not found on this product",

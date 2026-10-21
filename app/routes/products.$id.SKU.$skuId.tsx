@@ -13,6 +13,7 @@ import {
   getManageProduct,
   parseDimensionsInput,
   parseVariantPriceInput,
+  productVariants,
   reorderVariantImages,
   setInventory,
   updateVariant,
@@ -208,6 +209,7 @@ export default function SkuDetail() {
         <ImagesSection
           productId={product.id}
           variant={variant}
+          siblings={productVariants(product)}
           onUploaded={(updated) => {
             setVariant(updated);
           }}
@@ -444,13 +446,29 @@ function StockSection({
 function ImagesSection({
   productId,
   variant,
+  siblings,
   onUploaded,
 }: {
   productId: string;
   variant: ProductVariant;
+  /** Every SKU of the product, to tell which photos a shopper sees instead. */
+  siblings: ProductVariant[];
   onUploaded: (variant: ProductVariant) => void;
 }) {
   const { t } = useI18n();
+  // Mirrors the storefront PDP: own photos, else another SKU in the same
+  // color, else the product's main (default SKU's) photos.
+  const sameColor = variant.color
+    ? siblings.find(
+        (v) => v.sku !== variant.sku && v.color === variant.color && v.imageUrls.length > 0
+      )
+    : undefined;
+  const hint =
+    variant.imageUrls.length > 0
+      ? t("skuDetail.imagesOwnHint", { color: variant.color || "—" })
+      : sameColor
+        ? t("skuDetail.imagesSameColorHint", { sku: sameColor.sku })
+        : t("skuDetail.imagesDefaultHint");
 
   return (
     <section className="space-y-3 border-t border-edge-soft pt-6">
@@ -459,6 +477,7 @@ function ImagesSection({
       </h2>
       <ImageGalleryEditor
         urls={variant.imageUrls}
+        hint={hint}
         uploadOne={async (file) => {
           onUploaded(await uploadVariantImage(productId, variant.sku, file));
         }}
