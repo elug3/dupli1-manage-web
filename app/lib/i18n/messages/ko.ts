@@ -400,6 +400,12 @@ export const ko: Messages = {
   },
 
   skuDetail: {
+    imagesOwnHint:
+      "고객이 이 SKU를 고르면 이 사진이 보이며, 사진이 없는 같은 색상({color})의 다른 SKU에도 표시됩니다.",
+    imagesSameColorHint:
+      "사진 없음: 같은 색상인 {sku}의 사진이 표시됩니다. 이 사이즈를 다르게 보여줘야 할 때만 업로드하세요.",
+    imagesDefaultHint:
+      "사진 없음: 상품 대표 사진이 표시됩니다. 여기에 올린 사진은 사진이 없는 같은 색상의 다른 SKU에도 표시됩니다.",
     heading: "SKU 상세",
     backToProduct: "← 상품으로 돌아가기",
     skuNotFound: "이 상품에서 SKU를 찾을 수 없습니다",

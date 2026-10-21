@@ -397,6 +397,12 @@ export const zhCN: Messages = {
   },
 
   skuDetail: {
+    imagesOwnHint:
+      "顾客选择此 SKU 时显示这些图片；同色（{color}）且没有自己图片的其他 SKU 也会显示。",
+    imagesSameColorHint:
+      "暂无图片：显示同色 SKU {sku} 的图片。仅当此尺码需要不同展示时才上传。",
+    imagesDefaultHint:
+      "暂无图片：显示商品主图。在此上传的图片也会显示在同色且没有图片的其他 SKU 上。",
     heading: "SKU 详情",
     backToProduct: "← 返回商品",
     skuNotFound: "在此商品上未找到该 SKU",
