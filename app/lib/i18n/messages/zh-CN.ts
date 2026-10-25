@@ -19,7 +19,6 @@ export const zhCN: Messages = {
     analytics: "分析",
     users: "用户",
     telegram: "Telegram",
-    killSwitches: "紧急开关",
     support: "咨询",
     settings: "设置",
     signOut: "退出登录",

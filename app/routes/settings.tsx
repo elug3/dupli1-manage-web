@@ -1,4 +1,10 @@
 import { useState } from "react";
+import { useLoaderData } from "react-router";
+import {
+  KillSwitchesPanel,
+  type KillSwitchActionData,
+  type KillSwitchesData,
+} from "~/components/KillSwitchesPanel";
 import { useI18n } from "~/lib/i18n";
 import { LanguageSwitcher } from "~/lib/i18n/LanguageSwitcher";
 import { ThemeSwitcher } from "~/lib/ThemeSwitcher";
@@ -8,9 +14,66 @@ import {
   APP_VERSION,
   shortGitSha,
 } from "~/lib/version";
+import {
+  KillSwitchError,
+  loadKillSwitches,
+  loadPaymentMethods,
+  setKillSwitchServer,
+} from "~/lib/server/kill-switches.server";
+import type { Route } from "./+types/settings";
 
 export function meta() {
   return [{ title: "Settings | Dupli1 Admin" }];
+}
+
+export async function loader({
+  request,
+}: Route.LoaderArgs): Promise<KillSwitchesData> {
+  const [switchesResult, methods] = await Promise.all([
+    loadKillSwitches(request)
+      .then((switches) => ({ switches, error: null as string | null }))
+      .catch((err: unknown) => ({
+        switches: [] as KillSwitchesData["switches"],
+        error:
+          err instanceof KillSwitchError && err.status === 403
+            ? "forbidden"
+            : err instanceof Error
+              ? err.message
+              : "Failed to load kill switches",
+      })),
+    loadPaymentMethods(),
+  ]);
+  return { ...switchesResult, methods };
+}
+
+export async function action({
+  request,
+}: Route.ActionArgs): Promise<KillSwitchActionData> {
+  const formData = await request.formData();
+  const key = String(formData.get("key") ?? "").trim();
+  const engaged = formData.get("engaged") === "true";
+  if (String(formData.get("intent")) !== "kill-switch" || !key) {
+    return { ok: false, intent: "kill-switch", error: "Unknown action" };
+  }
+  try {
+    await setKillSwitchServer(request, key, {
+      engaged,
+      message: engaged
+        ? String(formData.get("message") ?? "").trim()
+        : undefined,
+      reason: String(formData.get("reason") ?? "").trim() || undefined,
+    });
+    return { ok: true, intent: "kill-switch", engaged };
+  } catch (err) {
+    if (err instanceof KillSwitchError && err.status === 403) {
+      return { ok: false, intent: "kill-switch", error: "forbidden" };
+    }
+    return {
+      ok: false,
+      intent: "kill-switch",
+      error: err instanceof Error ? err.message : "Request failed",
+    };
+  }
 }
 
 type NotifKey =
@@ -55,6 +118,7 @@ const defaultNotif: NotifConfig = {
 export default function Settings() {
   const { t } = useI18n();
   const { notify } = useNotify();
+  const killSwitches = useLoaderData<typeof loader>();
   const [site, setSite] = useState<SiteConfig>(defaultSite);
   const [notif, setNotif] = useState<NotifConfig>(defaultNotif);
   const [savingSite, setSavingSite] = useState(false);
@@ -119,6 +183,15 @@ export default function Settings() {
           {t("settings.subtitle")}
         </p>
       </div>
+
+      {/* Payment kill switches — first, since they are reached for in an incident */}
+      <Section
+        id="kill-switches"
+        title={t("killSwitches.title")}
+        description={t("killSwitches.subtitle")}
+      >
+        <KillSwitchesPanel {...killSwitches} />
+      </Section>
 
       {/* Site settings */}
       <Section
@@ -322,16 +395,21 @@ export default function Settings() {
 }
 
 function Section({
+  id,
   title,
   description,
   children,
 }: {
+  id?: string;
   title: string;
   description: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-edge bg-surface p-6 shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
+    <div
+      id={id}
+      className="scroll-mt-20 rounded-2xl border border-edge bg-surface p-6 shadow-[0_1px_4px_rgba(28,27,31,0.04)]"
+    >
       <div className="mb-5 border-b border-edge pb-4">
         <h2 className="font-bold text-ink">{title}</h2>
         <p className="mt-0.5 text-xs text-faint">{description}</p>

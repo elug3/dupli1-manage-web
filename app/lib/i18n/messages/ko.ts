@@ -19,7 +19,6 @@ export const ko: Messages = {
     analytics: "분석",
     users: "사용자",
     telegram: "텔레그램",
-    killSwitches: "킬 스위치",
     support: "상담",
     settings: "설정",
     signOut: "로그아웃",
