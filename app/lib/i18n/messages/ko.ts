@@ -19,6 +19,7 @@ export const ko: Messages = {
     analytics: "분석",
     users: "사용자",
     telegram: "텔레그램",
+    killSwitches: "킬 스위치",
     support: "상담",
     settings: "설정",
     signOut: "로그아웃",
@@ -34,6 +35,40 @@ export const ko: Messages = {
     themeLight: "라이트",
     themeDark: "다크",
     versionLabel: "v{version} · 빌드 {build}",
+  },
+  killSwitches: {
+    title: "킬 스위치",
+    subtitle:
+      "배포 없이 모든 고객에게 결제 수단을 한 번에 끕니다. 스위치가 켜져 있는 동안 결제 화면에서 해당 수단이 사라지고 새 결제는 거절됩니다. 이미 받은 결제, 환불, 이미 승인된 카드 결제창은 영향을 받지 않습니다.",
+    forbiddenRead: "킬 스위치를 보려면 payment.killswitch.read 권한이 필요합니다.",
+    forbiddenManage:
+      "킬 스위치를 바꾸려면 payment.killswitch.manage 권한이 필요합니다.",
+    failed: "킬 스위치를 변경하지 못했습니다",
+    methodCreditCard: "신용카드 결제",
+    methodBypass: "우회(결제 완료 처리) 결제",
+    stateOn: "결제 받는 중",
+    stateBlocked: "차단됨",
+    notConfigured:
+      "이 서버에는 해당 결제 수단이 설정되어 있지 않아 스위치와 관계없이 결제 화면에 표시되지 않습니다.",
+    shopperMessage: "고객 안내 문구",
+    shopperMessagePlaceholder: "예: 카드 결제 점검 중입니다. 잠시 후 다시 시도해 주세요.",
+    shopperMessageHint:
+      "차단 중 결제 화면에 표시됩니다. 비워 두면 스토어의 기본 \"이용 불가\" 문구가 나옵니다.",
+    defaultMessageInUse: "스토어 기본 문구",
+    reason: "사유 (직원 전용)",
+    reasonPlaceholder: "예: NANO 장애, 승인 실패",
+    reasonHint: "다음 담당자가 이유를 알 수 있도록 스위치에 함께 저장됩니다.",
+    releaseNote: "메모 (직원 전용)",
+    releaseNotePlaceholder: "예: NANO 복구 확인",
+    engage: "{name} 차단",
+    release: "{name} 다시 켜기",
+    confirmEngage:
+      "지금 {name}을(를) 차단할까요? 모든 고객의 결제 화면에서 즉시 사라집니다.",
+    confirmRelease: "모든 고객에게 {name}을(를) 다시 켤까요?",
+    engagedToast: "{name} 차단됨",
+    releasedToast: "{name} 다시 켜짐",
+    engagedBy: "{who} 님이 차단 · {when}",
+    releasedBy: "{who} 님이 마지막으로 다시 켬 · {when}",
   },
 
   common: {

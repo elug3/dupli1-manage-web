@@ -1995,6 +1995,8 @@ export const PERMISSION_CATALOG = [
   "payment.read.all",
   "payment.bypass",
   "payment.cancel",
+  "payment.killswitch.read",
+  "payment.killswitch.manage",
   "notification.telegram.read",
   "notification.telegram.manage",
   // Customer consultation inbox (support service).
@@ -2514,6 +2516,39 @@ export function conversionRate(paidOrders: number, uniqueVisitors: number): numb
 export type TelegramSubscriptionStatus = "pending" | "accepted" | "rejected";
 
 /** A Telegram user or chat registered for ops alerts (notification service). */
+/**
+ * A payment kill switch (backend docs/payment-kill-switches.md). Switches are
+ * declared by the payment service, so the console lists whatever it returns.
+ */
+export interface KillSwitch {
+  /** e.g. `payment_method.credit_card` */
+  key: string;
+  /** What it turns off; `payment_method` blocks new payments by `target`. */
+  kind: string;
+  target: string;
+  engaged: boolean;
+  /** Shown to shoppers while engaged. */
+  message?: string;
+  /** The operator's note. Staff only. */
+  reason?: string;
+  updated_by?: string;
+  updated_at?: string;
+}
+
+/** One method as `GET /api/v1/payments/methods` reports it to checkout. */
+export interface PaymentMethodStatus {
+  method: string;
+  available: boolean;
+  /** False when this deployment cannot take the method at all (card without NANO). */
+  configured: boolean;
+  disabled: boolean;
+  message?: string;
+  requires_permission?: string;
+}
+
+/** Longest shopper message / reason the payment service accepts. */
+export const KILL_SWITCH_TEXT_MAX = 200;
+
 export interface TelegramSubscription {
   id: string;
   telegram_user_id?: number;
