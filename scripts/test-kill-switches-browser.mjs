@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Browser test: the payment kill switches page (/kill-switches).
+ * Browser test: the payment kill switches section of /settings.
  *
  * Drives the real page against scripts/mock-gateway.mjs, which must be running:
  *
@@ -46,11 +46,14 @@ async function main() {
   await page.waitForURL((url) => url.pathname === "/", { timeout: 15000 });
 
   console.log("Navigation");
-  await page.getByRole("link", { name: "Kill switches" }).click();
-  await page.waitForURL((url) => url.pathname === "/kill-switches", { timeout: 15000 });
-  const card = page.locator("section", { has: page.getByRole("heading", { name: "Credit card payments" }) });
+  check("the sidebar has no Kill switches link", (await page.getByRole("link", { name: "Kill switches" }).count()) === 0);
+  await page.getByRole("link", { name: "Settings" }).click();
+  await page.waitForURL((url) => url.pathname === "/settings", { timeout: 15000 });
+  const panel = page.locator("#kill-switches");
+  const card = panel.locator("section", { has: page.getByRole("heading", { name: "Credit card payments" }) });
   await card.waitFor({ timeout: 15000 });
-  check("both switches are listed", (await page.locator("section").count()) === 2);
+  check("settings has the Kill switches section", (await panel.getByRole("heading", { name: "Kill switches" }).count()) === 1);
+  check("both switches are listed", (await panel.locator("section").count()) === 2);
   check("card starts accepting payments", (await card.textContent()).includes("Accepting payments"));
 
   console.log("\nBlock card payments");
@@ -81,6 +84,11 @@ async function main() {
   await card.getByText("Accepting payments").waitFor({ timeout: 10000 });
   check("checkout sees card again", (await methods()).find((m) => m.method === "credit_card").available === true);
   check("the card says who turned it back on", (await card.textContent()).includes("Last turned back on by"));
+
+  console.log("\nOld link");
+  await page.goto(`${BASE}/kill-switches`, { waitUntil: "domcontentloaded" });
+  await page.waitForURL((url) => url.pathname === "/settings", { timeout: 15000 });
+  check("/kill-switches redirects to the settings section", new URL(page.url()).hash === "#kill-switches");
 
   check("no page errors", pageErrors.length === 0, pageErrors.join(" | "));
   await browser.close();

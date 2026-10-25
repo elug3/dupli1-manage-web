@@ -174,7 +174,6 @@ export default function AdminLayout() {
             <SidebarLink to="/users" icon={<UsersIcon />} label={t("nav.users")} onNavigate={() => setSidebarOpen(false)} />
             <SidebarLink to="/telegram" icon={<TelegramIcon />} label={t("nav.telegram")} onNavigate={() => setSidebarOpen(false)} />
             <SidebarLink to="/support" icon={<SupportIcon />} label={t("nav.support")} onNavigate={() => setSidebarOpen(false)} />
-            <SidebarLink to="/kill-switches" icon={<KillSwitchIcon />} label={t("nav.killSwitches")} onNavigate={() => setSidebarOpen(false)} />
           </div>
 
           <div className="mt-4 border-t border-white/10 pt-4">
@@ -401,19 +400,6 @@ function SupportIcon() {
         stroke="currentColor"
         strokeWidth="1.6"
         strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function KillSwitchIcon() {
-  return (
-    <svg className="size-[18px]" viewBox="0 0 24 24" fill="none">
-      <path
-        d="M12 3v8M6.3 6.3a8 8 0 1 0 11.4 0"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
       />
     </svg>
   );
