@@ -17,6 +17,7 @@ export const en = {
     analytics: "Analytics",
     users: "Users",
     telegram: "Telegram",
+    killSwitches: "Kill switches",
     support: "Support",
     settings: "Settings",
     signOut: "Sign out",
@@ -32,6 +33,41 @@ export const en = {
     themeLight: "Light",
     themeDark: "Dark",
     versionLabel: "v{version} · build {build}",
+  },
+  killSwitches: {
+    title: "Kill switches",
+    subtitle:
+      "Switch a payment method off for every shopper at once, without a deploy. While a switch is on, checkout stops offering the method and new payments by it are refused. Payments already taken, refunds and card windows already approved are not affected.",
+    forbiddenRead:
+      "You need payment.killswitch.read to see the kill switches.",
+    forbiddenManage:
+      "You need payment.killswitch.manage to change a kill switch.",
+    failed: "Could not change the kill switch",
+    methodCreditCard: "Credit card payments",
+    methodBypass: "Bypass (mark as paid) payments",
+    stateOn: "Accepting payments",
+    stateBlocked: "Blocked",
+    notConfigured:
+      "This method is not configured on this server, so checkout does not offer it whatever the switch says.",
+    shopperMessage: "Message to shoppers",
+    shopperMessagePlaceholder: "e.g. Card payments are paused for maintenance. Please try again shortly.",
+    shopperMessageHint:
+      "Shown at checkout while blocked. Leave empty for the storefront's standard \"unavailable\" text.",
+    defaultMessageInUse: "Storefront's standard text",
+    reason: "Reason (staff only)",
+    reasonPlaceholder: "e.g. NANO incident, approvals failing",
+    reasonHint: "Kept with the switch so the next operator knows why.",
+    releaseNote: "Note (staff only)",
+    releaseNotePlaceholder: "e.g. NANO confirmed the fix",
+    engage: "Block {name}",
+    release: "Turn {name} back on",
+    confirmEngage:
+      "Block {name} now? Every shopper stops seeing it at checkout immediately.",
+    confirmRelease: "Turn {name} back on for every shopper?",
+    engagedToast: "{name} blocked",
+    releasedToast: "{name} back on",
+    engagedBy: "Blocked by {who} · {when}",
+    releasedBy: "Last turned back on by {who} · {when}",
   },
 
   common: {

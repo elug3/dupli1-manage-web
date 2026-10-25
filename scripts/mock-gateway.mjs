@@ -21,6 +21,11 @@
  * against the category (omitted keeps it, `[]` clears it).
  * Variant image upload and `PUT …/variants/{sku}` keep `imageUrls` as product
  * does; `scripts/test-product-images-browser.mjs` drives them.
+ *
+ * Payment kill switches (`/api/v1/payments/kill-switches`, `…/methods`) keep
+ * the payment service's shape: every declared switch listed, `engaged`
+ * required on PUT, card reported as configured. `POST /__control/kill-switches-reset`
+ * releases them; `scripts/test-kill-switches-browser.mjs` drives the page.
  */
 import http from "node:http";
 
@@ -418,6 +423,59 @@ const inquiries = new Map();
 let supportSeq = 0;
 const supportId = (p) => `${p}_${++supportSeq}`;
 
+// Payment kill switches, declared like payment's KillSwitchDefs.
+const KILL_SWITCH_DEFS = [
+  { key: "payment_method.credit_card", kind: "payment_method", target: "credit_card" },
+  { key: "payment_method.bypass", kind: "payment_method", target: "bypass" },
+];
+const killSwitches = new Map();
+
+function killSwitchList() {
+  return KILL_SWITCH_DEFS.map((def) => ({ engaged: false, ...killSwitches.get(def.key), ...def }));
+}
+
+async function handleKillSwitches(req, res, method, path) {
+  if (method === "GET" && path === "/api/v1/payments/methods") {
+    const methods = killSwitchList().map((sw) => ({
+      method: sw.target,
+      available: !sw.engaged,
+      configured: true,
+      disabled: sw.engaged,
+      ...(sw.engaged && sw.message ? { message: sw.message } : {}),
+      ...(sw.target === "bypass" ? { requires_permission: "payment.bypass" } : {}),
+    }));
+    send(res, 200, { methods });
+    return true;
+  }
+  if (method === "GET" && path === "/api/v1/payments/kill-switches") {
+    send(res, 200, { kill_switches: killSwitchList() });
+    return true;
+  }
+  const m = path.match(/^\/api\/v1\/payments\/kill-switches\/([^/]+)$/);
+  if (!m || method !== "PUT") return false;
+  const def = KILL_SWITCH_DEFS.find((d) => d.key === decodeURIComponent(m[1]));
+  if (!def) {
+    send(res, 404, { error: "unknown kill switch" });
+    return true;
+  }
+  const body = await readBody(req).catch(() => ({}));
+  if (typeof body.engaged !== "boolean") {
+    send(res, 400, { error: "engaged is required" });
+    return true;
+  }
+  const sw = {
+    ...def,
+    engaged: body.engaged,
+    ...(body.message?.trim() ? { message: body.message.trim() } : {}),
+    ...(body.reason?.trim() ? { reason: body.reason.trim() } : {}),
+    updated_by: VALID_EMAIL,
+    updated_at: new Date().toISOString(),
+  };
+  killSwitches.set(def.key, sw);
+  send(res, 200, sw);
+  return true;
+}
+
 function supportMessage(direction, body, extra = {}) {
   return {
     id: supportId("msg"),
@@ -720,6 +778,10 @@ const server = http.createServer(async (req, res) => {
     });
     return send(res, 200, item);
   }
+  if (path === "/__control/kill-switches-reset" && method === "POST") {
+    killSwitches.clear();
+    return send(res, 200, { kill_switches: killSwitchList() });
+  }
   if (path === "/__control/seed" && method === "POST") {
     seed();
     lastEventIdSeen = null;
@@ -957,6 +1019,9 @@ const server = http.createServer(async (req, res) => {
     return item ? send(res, 200, item) : send(res, 404, { error: "not found" });
   }
 
+  if (path.startsWith("/api/v1/payments/") && (await handleKillSwitches(req, res, method, path))) {
+    return;
+  }
   if (path.startsWith("/api/v1/support/") && (await handleSupport(req, res, method, path, url))) {
     return;
   }
