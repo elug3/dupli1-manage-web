@@ -5,6 +5,13 @@ name: Image
 #
 #   ghcr.io/elug3/dupli1-manage-web:sha-<short>   every published build
 #   ghcr.io/elug3/dupli1-manage-web:master        latest master
+#   ghcr.io/elug3/dupli1-manage-web:preview-<short>  preview/* pull requests
+#
+# A pull request from a preview/* branch of this repo is also published and
+# deployed to the shared preview stack (preview.dupli1.com,
+# manage-preview.dupli1.com; elug3/dupli1 docs/deployment-preview.md), on
+# every push. Closing it puts the preview back on master. Other pull requests
+# skip this workflow.
 #
 # The deploy job runs on the self-hosted runner on VENUS (label "venus") and
 # calls deploy.sh from the backend repo's deploy checkout; see
@@ -13,6 +20,9 @@ name: Image
 on:
   push:
     branches: [master]
+  pull_request:
+    branches: [master]
+    types: [opened, synchronize, reopened, closed]
   workflow_dispatch:
 
 permissions:
@@ -22,9 +32,20 @@ permissions:
 jobs:
   build:
     name: Build dupli1-manage-web
+    # Pull requests only for a preview, and only from this repo's own
+    # preview/* branches: a fork's branch never reaches the self-hosted runner.
+    if: >-
+      github.event_name != 'pull_request' ||
+      (github.event.action != 'closed' && startsWith(github.head_ref, 'preview/') &&
+      github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
+    outputs:
+      preview_tag: ${{ steps.preview.outputs.tag }}
     steps:
+      # A preview builds the branch head, not the merge commit.
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || '' }}
 
       - name: Read package version
         id: pkg
@@ -39,6 +60,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Preview tag
+        id: preview
+        if: github.event_name == 'pull_request'
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: echo "tag=preview-${HEAD_SHA::7}" >> "$GITHUB_OUTPUT"
+
       - id: meta
         uses: docker/metadata-action@v5
         with:
@@ -46,6 +74,7 @@ jobs:
           tags: |
             type=sha,prefix=sha-
             type=ref,event=branch
+            type=raw,value=${{ steps.preview.outputs.tag }},enable=${{ github.event_name == 'pull_request' }}
 
       - uses: docker/build-push-action@v6
         with:
@@ -54,7 +83,7 @@ jobs:
           build-args: |
             APP_VERSION=${{ steps.pkg.outputs.version }}
             APP_BUILD_NUMBER=${{ github.run_number }}
-            APP_GIT_SHA=${{ github.sha }}
+            APP_GIT_SHA=${{ github.event.pull_request.head.sha || github.sha }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
@@ -86,6 +115,79 @@ jobs:
           DOCKER_CONFIG: ${{ runner.temp }}/docker
           GHCR_OWNER: ${{ github.repository_owner }}
         run: /opt/dupli1/repo/deploy/venus/deploy.sh manage-web "sha-${GITHUB_SHA::7}"
+
+      - name: Log out of GHCR
+        if: always()
+        env:
+          DOCKER_CONFIG: ${{ runner.temp }}/docker
+        run: rm -rf "$DOCKER_CONFIG"
+
+  # The shared preview stack on VENUS. Same runner as production, but its own
+  # compose project, data and secrets; preview.sh never touches /opt/dupli1.
+  preview:
+    name: Deploy to preview
+    needs: build
+    if: github.event_name == 'pull_request'
+    runs-on: [self-hosted, venus]
+    environment:
+      name: preview
+      url: https://manage-preview.dupli1.com
+    concurrency:
+      group: venus-preview-manage-web
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Log in to GHCR
+        env:
+          DOCKER_CONFIG: ${{ runner.temp }}/docker
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+
+      - name: Deploy
+        env:
+          DOCKER_CONFIG: ${{ runner.temp }}/docker
+          GHCR_OWNER: ${{ github.repository_owner }}
+          TAG: ${{ needs.build.outputs.preview_tag }}
+          PR: ${{ github.event.pull_request.number }}
+        run: /opt/dupli1-preview/repo/deploy/venus/preview.sh deploy manage-web "$TAG" --pr "$PR"
+
+      - name: Log out of GHCR
+        if: always()
+        env:
+          DOCKER_CONFIG: ${{ runner.temp }}/docker
+        run: rm -rf "$DOCKER_CONFIG"
+
+  # Closing (or merging) the pull request puts the preview's manage-web back on
+  # master, unless a newer preview PR of this repo has deployed since.
+  preview-reset:
+    name: Reset preview
+    if: >-
+      github.event_name == 'pull_request' && github.event.action == 'closed' &&
+      startsWith(github.head_ref, 'preview/') &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, venus]
+    environment: preview
+    concurrency:
+      group: venus-preview-manage-web
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Log in to GHCR
+        env:
+          DOCKER_CONFIG: ${{ runner.temp }}/docker
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+
+      - name: Reset
+        env:
+          DOCKER_CONFIG: ${{ runner.temp }}/docker
+          GHCR_OWNER: ${{ github.repository_owner }}
+          PR: ${{ github.event.pull_request.number }}
+        run: /opt/dupli1-preview/repo/deploy/venus/preview.sh reset manage-web --pr "$PR"
 
       - name: Log out of GHCR
         if: always()
