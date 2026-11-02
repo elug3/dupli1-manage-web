@@ -146,6 +146,16 @@ export interface CatalogCodeName {
   name: string;
 }
 
+/**
+ * Color master entry. `hex` is the storefront swatch fill ("#rrggbb"); `hex2`
+ * makes it a two-tone swatch (diagonal split). Neither = dashed "no color"
+ * swatch. Backend: dupli1 docs/product-color-swatches.md.
+ */
+export interface CatalogColor extends CatalogCodeName {
+  hex?: string;
+  hex2?: string;
+}
+
 export interface CatalogStyle extends CatalogCodeName {
   brandCode: string;
 }
@@ -1170,38 +1180,47 @@ export async function deleteStyle(
   if (!res.ok) throw new Error(await readError(res, "Failed to delete style"));
 }
 
-export async function listColors(): Promise<CatalogCodeName[]> {
+export async function listColors(): Promise<CatalogColor[]> {
   const res = await authedFetch(productPath("/api/v1/products/catalog/colors"));
-  return parseCatalogList<CatalogCodeName>(res, "Failed to list colors");
+  return parseCatalogList<CatalogColor>(res, "Failed to list colors");
+}
+
+/** Swatch fills as sent to product: "" means none (and clears on update). */
+export interface ColorSwatchInput {
+  hex: string;
+  hex2: string;
 }
 
 export async function createColor(
   code: string,
-  name: string
-): Promise<CatalogCodeName> {
+  name: string,
+  swatch: ColorSwatchInput = { hex: "", hex2: "" }
+): Promise<CatalogColor> {
   const res = await authedFetch(productPath("/api/v1/products/catalog/colors"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ code, name }),
+    body: JSON.stringify({ code, name, ...swatch }),
   });
   if (!res.ok) throw new Error(await readError(res, "Failed to create color"));
-  return res.json() as Promise<CatalogCodeName>;
+  return res.json() as Promise<CatalogColor>;
 }
 
-export async function renameColor(
+/** Renames a color and sets both swatch fills ("" clears one). */
+export async function updateColor(
   code: string,
-  name: string
-): Promise<CatalogCodeName> {
+  name: string,
+  swatch: ColorSwatchInput
+): Promise<CatalogColor> {
   const res = await authedFetch(
     productPath(`/api/v1/products/catalog/colors/${encodeURIComponent(code)}`),
     {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name, ...swatch }),
     }
   );
-  if (!res.ok) throw new Error(await readError(res, "Failed to rename color"));
-  return res.json() as Promise<CatalogCodeName>;
+  if (!res.ok) throw new Error(await readError(res, "Failed to update color"));
+  return res.json() as Promise<CatalogColor>;
 }
 
 export async function deleteColor(code: string): Promise<void> {

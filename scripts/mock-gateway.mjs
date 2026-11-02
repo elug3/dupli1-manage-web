@@ -35,6 +35,11 @@ const VALID_PASSWORD = process.env.MOCK_ADMIN_PASSWORD ?? "Dupli1Admin2026!";
 const REFRESH_TOKEN = "mock-refresh-token";
 // Override with a real signed JWT to put a real service behind the same BFF
 // session (e.g. order's event stream, which verifies the token).
+const COLOR_MASTERS = new Map([
+  ["BLK", { code: "BLK", name: "Black", hex: "#0a0a0a" }],
+  ["GRN", { code: "GRN", name: "Green", hex: "#3f6b4a" }],
+  ["OLV", { code: "OLV", name: "Olive" }],
+]);
 const ACCESS_TOKEN = process.env.MOCK_ACCESS_TOKEN || "mock-access-token";
 
 const SERVICE_PREFIXES = ["/auth", "/product", "/inventory", "/order", "/notification"];
@@ -919,8 +924,31 @@ const server = http.createServer(async (req, res) => {
     return send(res, 200, [{ code: "DUP", name: "Dupli1" }]);
   }
   if (method === "GET" && path === "/api/v1/products/catalog/sizes") return send(res, 200, SIZE_MASTERS);
+  // Color masters with swatch fills, as product validates them (dupli1
+  // docs/product-color-swatches.md): "#rrggbb", hex2 only with hex.
   if (method === "GET" && path === "/api/v1/products/catalog/colors") {
-    return send(res, 200, [{ code: "BLK", name: "Black" }, { code: "GRN", name: "Green" }]);
+    return send(res, 200, [...COLOR_MASTERS.values()]);
+  }
+  if ((method === "POST" && path === "/api/v1/products/catalog/colors") ||
+      (method === "PATCH" && path.startsWith("/api/v1/products/catalog/colors/"))) {
+    const body = await readBody(req).catch(() => ({}));
+    const code = method === "POST" ? String(body.code ?? "").toUpperCase() : decodeURIComponent(path.split("/").pop());
+    const current = COLOR_MASTERS.get(code);
+    if (method === "POST" && current) return send(res, 409, { error: "already exists" });
+    if (method === "PATCH" && !current) return send(res, 404, { error: "not found" });
+    const next = { ...(current ?? { code }), ...body, code };
+    const norm = (v) => {
+      const t = String(v ?? "").trim().toLowerCase().replace(/^#/, "");
+      if (t === "") return "";
+      return /^[0-9a-f]{6}$/.test(t) ? `#${t}` : null;
+    };
+    const hex = norm(next.hex);
+    const hex2 = norm(next.hex2);
+    if (hex === null || hex2 === null) return send(res, 400, { error: "hex must be a 6-digit color" });
+    if (!hex && hex2) return send(res, 400, { error: "hex2 needs hex" });
+    const saved = { code, name: String(next.name ?? "").trim(), ...(hex && { hex }), ...(hex2 && { hex2 }) };
+    COLOR_MASTERS.set(code, saved);
+    return send(res, method === "POST" ? 201 : 200, saved);
   }
   if (method === "GET" && path === "/api/v1/products/catalog/editions") return send(res, 200, []);
 
