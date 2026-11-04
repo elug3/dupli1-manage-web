@@ -440,7 +440,7 @@ export default function OrderDetail() {
                 <select
                   value={carrier}
                   onChange={(e) => setCarrier(e.target.value as ShipCarrier)}
-                  className="w-full rounded-xl border border-edge bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-accent"
+                  className="w-full rounded-xl border border-edge bg-page px-3 py-2.5 text-sm text-ink outline-none focus:border-accent"
                 >
                   {SHIP_CARRIERS.map((code) => (
                     <option key={code} value={code}>
@@ -456,7 +456,7 @@ export default function OrderDetail() {
                 <input
                   value={trackingNumber}
                   onChange={(e) => setTrackingNumber(e.target.value)}
-                  className="w-full rounded-xl border border-edge bg-white px-3 py-2.5 font-mono text-sm text-ink outline-none focus:border-accent"
+                  className="w-full rounded-xl border border-edge bg-page px-3 py-2.5 font-mono text-sm text-ink outline-none focus:border-accent"
                   autoComplete="off"
                 />
               </label>
@@ -469,7 +469,7 @@ export default function OrderDetail() {
                     value={carrierNote}
                     onChange={(e) => setCarrierNote(e.target.value)}
                     placeholder={t("orderDetail.carrierNoteHint")}
-                    className="w-full rounded-xl border border-edge bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-accent"
+                    className="w-full rounded-xl border border-edge bg-page px-3 py-2.5 text-sm text-ink outline-none focus:border-accent"
                     autoComplete="off"
                   />
                 </label>
