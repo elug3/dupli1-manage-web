@@ -17,7 +17,8 @@
  * size question about the Eco Bag; `support-seed` resets them too.
  *
  * Products serve product's category rules (`/api/v1/products/catalog/*`):
- * bags take any size, clothing only XXS–XXL, and a PUT validates `sizeChart`
+ * bags take any size, clothing only its own sizes (letters XXS–4XL and
+ * Italian 34–60 in S/–/R/L fits), and a PUT validates `sizeChart`
  * against the category (omitted keeps it, `[]` clears it).
  * Variant image upload and `PUT …/variants/{sku}` keep `imageUrls` as product
  * does; `scripts/test-product-images-browser.mjs` drives them.
@@ -89,7 +90,16 @@ const products = new Map();
 const uploadedImages = new Map();
 const stock = new Map();
 
-const APPAREL_SIZES = ["XXS", "XS", "S", "M", "L", "XL", "XXL"];
+/**
+ * product's domain.ApparelSizes: letter sizes, then Italian 34–60 in even
+ * steps, each in its short, regular, regular (R) and long fit.
+ */
+const APPAREL_SIZES = [
+  "XXS", "XS", "S", "M", "L", "XL", "XXL", "XXXL", "4XL",
+  ...Array.from({ length: 14 }, (_, i) => 34 + 2 * i).flatMap((n) =>
+    ["S", "", "R", "L"].map((fit) => `${n}${fit}`)
+  ),
+];
 const CATEGORIES = [
   {
     code: "bags",
@@ -105,13 +115,30 @@ const CATEGORIES = [
   {
     code: "clothing",
     name: "Clothing",
-    subCategories: [{ code: "padded", name: "Padded Jackets" }],
+    subCategories: [
+      { code: "padded", name: "Padded Jackets" },
+      { code: "jackets", name: "Jackets" },
+    ],
     sizes: APPAREL_SIZES,
   },
 ];
+/**
+ * product's domain.SizeMasterSeeds: the seeded sizes, then every category
+ * size they lack, named by its code — so each size clothing allows exists.
+ */
+const SEED_SIZES = [
+  ...["XXS", "XS", "S", "M", "L", "XL", "XXL"].map((code) => ({ code, name: code })),
+  { code: "MIN", name: "Mini" },
+  { code: "SML", name: "Small" },
+  { code: "MED", name: "Medium" },
+  { code: "LRG", name: "Large" },
+  { code: "OS", name: "One Size" },
+];
 const SIZE_MASTERS = [
-  { code: "OS", name: "One size" },
-  ...APPAREL_SIZES.map((code) => ({ code, name: code })),
+  ...SEED_SIZES,
+  ...APPAREL_SIZES.filter((code) => !SEED_SIZES.some((s) => s.code === code)).map(
+    (code) => ({ code, name: code })
+  ),
 ];
 
 /** product's NormalizeSizeChart, enough to exercise the editor's errors. */
