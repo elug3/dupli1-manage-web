@@ -167,6 +167,17 @@ function normalizeSizeChart(category, rows) {
   return out;
 }
 
+// Swatch fills on variant reads, as product returns them (colorHex /
+// colorHex2 from the color masters).
+function withSwatch(v) {
+  const out = { ...v };
+  const hex = COLOR_MASTERS.get(v.colorCode)?.hex;
+  const hex2 = v.color2Code ? COLOR_MASTERS.get(v.color2Code)?.hex : undefined;
+  if (hex) out.colorHex = hex;
+  if (hex2) out.colorHex2 = hex2;
+  return out;
+}
+
 function seedProduct(id, name, skus, extra = {}) {
   const sizeCode = extra.category === "clothing" ? null : "OS";
   products.set(id, {
@@ -1020,7 +1031,17 @@ const server = http.createServer(async (req, res) => {
     if (Array.isArray(body.imageUrls) && body.imageUrls.length > 0) {
       variant.imageUrls = body.imageUrls;
     }
-    return send(res, 200, variant);
+    // color2Code (dupli1 #364): omitted keeps, "" clears, a code sets it.
+    if (body.color2Code !== undefined) {
+      const code = String(body.color2Code).trim().toUpperCase();
+      if (code && !COLOR_MASTERS.has(code)) return send(res, 404, { error: `color ${code} not found` });
+      if (code && code === variant.colorCode) {
+        return send(res, 400, { error: "invalid color2Code: it must differ from colorCode" });
+      }
+      if (code) variant.color2Code = code;
+      else delete variant.color2Code;
+    }
+    return send(res, 200, withSwatch(variant));
   }
 
   // Products and stock, with product's delete rules: a SKU goes only with
@@ -1028,7 +1049,7 @@ const server = http.createServer(async (req, res) => {
   m = path.match(/^\/api\/v1\/products\/([^/]+)$/);
   if (m && products.has(decodeURIComponent(m[1]))) {
     const product = products.get(decodeURIComponent(m[1]));
-    if (method === "GET") return send(res, 200, product);
+    if (method === "GET") return send(res, 200, { ...product, variants: product.variants.map(withSwatch) });
     if (method === "PUT") {
       const body = await readBody(req);
       const category = body.category || product.category;

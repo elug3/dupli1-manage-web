@@ -72,6 +72,7 @@ Money fields on the wire are **`*_won`** (`total_won`, `subtotal_won`, `discount
 - `DELETE /product/api/v1/products/{id}` — delete parent, every SKU and their stock rows; `409` while any SKU has stock reserved for an open order
 - `POST /product/api/v1/products/{id}/variants` — create variant (requires existing `colorCode` + `sizeCode`)
 - `PUT|DELETE /product/api/v1/products/{id}/variants/{sku}` — delete needs the SKU's stock row empty (`409` with stock on hand or reserved)
+- Two-color SKUs: `color2Code` (another one-color master code, not in the `sku`) — set on create (`SecondColorSelect` in both add-SKU forms) and set / change / clear (`""`) with `PUT …/variants/{sku}` from the SKU page's Second color section. Reads carry `colorHex` / `colorHex2`; `skuSwatchPreview` draws the two-tone like the storefront. `npm run test:sku-color2:browser` drives it against `npm run mock:gateway`. Backend [docs/product-color-swatches.md](../dupli1/docs/product-color-swatches.md#two-color-skus)
 
 Both deletes go through `DeleteConfirmDialog` (`app/components/`): a caution, the concrete impact with live stock, and a "Please type `<id>` to confirm." field (the product `id`, or the SKU code). Delete stays disabled while the backend would refuse, and the only SKU of a product cannot be deleted from the console.
 - `POST /product/api/v1/products/{id}/images` — upload to default variant

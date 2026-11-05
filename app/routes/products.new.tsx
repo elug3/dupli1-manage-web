@@ -18,6 +18,7 @@ import {
   setInventoryBySkuId,
   uploadVariantImage,
 } from "~/lib/api";
+import { SecondColorSelect } from "~/components/SecondColorSelect";
 import {
   DEFAULT_CATEGORY,
   FALLBACK_CATEGORIES,
@@ -85,6 +86,7 @@ export default function NewProduct() {
   const [colorCode, setColorCode] = useState("");
   const [sizeCode, setSizeCode] = useState("OS");
   const [editionCode, setEditionCode] = useState("");
+  const [color2Code, setColor2Code] = useState("");
   const [skuStatus, setSkuStatus] = useState("active");
   const [initialStock, setInitialStock] = useState("");
   const [widthMm, setWidthMm] = useState("");
@@ -295,6 +297,7 @@ export default function NewProduct() {
 
   function resetSkuForm() {
     setEditionCode("");
+    setColor2Code("");
     setInitialStock("");
     setWidthMm("");
     setHeightMm("");
@@ -331,6 +334,7 @@ export default function NewProduct() {
       const sizeName = sizes.find((s) => s.code === sizeCode)?.name;
       const variant = await createVariant(createdProductId, {
         colorCode,
+        color2Code: color2Code || undefined,
         sizeCode,
         editionCode: editionCode || undefined,
         color: colorName,
@@ -730,6 +734,16 @@ export default function NewProduct() {
                       </option>
                     ))}
                   </select>
+                </Field>
+                <Field label={t("productNew.color2Code")} id="color2Code">
+                  <SecondColorSelect
+                    id="color2Code"
+                    colors={colors}
+                    firstColorCode={colorCode}
+                    value={color2Code}
+                    onChange={setColor2Code}
+                    className={inputCls}
+                  />
                 </Field>
                 <Field label={t("productNew.sizeCode")} id="sizeCode" required>
                   <select

@@ -122,8 +122,16 @@ export interface ProductVariant {
   color: string;
   size: string;
   colorCode?: string;
+  /**
+   * Second color of a two-color SKU (another color master code). Not part of
+   * the SKU code; can be set, changed or cleared on update.
+   */
+  color2Code?: string;
   sizeCode?: string;
   editionCode?: string;
+  /** Swatch fills from the color masters (response-only); colorHex2 = two-tone. */
+  colorHex?: string;
+  colorHex2?: string;
   /** Effective official price: the SKU's own override, else the parent's. */
   officialPrice?: number;
   /** Effective sale price (what cart/order charge): the override, else the parent's. */
@@ -322,6 +330,9 @@ function mapVariant(hit: ProductSearchHit): ProductVariant {
     color: hitString(hit, "color") ?? "",
     size: hitString(hit, "size") ?? "",
     colorCode: hitString(hit, "colorCode") ?? hitString(hit, "color_code"),
+    color2Code: hitString(hit, "color2Code") ?? hitString(hit, "color2_code"),
+    colorHex: hitString(hit, "colorHex"),
+    colorHex2: hitString(hit, "colorHex2"),
     sizeCode: hitString(hit, "sizeCode") ?? hitString(hit, "size_code"),
     editionCode:
       hitString(hit, "editionCode") ?? hitString(hit, "edition_code"),
@@ -774,6 +785,8 @@ export async function createProductParent(
 
 export interface CreateVariantInput {
   colorCode: string;
+  /** Optional second color of a two-color SKU; omit for one color. */
+  color2Code?: string;
   sizeCode: string;
   editionCode?: string;
   /** Optional display names; backend enriches from masters when blank. */
@@ -798,6 +811,7 @@ export async function createVariant(
 ): Promise<ProductVariant> {
   const body: Record<string, unknown> = {
     colorCode: input.colorCode,
+    color2Code: input.color2Code || undefined,
     sizeCode: input.sizeCode,
     editionCode: input.editionCode || undefined,
     color: input.color,
@@ -827,6 +841,8 @@ export async function createVariant(
 }
 
 export interface UpdateVariantInput {
+  /** Second color: omit to keep, a code to set, "" to clear (one color). */
+  color2Code?: string;
   color?: string;
   size?: string;
   status?: string;
@@ -868,6 +884,7 @@ export async function updateVariant(
   input: UpdateVariantInput
 ): Promise<ProductVariant> {
   const body: Record<string, unknown> = {};
+  if (input.color2Code !== undefined) body.color2Code = input.color2Code;
   if (input.color !== undefined) body.color = input.color;
   if (input.size !== undefined) body.size = input.size;
   if (input.status !== undefined) body.status = input.status;
