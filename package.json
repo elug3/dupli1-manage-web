@@ -20,7 +20,8 @@
     "test:killswitches:browser": "node scripts/test-kill-switches-browser.mjs",
     "test:session": "node scripts/test-session-refresh.mjs",
     "test:session:shared": "node scripts/test-session-shared.mjs",
-    "mock:gateway": "node scripts/mock-gateway.mjs"
+    "mock:gateway": "node scripts/mock-gateway.mjs",
+    "test:sku-color2:browser": "node scripts/test-sku-second-color-browser.mjs"
   },
   "dependencies": {
     "@react-router/node": "7.16.0",

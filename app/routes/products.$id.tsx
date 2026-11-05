@@ -34,6 +34,7 @@ import {
   uploadProductImage,
   uploadVariantImage,
 } from "~/lib/api";
+import { SecondColorSelect } from "~/components/SecondColorSelect";
 import {
   type ProductCategory,
   type SizeChartEditorRow,
@@ -1250,7 +1251,11 @@ function VariantsSection({
                     {formatVariantOption(row)}
                     {(row.colorCode || row.sizeCode || row.editionCode) && (
                       <div className="mt-0.5 font-mono text-[10px] text-faint">
-                        {[row.colorCode, row.editionCode, row.sizeCode]
+                        {[
+                          row.color2Code ? `${row.colorCode}+${row.color2Code}` : row.colorCode,
+                          row.editionCode,
+                          row.sizeCode,
+                        ]
                           .filter(Boolean)
                           .join(" · ")}
                       </div>
@@ -1600,6 +1605,7 @@ function AddVariantForm({
   const [colorCode, setColorCode] = useState("");
   const [sizeCode, setSizeCode] = useState("OS");
   const [editionCode, setEditionCode] = useState("");
+  const [color2Code, setColor2Code] = useState("");
   const [initialStock, setInitialStock] = useState("");
   const [status, setStatus] = useState("active");
   const [widthMm, setWidthMm] = useState("");
@@ -1664,6 +1670,7 @@ function AddVariantForm({
       const sizeName = sizes.find((s) => s.code === sizeCode)?.name;
       const variant = await createVariant(productId, {
         colorCode,
+        color2Code: color2Code || undefined,
         sizeCode,
         editionCode: editionCode || undefined,
         color: colorName,
@@ -1731,6 +1738,16 @@ function AddVariantForm({
               </option>
             ))}
           </select>
+        </label>
+        <label className="space-y-1 text-xs text-muted">
+          {t("productDetail.color2Code")}
+          <SecondColorSelect
+            colors={colors}
+            firstColorCode={colorCode}
+            value={color2Code}
+            onChange={setColor2Code}
+            className={`block w-full ${inputCls}`}
+          />
         </label>
         <label className="space-y-1 text-xs text-muted">
           {t("productDetail.sizeCodeRequired")}

@@ -28,3 +28,31 @@ export function swatchPreview(hex: string): SwatchPreview {
   if (!fill) return { kind: "none" };
   return { kind: "solid", style: { backgroundColor: fill } };
 }
+
+/**
+ * A SKU's swatch as the storefront draws it from the variant read's
+ * `colorHex` / `colorHex2`: solid, a diagonal two-tone for a two-color SKU,
+ * or the dashed "no color" circle.
+ */
+export type SkuSwatchPreview =
+  | { kind: "solid"; style: CSSProperties }
+  | { kind: "two-tone"; style: CSSProperties }
+  | { kind: "none" };
+
+export function skuSwatchPreview(colorHex?: string, colorHex2?: string): SkuSwatchPreview {
+  const first = normalizeHexInput(colorHex ?? "");
+  if (!first) return { kind: "none" };
+  const second = normalizeHexInput(colorHex2 ?? "");
+  if (second) {
+    return {
+      kind: "two-tone",
+      style: { background: `linear-gradient(135deg, ${first} 50%, ${second} 50%)` },
+    };
+  }
+  return { kind: "solid", style: { backgroundColor: first } };
+}
+
+/** Colors a SKU may take as its second color: every color but its first. */
+export function secondColorOptions<T extends { code: string }>(colors: T[], firstColorCode: string): T[] {
+  return colors.filter((c) => c.code !== firstColorCode);
+}

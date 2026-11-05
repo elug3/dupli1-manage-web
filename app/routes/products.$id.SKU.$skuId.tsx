@@ -11,6 +11,8 @@ import {
   getInventory,
   getInventoryBySkuId,
   getManageProduct,
+  listColors,
+  type CatalogCodeName,
   parseDimensionsInput,
   parseVariantPriceInput,
   productVariants,
@@ -20,6 +22,8 @@ import {
   uploadVariantImage,
 } from "~/lib/api";
 import { isClothingCategory } from "~/lib/categories";
+import { skuSwatchPreview } from "~/lib/color-swatch";
+import { SecondColorSelect } from "~/components/SecondColorSelect";
 import { useI18n } from "~/lib/i18n";
 import { useNotify } from "~/lib/notifications";
 import { DangerZone } from "~/components/DeleteConfirmDialog";
@@ -160,6 +164,10 @@ export default function SkuDetail() {
               t("skuDetail.colorCode"),
               variant.colorCode ?? t("common.emptyValue"),
             ],
+            [
+              t("skuDetail.color2Code"),
+              variant.color2Code ?? t("common.emptyValue"),
+            ],
             [t("skuDetail.sizeCode"), variant.sizeCode ?? t("common.emptyValue")],
             [
               t("skuDetail.editionCode"),
@@ -194,6 +202,15 @@ export default function SkuDetail() {
           onSaved={async () => {
             await load();
             notify(t("skuDetail.priceSaved", { sku: variant.sku }));
+          }}
+        />
+
+        <SecondColorSection
+          productId={product.id}
+          variant={variant}
+          onSaved={async () => {
+            await load();
+            notify(t("skuDetail.secondColorSaved", { sku: variant.sku }));
           }}
         />
 
@@ -370,6 +387,119 @@ function PriceSection({
       >
         {t("skuDetail.editPriceOnParent")}
       </Link>
+    </section>
+  );
+}
+
+/** Swatch as the storefront draws it from the variant's colorHex / colorHex2. */
+function SkuSwatch({ variant }: { variant: ProductVariant }) {
+  const preview = skuSwatchPreview(variant.colorHex, variant.colorHex2);
+  if (preview.kind === "none") {
+    return (
+      <span
+        aria-hidden="true"
+        data-swatch="none"
+        className="block size-8 shrink-0 rounded-full border border-dashed border-zinc-400 bg-zinc-100"
+      />
+    );
+  }
+  return (
+    <span
+      aria-hidden="true"
+      data-swatch={preview.kind}
+      className="block size-8 shrink-0 rounded-full border border-zinc-200"
+      style={preview.style}
+    />
+  );
+}
+
+/**
+ * The SKU's optional second color (black body, brown trim). Not part of the
+ * SKU code: it can be set, changed or cleared here at any time.
+ */
+function SecondColorSection({
+  productId,
+  variant,
+  onSaved,
+}: {
+  productId: string;
+  variant: ProductVariant;
+  onSaved: () => Promise<void>;
+}) {
+  const { t } = useI18n();
+  const { notify } = useNotify();
+  const [colors, setColors] = useState<CatalogCodeName[]>([]);
+  const [value, setValue] = useState(variant.color2Code ?? "");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setValue(variant.color2Code ?? "");
+  }, [variant]);
+
+  useEffect(() => {
+    let cancelled = false;
+    listColors()
+      .then((c) => {
+        if (!cancelled) setColors(c);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          notify(err instanceof Error ? err.message : t("skuDetail.failedToLoadColors"), "error");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [notify, t]);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      // "" clears the second color; the API keeps omitted fields.
+      await updateVariant(productId, variant.sku, { color2Code: value });
+      await onSaved();
+    } catch (err) {
+      notify(
+        err instanceof Error ? err.message : t("productDetail.failedToUpdateVariant"),
+        "error"
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const dirty = value !== (variant.color2Code ?? "");
+
+  return (
+    <section className="space-y-3 border-t border-edge-soft pt-6">
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-faint">
+        {t("skuDetail.secondColor")}
+      </h2>
+      <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-3">
+        <SkuSwatch variant={variant} />
+        <label className="min-w-56 flex-1 space-y-1.5 sm:max-w-sm">
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted">
+            {t("skuDetail.color2Code")}
+          </span>
+          <SecondColorSelect
+            id="color2Code"
+            colors={colors}
+            firstColorCode={variant.colorCode ?? ""}
+            value={value}
+            onChange={setValue}
+            className={fieldCls}
+          />
+        </label>
+        <button
+          type="submit"
+          disabled={saving || !dirty}
+          className="rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+        >
+          {saving ? t("common.saving") : t("skuDetail.saveSecondColor")}
+        </button>
+      </form>
+      <p className="text-xs text-faint">{t("skuDetail.secondColorHint")}</p>
     </section>
   );
 }
