@@ -951,8 +951,9 @@ const server = http.createServer(async (req, res) => {
     return send(res, 200, [{ code: "DUP", name: "Dupli1" }]);
   }
   if (method === "GET" && path === "/api/v1/products/catalog/sizes") return send(res, 200, SIZE_MASTERS);
-  // Color masters with swatch fills, as product validates them (dupli1
-  // docs/product-color-swatches.md): "#rrggbb", hex2 only with hex.
+  // Color masters with a swatch fill, as product validates them (dupli1
+  // docs/product-color-swatches.md): one color per row, "#rrggbb"; a
+  // non-empty hex2 or base2Code is 400, an empty one is ignored.
   if (method === "GET" && path === "/api/v1/products/catalog/colors") {
     return send(res, 200, [...COLOR_MASTERS.values()]);
   }
@@ -963,6 +964,11 @@ const server = http.createServer(async (req, res) => {
     const current = COLOR_MASTERS.get(code);
     if (method === "POST" && current) return send(res, 409, { error: "already exists" });
     if (method === "PATCH" && !current) return send(res, 404, { error: "not found" });
+    for (const key of ["hex2", "base2Code"]) {
+      if (String(body[key] ?? "").trim() !== "") {
+        return send(res, 400, { error: `${key} is not supported: a color master row is one color` });
+      }
+    }
     const next = { ...(current ?? { code }), ...body, code };
     const norm = (v) => {
       const t = String(v ?? "").trim().toLowerCase().replace(/^#/, "");
@@ -970,10 +976,8 @@ const server = http.createServer(async (req, res) => {
       return /^[0-9a-f]{6}$/.test(t) ? `#${t}` : null;
     };
     const hex = norm(next.hex);
-    const hex2 = norm(next.hex2);
-    if (hex === null || hex2 === null) return send(res, 400, { error: "hex must be a 6-digit color" });
-    if (!hex && hex2) return send(res, 400, { error: "hex2 needs hex" });
-    const saved = { code, name: String(next.name ?? "").trim(), ...(hex && { hex }), ...(hex2 && { hex2 }) };
+    if (hex === null) return send(res, 400, { error: "hex must be a 6-digit color" });
+    const saved = { code, name: String(next.name ?? "").trim(), ...(hex && { hex }) };
     COLOR_MASTERS.set(code, saved);
     return send(res, method === "POST" ? 201 : 200, saved);
   }

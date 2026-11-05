@@ -1,10 +1,10 @@
 import type { CSSProperties } from "react";
 
 /**
- * Color master swatch helpers. The storefront draws a color from `hex`, splits
- * it on the diagonal with `hex2` for a two-tone color, and shows a dashed
- * neutral circle when there is no `hex` (backend dupli1
- * docs/product-color-swatches.md). The preview here matches that.
+ * Color master swatch helpers. A color master row is one color: the
+ * storefront draws it solid from `hex`, and shows a dashed neutral circle
+ * when there is no `hex` (backend dupli1 docs/product-color-swatches.md).
+ * The preview here matches that.
  */
 
 const HEX = /^#?([0-9a-f]{6})$/i;
@@ -20,21 +20,11 @@ export function normalizeHexInput(value: string): string | null {
   return match ? `#${match[1].toLowerCase()}` : null;
 }
 
-export type SwatchPreview =
-  | { kind: "solid"; style: CSSProperties }
-  | { kind: "two-tone"; style: CSSProperties }
-  | { kind: "none" };
+export type SwatchPreview = { kind: "solid"; style: CSSProperties } | { kind: "none" };
 
-/** How the storefront will draw these fills; invalid input previews as none. */
-export function swatchPreview(hex: string, hex2: string): SwatchPreview {
-  const first = normalizeHexInput(hex);
-  if (!first) return { kind: "none" };
-  const second = normalizeHexInput(hex2);
-  if (second) {
-    return {
-      kind: "two-tone",
-      style: { background: `linear-gradient(135deg, ${first} 50%, ${second} 50%)` },
-    };
-  }
-  return { kind: "solid", style: { backgroundColor: first } };
+/** How the storefront will draw this fill; invalid input previews as none. */
+export function swatchPreview(hex: string): SwatchPreview {
+  const fill = normalizeHexInput(hex);
+  if (!fill) return { kind: "none" };
+  return { kind: "solid", style: { backgroundColor: fill } };
 }

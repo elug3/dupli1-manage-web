@@ -266,7 +266,7 @@ export default function CatalogMasters() {
             await loadMasters();
           }}
           onRename={async (code, name, swatch) => {
-            await updateColor(code, name, swatch ?? { hex: "", hex2: "" });
+            await updateColor(code, name, swatch ?? { hex: "" });
             notify(t("catalog.colorUpdated", { code }));
             await loadMasters();
           }}
@@ -357,7 +357,7 @@ function MasterPanel({
   codePlaceholder: string;
   codePattern: string;
   codeHint: string;
-  /** Colors only: edit the storefront swatch fills (hex, two-tone hex2). */
+  /** Colors only: edit the storefront swatch fill (hex). */
   swatches?: boolean;
 }) {
   return (
@@ -409,19 +409,14 @@ function MasterTable({
   const [editName, setEditName] = useState("");
   const [editSwatch, setEditSwatch] = useState<ColorSwatchInput>(EMPTY_SWATCH);
 
-  /** The fills to send, or undefined (after telling the operator) when invalid. */
+  /** The fill to send, or undefined (after telling the operator) when invalid. */
   function checkedSwatch(value: ColorSwatchInput): ColorSwatchInput | undefined {
     const hex = normalizeHexInput(value.hex);
-    const hex2 = normalizeHexInput(value.hex2);
-    if (hex === null || hex2 === null) {
+    if (hex === null) {
       notify(t("catalog.swatchInvalid"), "error");
       return undefined;
     }
-    if (!hex && hex2) {
-      notify(t("catalog.swatchSecondNeedsFirst"), "error");
-      return undefined;
-    }
-    return { hex, hex2 };
+    return { hex };
   }
 
   async function handleCreate(e: React.FormEvent) {
@@ -520,9 +515,9 @@ function MasterTable({
                         <SwatchFields value={editSwatch} onChange={setEditSwatch} />
                       ) : (
                         <div className="flex items-center gap-2">
-                          <SwatchDot hex={row.hex ?? ""} hex2={row.hex2 ?? ""} />
+                          <SwatchDot hex={row.hex ?? ""} />
                           <span className="font-mono text-xs text-muted">
-                            {[row.hex, row.hex2].filter(Boolean).join(" / ") || t("catalog.swatchNone")}
+                            {row.hex || t("catalog.swatchNone")}
                           </span>
                         </div>
                       )}
@@ -581,7 +576,7 @@ function MasterTable({
                             onClick={() => {
                               setEditingCode(row.code);
                               setEditName(row.name);
-                              setEditSwatch({ hex: row.hex ?? "", hex2: row.hex2 ?? "" });
+                              setEditSwatch({ hex: row.hex ?? "" });
                             }}
                           >
                             {swatches ? t("catalog.edit") : t("catalog.rename")}
@@ -627,11 +622,11 @@ function MasterTable({
   );
 }
 
-const EMPTY_SWATCH: ColorSwatchInput = { hex: "", hex2: "" };
+const EMPTY_SWATCH: ColorSwatchInput = { hex: "" };
 
-/** The swatch as the storefront will draw it: solid, diagonal two-tone, or dashed "no color". */
-function SwatchDot({ hex, hex2, size = "size-6" }: { hex: string; hex2: string; size?: string }) {
-  const preview = swatchPreview(hex, hex2);
+/** The swatch as the storefront will draw it: solid, or dashed "no color". */
+function SwatchDot({ hex, size = "size-6" }: { hex: string; size?: string }) {
+  const preview = swatchPreview(hex);
   if (preview.kind === "none") {
     return (
       <span
@@ -649,7 +644,7 @@ function SwatchDot({ hex, hex2, size = "size-6" }: { hex: string; hex2: string; 
   );
 }
 
-/** First and optional second (two-tone) swatch fill, each a picker plus a #rrggbb field. */
+/** The swatch fill: a picker plus a #rrggbb field. A color master row is one color. */
 function SwatchFields({
   value,
   onChange,
@@ -658,36 +653,29 @@ function SwatchFields({
   onChange: (next: ColorSwatchInput) => void;
 }) {
   const { t } = useI18n();
-  const field = (key: keyof ColorSwatchInput, label: string, disabled = false) => {
-    const normalized = normalizeHexInput(value[key]);
-    return (
-      <label className={`flex items-center gap-2 text-xs text-muted ${disabled ? "opacity-50" : ""}`}>
-        <span className="whitespace-nowrap">{label}</span>
-        <input
-          type="color"
-          aria-label={label}
-          disabled={disabled}
-          value={normalized || "#000000"}
-          onChange={(e) => onChange({ ...value, [key]: e.target.value })}
-          className="h-8 w-8 shrink-0 cursor-pointer rounded border border-edge bg-surface p-0.5"
-        />
-        <input
-          value={value[key]}
-          disabled={disabled}
-          onChange={(e) => onChange({ ...value, [key]: e.target.value })}
-          className={`${inputCls} w-28 font-mono`}
-          placeholder="#rrggbb"
-          aria-invalid={normalized === null}
-        />
-      </label>
-    );
-  };
+  const label = t("catalog.swatchHex");
+  const normalized = normalizeHexInput(value.hex);
   return (
     <div className="space-y-1.5">
       <div className="flex flex-wrap items-center gap-3">
-        <SwatchDot hex={value.hex} hex2={value.hex2} size="size-8" />
-        {field("hex", t("catalog.swatchHex"))}
-        {field("hex2", t("catalog.swatchHex2"), !normalizeHexInput(value.hex))}
+        <SwatchDot hex={value.hex} size="size-8" />
+        <label className="flex items-center gap-2 text-xs text-muted">
+          <span className="whitespace-nowrap">{label}</span>
+          <input
+            type="color"
+            aria-label={label}
+            value={normalized || "#000000"}
+            onChange={(e) => onChange({ hex: e.target.value })}
+            className="h-8 w-8 shrink-0 cursor-pointer rounded border border-edge bg-surface p-0.5"
+          />
+          <input
+            value={value.hex}
+            onChange={(e) => onChange({ hex: e.target.value })}
+            className={`${inputCls} w-28 font-mono`}
+            placeholder="#rrggbb"
+            aria-invalid={normalized === null}
+          />
+        </label>
       </div>
       <p className="text-xs text-faint">{t("catalog.swatchHelp")}</p>
     </div>
