@@ -147,13 +147,13 @@ export interface CatalogCodeName {
 }
 
 /**
- * Color master entry. `hex` is the storefront swatch fill ("#rrggbb"); `hex2`
- * makes it a two-tone swatch (diagonal split). Neither = dashed "no color"
- * swatch. Backend: dupli1 docs/product-color-swatches.md.
+ * Color master entry: one color. `hex` is the storefront swatch fill
+ * ("#rrggbb"); without it the storefront shows a dashed "no color" swatch.
+ * Product refuses a second fill (`hex2`). Backend: dupli1
+ * docs/product-color-swatches.md.
  */
 export interface CatalogColor extends CatalogCodeName {
   hex?: string;
-  hex2?: string;
 }
 
 export interface CatalogStyle extends CatalogCodeName {
@@ -1185,16 +1185,15 @@ export async function listColors(): Promise<CatalogColor[]> {
   return parseCatalogList<CatalogColor>(res, "Failed to list colors");
 }
 
-/** Swatch fills as sent to product: "" means none (and clears on update). */
+/** Swatch fill as sent to product: "" means none (and clears on update). */
 export interface ColorSwatchInput {
   hex: string;
-  hex2: string;
 }
 
 export async function createColor(
   code: string,
   name: string,
-  swatch: ColorSwatchInput = { hex: "", hex2: "" }
+  swatch: ColorSwatchInput = { hex: "" }
 ): Promise<CatalogColor> {
   const res = await authedFetch(productPath("/api/v1/products/catalog/colors"), {
     method: "POST",
@@ -1205,7 +1204,7 @@ export async function createColor(
   return res.json() as Promise<CatalogColor>;
 }
 
-/** Renames a color and sets both swatch fills ("" clears one). */
+/** Renames a color and sets its swatch fill ("" clears it). */
 export async function updateColor(
   code: string,
   name: string,

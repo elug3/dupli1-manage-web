@@ -14,13 +14,10 @@ describe("normalizeHexInput", () => {
 });
 
 describe("swatchPreview", () => {
-  it("previews solid, two-tone and none like the storefront", () => {
-    expect(swatchPreview("#0a0a0a", "")).toEqual({ kind: "solid", style: { backgroundColor: "#0a0a0a" } });
-    expect(swatchPreview("#0a0a0a", "6B4226")).toEqual({
-      kind: "two-tone",
-      style: { background: "linear-gradient(135deg, #0a0a0a 50%, #6b4226 50%)" },
-    });
-    expect(swatchPreview("", "#6b4226")).toEqual({ kind: "none" });
-    expect(swatchPreview("bad", "")).toEqual({ kind: "none" });
+  it("previews solid and none like the storefront", () => {
+    expect(swatchPreview("#0a0a0a")).toEqual({ kind: "solid", style: { backgroundColor: "#0a0a0a" } });
+    expect(swatchPreview("6B4226")).toEqual({ kind: "solid", style: { backgroundColor: "#6b4226" } });
+    expect(swatchPreview("")).toEqual({ kind: "none" });
+    expect(swatchPreview("bad")).toEqual({ kind: "none" });
   });
 });

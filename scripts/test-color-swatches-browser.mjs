@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Browser test: color swatch fills (hex, two-tone hex2) on /catalog → Colors.
+ * Browser test: color swatch fill (hex, one color per row) on /catalog → Colors.
  *
  * Drives the real page against scripts/mock-gateway.mjs, which must be running:
  *
@@ -56,14 +56,15 @@ async function main() {
   check("a color shows its hex", ((await row("BLK").textContent()) ?? "").includes("#0a0a0a"));
   check("a color without a hex says so", ((await row("OLV").textContent()) ?? "").includes("No swatch color"));
 
-  console.log("\nEdit to two-tone");
+  console.log("\nEdit");
   await row("BLK").getByRole("button", { name: "Edit" }).click();
-  const hex2 = row("BLK").locator('input[placeholder="#rrggbb"]').nth(1);
-  await hex2.fill("6B4226");
+  const hexInputs = row("BLK").locator('input[placeholder="#rrggbb"]');
+  check("one swatch field (no second color)", (await hexInputs.count()) === 1);
+  await hexInputs.first().fill("111111");
   await row("BLK").getByRole("button", { name: "Save" }).click();
   check(
-    "saving stores both fills, normalized",
-    await eventually(async () => ((await row("BLK").textContent()) ?? "").includes("#0a0a0a / #6b4226"))
+    "saving stores the fill, normalized",
+    await eventually(async () => ((await row("BLK").textContent()) ?? "").includes("#111111"))
   );
 
   console.log("\nValidation");
@@ -80,13 +81,13 @@ async function main() {
   console.log("\nCreate");
   const form = page.locator("form").first();
   await form.locator('input[placeholder]').first().fill("BGB");
-  await form.locator("input").nth(1).fill("Beige / Brown");
+  await form.locator("input").nth(1).fill("Bisque");
+  check("create has one swatch field", (await form.locator('input[placeholder="#rrggbb"]').count()) === 1);
   await form.locator('input[placeholder="#rrggbb"]').first().fill("#d8c3a5");
-  await form.locator('input[placeholder="#rrggbb"]').nth(1).fill("#6b4226");
   await form.getByRole("button", { name: "Add" }).click();
   check(
-    "a new two-tone color is listed",
-    await eventually(async () => ((await row("BGB").textContent().catch(() => "")) ?? "").includes("#d8c3a5 / #6b4226"))
+    "a new color is listed with its fill",
+    await eventually(async () => ((await row("BGB").textContent().catch(() => "")) ?? "").includes("#d8c3a5"))
   );
 
   if (SCREENSHOT) {
