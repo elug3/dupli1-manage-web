@@ -69,6 +69,20 @@ async function main() {
   check("the editor opens on the color", ((await editor.textContent()) ?? "").includes("쇼어"));
   check("offers every base color", (await editor.locator("button[aria-pressed]").count()) === 8);
   check("previews no fill before a base", (await preview()).includes("“no color”"));
+  const help = editor.getByRole("button", { name: "What is a base color?" });
+  await help.click();
+  const tip = editor.getByRole("tooltip");
+  check("the base color (?) explains it", await tip.isVisible() && ((await tip.textContent()) ?? "").includes("plain color shoppers filter by"));
+  if (process.env.HELP_SCREENSHOT_PATH) {
+    await page.getByRole("region", { name: "Edit color" }).screenshot({ path: process.env.HELP_SCREENSHOT_PATH });
+  }
+  await page.keyboard.press("Escape");
+  await help.blur();
+  check("Escape closes it", await eventually(async () => !(await tip.isVisible())));
+  check(
+    "the add form has the same (?)",
+    (await page.getByRole("form", { name: "Add color" }).getByRole("button", { name: "What is a base color?" }).count()) === 1
+  );
   await editor.getByRole("button", { name: /^Beige/ }).click();
   check("previews the base fill", (await preview()).includes("the Beige fill"), await preview());
   check("previews the filter", (await preview()).includes("under the Beige filter"));
@@ -118,7 +132,7 @@ async function main() {
   const form = page.getByRole("form", { name: "Add color" });
   await form.getByLabel("Code").fill("BGB");
   await form.getByLabel("Display name").fill("Bisque");
-  await form.getByLabel("Base color").selectOption("BGE");
+  await form.getByLabel("Base color", { exact: true }).selectOption("BGE");
   await form.getByLabel("Own fill (#rrggbb)").fill("#d8c3a5");
   await form.getByRole("button", { name: "Add" }).click();
   check(
