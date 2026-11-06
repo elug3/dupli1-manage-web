@@ -83,6 +83,25 @@ body {
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  /*
+   * Korean (and Chinese) text breaks between words, never between syllables.
+   * The browser default lets CJK wrap after any character, so a squeezed
+   * table cell or badge stacked 승인됨 one syllable per line. `break-word`
+   * still breaks a single overlong word at the edge instead of overflowing,
+   * without shrinking a cell's minimum width the way `anywhere` would.
+   */
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+/*
+ * Labels that must stay on one line: pills, badges and chips (every one in
+ * the console is `rounded-full`) and table headers. Tables sit in an
+ * `overflow-x-auto` wrapper, so a wider column scrolls instead of squeezing.
+ */
+.rounded-full,
+th {
+  white-space: nowrap;
 }
 
 body {

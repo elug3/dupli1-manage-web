@@ -470,7 +470,7 @@ function SalesTable({
                 <td className="py-2 pr-3 text-ink">
                   {periodTitle(p.period_start, p.period_end)}
                   {p.period_end >= today && (
-                    <span className="ml-2 text-xs text-faint">
+                    <span className="ml-2 whitespace-nowrap text-xs text-faint">
                       {t("analytics.inProgress")}
                     </span>
                   )}
@@ -560,7 +560,7 @@ function VisitorTable({
                   <td className="py-2 pr-3 text-ink">
                     {periodTitle(p.period_start, p.period_end)}
                     {p.period_end >= today && (
-                      <span className="ml-2 text-xs text-faint">
+                      <span className="ml-2 whitespace-nowrap text-xs text-faint">
                         {t("analytics.inProgress")}
                       </span>
                     )}
