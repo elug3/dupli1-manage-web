@@ -36,10 +36,25 @@ const VALID_PASSWORD = process.env.MOCK_ADMIN_PASSWORD ?? "Dupli1Admin2026!";
 const REFRESH_TOKEN = "mock-refresh-token";
 // Override with a real signed JWT to put a real service behind the same BFF
 // session (e.g. order's event stream, which verifies the token).
-const COLOR_MASTERS = new Map([
+// Base colors: the plain palette shoppers filter by (product's base_colors).
+const BASE_COLORS = new Map([
   ["BLK", { code: "BLK", name: "Black", hex: "#0a0a0a" }],
+  ["WHT", { code: "WHT", name: "White", hex: "#ffffff" }],
+  ["GRY", { code: "GRY", name: "Grey", hex: "#8e8e8e" }],
+  ["BGE", { code: "BGE", name: "Beige", hex: "#d8c3a5" }],
+  ["BRN", { code: "BRN", name: "Brown", hex: "#6b4226" }],
+  ["BLU", { code: "BLU", name: "Blue", hex: "#2f5d9a" }],
   ["GRN", { code: "GRN", name: "Green", hex: "#3f6b4a" }],
-  ["OLV", { code: "OLV", name: "Olive" }],
+  ["OLV", { code: "OLV", name: "Olive", hex: "#6b6b3a" }],
+]);
+// Color masters: one color each, with an optional base color and fill.
+// SHR and OPL have no base color yet.
+const COLOR_MASTERS = new Map([
+  ["BLK", { code: "BLK", name: "Black", hex: "#0a0a0a", baseCode: "BLK" }],
+  ["GRN", { code: "GRN", name: "Green", hex: "#3f6b4a", baseCode: "GRN" }],
+  ["OLV", { code: "OLV", name: "Olive", baseCode: "OLV" }],
+  ["SHR", { code: "SHR", name: "쇼어" }],
+  ["OPL", { code: "OPL", name: "오팔린" }],
 ]);
 const ACCESS_TOKEN = process.env.MOCK_ACCESS_TOKEN || "mock-access-token";
 
@@ -171,8 +186,13 @@ function normalizeSizeChart(category, rows) {
 // colorHex2 from the color masters).
 function withSwatch(v) {
   const out = { ...v };
-  const hex = COLOR_MASTERS.get(v.colorCode)?.hex;
-  const hex2 = v.color2Code ? COLOR_MASTERS.get(v.color2Code)?.hex : undefined;
+  // A color's own fill, else its base color's.
+  const fill = (code) => {
+    const c = COLOR_MASTERS.get(code);
+    return c?.hex || (c?.baseCode ? BASE_COLORS.get(c.baseCode)?.hex : undefined);
+  };
+  const hex = fill(v.colorCode);
+  const hex2 = v.color2Code ? fill(v.color2Code) : undefined;
   if (hex) out.colorHex = hex;
   if (hex2) out.colorHex2 = hex2;
   return out;
@@ -962,9 +982,13 @@ const server = http.createServer(async (req, res) => {
     return send(res, 200, [{ code: "DUP", name: "Dupli1" }]);
   }
   if (method === "GET" && path === "/api/v1/products/catalog/sizes") return send(res, 200, SIZE_MASTERS);
-  // Color masters with a swatch fill, as product validates them (dupli1
-  // docs/product-color-swatches.md): one color per row, "#rrggbb"; a
+  // Color masters with a swatch fill and base color, as product validates
+  // them (dupli1 docs/product-color-swatches.md): one color per row,
+  // "#rrggbb"; baseCode omitted keeps it, "" clears it, unknown is 404; a
   // non-empty hex2 or base2Code is 400, an empty one is ignored.
+  if (method === "GET" && path === "/api/v1/products/catalog/base-colors") {
+    return send(res, 200, [...BASE_COLORS.values()]);
+  }
   if (method === "GET" && path === "/api/v1/products/catalog/colors") {
     return send(res, 200, [...COLOR_MASTERS.values()]);
   }
@@ -988,7 +1012,9 @@ const server = http.createServer(async (req, res) => {
     };
     const hex = norm(next.hex);
     if (hex === null) return send(res, 400, { error: "hex must be a 6-digit color" });
-    const saved = { code, name: String(next.name ?? "").trim(), ...(hex && { hex }) };
+    const baseCode = String(next.baseCode ?? "").trim().toUpperCase();
+    if (baseCode && !BASE_COLORS.has(baseCode)) return send(res, 404, { error: `base color ${baseCode} not found` });
+    const saved = { code, name: String(next.name ?? "").trim(), ...(hex && { hex }), ...(baseCode && { baseCode }) };
     COLOR_MASTERS.set(code, saved);
     return send(res, method === "POST" ? 201 : 200, saved);
   }

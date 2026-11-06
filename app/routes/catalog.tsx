@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router";
+import { ColorMasterPanel } from "~/components/ColorMasterPanel";
 import {
+  type CatalogBaseColor,
   type CatalogCodeName,
   type CatalogColor,
   type CatalogStyle,
-  type ColorSwatchInput,
   createBrand,
   createColor,
   createEdition,
@@ -15,6 +16,7 @@ import {
   deleteEdition,
   deleteSize,
   deleteStyle,
+  listBaseColors,
   listBrands,
   listColors,
   listEditions,
@@ -26,7 +28,6 @@ import {
   renameStyle,
   updateColor,
 } from "~/lib/api";
-import { normalizeHexInput, swatchPreview } from "~/lib/color-swatch";
 import { useI18n } from "~/lib/i18n";
 import { useNotify } from "~/lib/notifications";
 
@@ -45,6 +46,7 @@ export default function CatalogMasters() {
   const [tab, setTab] = useState<Tab>("brands");
   const [brands, setBrands] = useState<CatalogCodeName[]>([]);
   const [colors, setColors] = useState<CatalogColor[]>([]);
+  const [baseColors, setBaseColors] = useState<CatalogBaseColor[]>([]);
   const [sizes, setSizes] = useState<CatalogCodeName[]>([]);
   const [editions, setEditions] = useState<CatalogCodeName[]>([]);
   const [selectedBrand, setSelectedBrand] = useState<string>("");
@@ -56,14 +58,16 @@ export default function CatalogMasters() {
     setLoading(true);
     setError(null);
     try {
-      const [b, c, s, e] = await Promise.all([
+      const [b, c, s, e, bc] = await Promise.all([
         listBrands(),
         listColors(),
         listSizes(),
         listEditions(),
+        listBaseColors(),
       ]);
       setBrands(b);
       setColors(c);
+      setBaseColors(bc);
       setSizes(s);
       setEditions(e);
       setSelectedBrand((prev) => {
@@ -255,29 +259,27 @@ export default function CatalogMasters() {
       )}
 
       {tab === "colors" && (
-        <MasterPanel
-          title={t("catalog.colorsTitle")}
-          description={t("catalog.colorsDescription")}
-          rows={colors}
-          swatches
-          onCreate={async (code, name, swatch) => {
-            await createColor(code, name, swatch);
+        // Saves update the list in place (no reload), so the filter, search
+        // and selection survive "Save & next".
+        <ColorMasterPanel
+          colors={colors}
+          baseColors={baseColors}
+          onCreate={async (code, name, fields) => {
+            const created = await createColor(code, name, fields);
+            setColors((prev) => [...prev, created]);
             notify(t("catalog.colorCreated", { code }));
-            await loadMasters();
           }}
-          onRename={async (code, name, swatch) => {
-            await updateColor(code, name, swatch ?? { hex: "" });
+          onUpdate={async (code, name, fields) => {
+            const saved = await updateColor(code, name, fields);
+            setColors((prev) => prev.map((c) => (c.code === saved.code ? saved : c)));
             notify(t("catalog.colorUpdated", { code }));
-            await loadMasters();
+            return saved;
           }}
           onDelete={async (code) => {
             await deleteColor(code);
+            setColors((prev) => prev.filter((c) => c.code !== code));
             notify(t("catalog.colorDeleted", { code }));
-            await loadMasters();
           }}
-          codePlaceholder={t("catalog.placeholderColorCode")}
-          codePattern="^[A-Za-z0-9]{1,12}$"
-          codeHint={t("catalog.codeHintAlphanumeric")}
         />
       )}
 
@@ -346,19 +348,16 @@ function MasterPanel({
   codePlaceholder,
   codePattern,
   codeHint,
-  swatches,
 }: {
   title: string;
   description: string;
-  rows: CatalogColor[];
-  onCreate: (code: string, name: string, swatch?: ColorSwatchInput) => Promise<void>;
-  onRename: (code: string, name: string, swatch?: ColorSwatchInput) => Promise<void>;
+  rows: CatalogCodeName[];
+  onCreate: (code: string, name: string) => Promise<void>;
+  onRename: (code: string, name: string) => Promise<void>;
   onDelete: (code: string) => Promise<void>;
   codePlaceholder: string;
   codePattern: string;
   codeHint: string;
-  /** Colors only: edit the storefront swatch fill (hex). */
-  swatches?: boolean;
 }) {
   return (
     <div className="space-y-4 rounded-2xl border border-edge bg-surface p-5 shadow-[0_1px_4px_rgba(28,27,31,0.04)]">
@@ -374,7 +373,6 @@ function MasterPanel({
         codePlaceholder={codePlaceholder}
         codePattern={codePattern}
         codeHint={codeHint}
-        swatches={swatches}
       />
     </div>
   );
@@ -388,50 +386,33 @@ function MasterTable({
   codePlaceholder,
   codePattern,
   codeHint,
-  swatches,
 }: {
-  rows: CatalogColor[];
-  onCreate: (code: string, name: string, swatch?: ColorSwatchInput) => Promise<void>;
-  onRename: (code: string, name: string, swatch?: ColorSwatchInput) => Promise<void>;
+  rows: CatalogCodeName[];
+  onCreate: (code: string, name: string) => Promise<void>;
+  onRename: (code: string, name: string) => Promise<void>;
   onDelete: (code: string) => Promise<void>;
   codePlaceholder: string;
   codePattern: string;
   codeHint: string;
-  swatches?: boolean;
 }) {
   const { notify } = useNotify();
   const { t } = useI18n();
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
-  const [swatch, setSwatch] = useState<ColorSwatchInput>(EMPTY_SWATCH);
   const [saving, setSaving] = useState(false);
   const [editingCode, setEditingCode] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
-  const [editSwatch, setEditSwatch] = useState<ColorSwatchInput>(EMPTY_SWATCH);
-
-  /** The fill to send, or undefined (after telling the operator) when invalid. */
-  function checkedSwatch(value: ColorSwatchInput): ColorSwatchInput | undefined {
-    const hex = normalizeHexInput(value.hex);
-    if (hex === null) {
-      notify(t("catalog.swatchInvalid"), "error");
-      return undefined;
-    }
-    return { hex };
-  }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     const trimmedCode = code.trim().toUpperCase();
     const trimmedName = name.trim();
     if (!trimmedCode || !trimmedName) return;
-    const fills = swatches ? checkedSwatch(swatch) : undefined;
-    if (swatches && !fills) return;
     setSaving(true);
     try {
-      await onCreate(trimmedCode, trimmedName, fills);
+      await onCreate(trimmedCode, trimmedName);
       setCode("");
       setName("");
-      setSwatch(EMPTY_SWATCH);
     } catch (err) {
       notify(
         err instanceof Error ? err.message : t("catalog.createFailed"),
@@ -468,11 +449,6 @@ function MasterTable({
         >
           {saving ? t("common.loadingEllipsis") : t("catalog.add")}
         </button>
-        {swatches && (
-          <div className="sm:col-span-3">
-            <SwatchFields value={swatch} onChange={setSwatch} />
-          </div>
-        )}
       </form>
 
       <div className="overflow-x-auto rounded-xl border border-edge">
@@ -482,7 +458,6 @@ function MasterTable({
               {(
                 [
                   ["code", t("catalog.colCode")],
-                  ...(swatches ? ([["swatch", t("catalog.colSwatch")]] as const) : []),
                   ["name", t("catalog.colName")],
                   ["actions", ""],
                 ] as const
@@ -499,7 +474,7 @@ function MasterTable({
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={swatches ? 4 : 3} className="px-3 py-6 text-center text-muted">
+                <td colSpan={3} className="px-3 py-6 text-center text-muted">
                   {t("catalog.noEntriesYet")}
                 </td>
               </tr>
@@ -509,20 +484,6 @@ function MasterTable({
                   <td className="px-3 py-2 font-mono text-xs text-ink">
                     {row.code}
                   </td>
-                  {swatches && (
-                    <td className="px-3 py-2">
-                      {editingCode === row.code ? (
-                        <SwatchFields value={editSwatch} onChange={setEditSwatch} />
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <SwatchDot hex={row.hex ?? ""} />
-                          <span className="font-mono text-xs text-muted">
-                            {row.hex || t("catalog.swatchNone")}
-                          </span>
-                        </div>
-                      )}
-                    </td>
-                  )}
                   <td className="px-3 py-2 text-ink">
                     {editingCode === row.code ? (
                       <input
@@ -543,10 +504,8 @@ function MasterTable({
                             type="button"
                             className="text-xs font-semibold text-accent hover:underline"
                             onClick={async () => {
-                              const fills = swatches ? checkedSwatch(editSwatch) : undefined;
-                              if (swatches && !fills) return;
                               try {
-                                await onRename(row.code, editName.trim(), fills);
+                                await onRename(row.code, editName.trim());
                                 setEditingCode(null);
                               } catch (err) {
                                 notify(
@@ -576,10 +535,9 @@ function MasterTable({
                             onClick={() => {
                               setEditingCode(row.code);
                               setEditName(row.name);
-                              setEditSwatch({ hex: row.hex ?? "" });
                             }}
                           >
-                            {swatches ? t("catalog.edit") : t("catalog.rename")}
+                            {t("catalog.rename")}
                           </button>
                           <button
                             type="button"
@@ -618,66 +576,6 @@ function MasterTable({
           </tbody>
         </table>
       </div>
-    </div>
-  );
-}
-
-const EMPTY_SWATCH: ColorSwatchInput = { hex: "" };
-
-/** The swatch as the storefront will draw it: solid, or dashed "no color". */
-function SwatchDot({ hex, size = "size-6" }: { hex: string; size?: string }) {
-  const preview = swatchPreview(hex);
-  if (preview.kind === "none") {
-    return (
-      <span
-        aria-hidden="true"
-        className={`${size} block shrink-0 rounded-full border border-dashed border-zinc-400 bg-zinc-100`}
-      />
-    );
-  }
-  return (
-    <span
-      aria-hidden="true"
-      className={`${size} block shrink-0 rounded-full border border-zinc-200`}
-      style={preview.style}
-    />
-  );
-}
-
-/** The swatch fill: a picker plus a #rrggbb field. A color master row is one color. */
-function SwatchFields({
-  value,
-  onChange,
-}: {
-  value: ColorSwatchInput;
-  onChange: (next: ColorSwatchInput) => void;
-}) {
-  const { t } = useI18n();
-  const label = t("catalog.swatchHex");
-  const normalized = normalizeHexInput(value.hex);
-  return (
-    <div className="space-y-1.5">
-      <div className="flex flex-wrap items-center gap-3">
-        <SwatchDot hex={value.hex} size="size-8" />
-        <label className="flex items-center gap-2 text-xs text-muted">
-          <span className="whitespace-nowrap">{label}</span>
-          <input
-            type="color"
-            aria-label={label}
-            value={normalized || "#000000"}
-            onChange={(e) => onChange({ hex: e.target.value })}
-            className="h-8 w-8 shrink-0 cursor-pointer rounded border border-edge bg-surface p-0.5"
-          />
-          <input
-            value={value.hex}
-            onChange={(e) => onChange({ hex: e.target.value })}
-            className={`${inputCls} w-28 font-mono`}
-            placeholder="#rrggbb"
-            aria-invalid={normalized === null}
-          />
-        </label>
-      </div>
-      <p className="text-xs text-faint">{t("catalog.swatchHelp")}</p>
     </div>
   );
 }
