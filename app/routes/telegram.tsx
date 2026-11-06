@@ -603,7 +603,7 @@ export default function Telegram() {
                           />
                         </div>
                       </td>
-                      <td className="px-5 py-3.5 text-xs text-faint">
+                      <td className="whitespace-nowrap px-5 py-3.5 text-xs text-faint">
                         {formatDateTime(sub.created_at, {
                           month: "short",
                           day: "numeric",

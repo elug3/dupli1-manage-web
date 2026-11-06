@@ -579,6 +579,41 @@ function killSwitchList() {
   return KILL_SWITCH_DEFS.map((def) => ({ engaged: false, ...killSwitches.get(def.key), ...def }));
 }
 
+// ── Telegram ops subscriptions (read-only fixture for layout checks) ─────────
+
+const telegramSubscriptions = [
+  ["8655477104", "DUPLI", "2026-10-31T08:51:00Z", true],
+  ["7261102286", "Dd", "2026-09-27T09:36:00Z", true],
+  ["6885298932", "serial", "2026-09-27T08:50:00Z", false],
+].map(([chatId, label, createdAt, support]) => ({
+  id: `tg_${chatId}`,
+  telegram_user_id: Number(chatId),
+  chat_id: chatId,
+  chat_type: "private",
+  chat_label: label,
+  status: "accepted",
+  alert_order: true,
+  alert_product: true,
+  alert_support: support,
+  muted_events: [],
+  created_at: createdAt,
+  updated_at: createdAt,
+  accepted_at: createdAt,
+}));
+
+function handleTelegram(res, method, path) {
+  if (method !== "GET") return false;
+  if (path === "/api/v1/notification/telegram/subscriptions") {
+    send(res, 200, { items: telegramSubscriptions });
+    return true;
+  }
+  const m = path.match(/^\/api\/v1\/notification\/telegram\/subscriptions\/([^/]+)$/);
+  const sub = m && telegramSubscriptions.find((s) => s.id === decodeURIComponent(m[1]));
+  if (!sub) return false;
+  send(res, 200, sub);
+  return true;
+}
+
 async function handleKillSwitches(req, res, method, path) {
   if (method === "GET" && path === "/api/v1/payments/methods") {
     const methods = killSwitchList().map((sw) => ({
@@ -1227,6 +1262,7 @@ const server = http.createServer(async (req, res) => {
     return item ? send(res, 200, item) : send(res, 404, { error: "not found" });
   }
 
+  if (path.startsWith("/api/v1/notification/") && handleTelegram(res, method, path)) return;
   if (path.startsWith("/api/v1/payments/") && (await handleKillSwitches(req, res, method, path))) {
     return;
   }

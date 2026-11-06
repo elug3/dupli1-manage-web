@@ -385,7 +385,7 @@ function OrderRow({ order }: { order: Order }) {
           <PolicyChips order={order} />
         </div>
       </td>
-      <td className="px-5 py-3.5 text-xs text-faint">
+      <td className="whitespace-nowrap px-5 py-3.5 text-xs text-faint">
         {formatDate(order.created_at, {
           month: "short",
           day: "numeric",

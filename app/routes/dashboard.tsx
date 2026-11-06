@@ -368,7 +368,7 @@ function RecentOrdersTable({ orders }: { orders: Order[] }) {
                   <td className="px-5 py-3.5">
                     <OrderStatusBadge status={order.status} />
                   </td>
-                  <td className="px-5 py-3.5 text-faint">
+                  <td className="whitespace-nowrap px-5 py-3.5 text-faint">
                     {formatDate(order.created_at, {
                       month: "short",
                       day: "numeric",
