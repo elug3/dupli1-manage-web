@@ -189,6 +189,7 @@ export const en = {
     failedToLoad: "Failed to load products",
     noProductsFound: "No products found",
     categoryAll: "all",
+    colImage: "Image",
     colName: "Name",
     colId: "ID",
     colBrand: "Brand",

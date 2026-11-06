@@ -458,6 +458,7 @@ export default function Products() {
                   <tr className="border-b border-edge-soft bg-subtle text-left">
                     {(
                       [
+                        ["image", t("products.colImage")],
                         ["name", t("products.colName")],
                         ["id", t("products.colId")],
                         ["brand", t("products.colBrand")],
@@ -469,9 +470,15 @@ export default function Products() {
                     ).map(([key, label]) => (
                       <th
                         key={key}
-                        className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-faint"
+                        className={`py-3 text-xs font-semibold uppercase tracking-wide text-faint ${
+                          key === "image" ? "w-0 pl-5 pr-0" : "px-5"
+                        }`}
                       >
-                        {label}
+                        {key === "image" ? (
+                          <span className="sr-only">{label}</span>
+                        ) : (
+                          label
+                        )}
                       </th>
                     ))}
                   </tr>
@@ -497,6 +504,12 @@ export default function Products() {
                       }}
                       className="cursor-pointer border-b border-edge-soft last:border-0 hover:bg-subtle"
                     >
+                      <td className="py-2.5 pl-5 pr-0">
+                        <ProductPreviewThumb
+                          imageUrl={productPreviewImage(product)}
+                          size="sm"
+                        />
+                      </td>
                       <td className="px-5 py-3.5 font-medium text-ink">
                         {product.name}
                       </td>
@@ -602,12 +615,18 @@ function ProductCard({ product }: { product: Product }) {
 function ProductPreviewThumb({
   imageUrl,
   name,
+  size = "md",
 }: {
   imageUrl: string | null;
-  name: string;
+  /** Read out for screen readers; omit where the name is already beside it. */
+  name?: string;
+  size?: "sm" | "md";
 }) {
+  const box = size === "sm" ? "size-12 rounded-lg" : "size-16 rounded-xl";
   return (
-    <div className="size-16 shrink-0 overflow-hidden rounded-xl border border-edge bg-subtle">
+    <div
+      className={`${box} shrink-0 overflow-hidden border border-edge bg-subtle`}
+    >
       {imageUrl ? (
         <img
           src={imageUrl}
@@ -623,7 +642,7 @@ function ProductPreviewThumb({
           <ProductPlaceholderIcon />
         </div>
       )}
-      <span className="sr-only">{name}</span>
+      {name && <span className="sr-only">{name}</span>}
     </div>
   );
 }

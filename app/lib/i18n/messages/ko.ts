@@ -190,6 +190,7 @@ export const ko: Messages = {
     failedToLoad: "상품을 불러오지 못했습니다",
     noProductsFound: "상품을 찾을 수 없습니다",
     categoryAll: "전체",
+    colImage: "이미지",
     colName: "이름",
     colId: "ID",
     colBrand: "브랜드",
