@@ -100,6 +100,8 @@ export interface Product {
   availableColors?: string[];
   availableSizes?: string[];
   defaultImageUrl?: string;
+  /** ~600px JPEG sibling of `defaultImageUrl`, for thumbnails (backend `defaultListingImageUrl`). */
+  defaultListingImageUrl?: string;
   variants?: ProductVariant[];
   raw: ProductSearchHit;
 }
@@ -174,16 +176,6 @@ export interface CatalogBaseColor extends CatalogCodeName {
 
 export interface CatalogStyle extends CatalogCodeName {
   brandCode: string;
-}
-
-export interface VariantStockAlert {
-  parentId: string;
-  parentName: string;
-  sku: string;
-  color: string;
-  size: string;
-  quantity: number;
-  available: number;
 }
 
 function hitId(hit: ProductSearchHit, index: number): string {
@@ -467,10 +459,15 @@ export function productImageSrc(url: string): string {
   return url;
 }
 
-/** Best-effort thumbnail for list cards (parent default or first variant image). */
+/**
+ * Best-effort thumbnail for list cards: the parent's ~600px listing image when
+ * the backend has one (about a tenth of the original's bytes), else the parent
+ * default or first variant image at full size.
+ */
 export function productPreviewImage(product: Product): string | null {
   let url: string | null = null;
-  if (product.defaultImageUrl) url = product.defaultImageUrl;
+  if (product.defaultListingImageUrl) url = product.defaultListingImageUrl;
+  else if (product.defaultImageUrl) url = product.defaultImageUrl;
   else if (product.imageUrls && product.imageUrls.length > 0) {
     url = product.imageUrls[0];
   } else {
@@ -572,6 +569,9 @@ export function mapProduct(
       hitStringArray(hit, "availableSizes") ??
       hitStringArray(hit, "available_sizes"),
     defaultImageUrl,
+    defaultListingImageUrl:
+      hitString(hit, "defaultListingImageUrl") ??
+      hitString(hit, "default_listing_image_url"),
     variants,
     raw: hit,
   };
@@ -2049,42 +2049,6 @@ export async function adjustInventory(
   );
   if (!res.ok) throw new Error(await readError(res, "Failed to adjust stock"));
   return res.json() as Promise<StockItem>;
-}
-
-async function inventoryQuantityForSku(sku: string): Promise<number | null> {
-  try {
-    const item = await getInventory(sku);
-    return item.quantity;
-  } catch {
-    return null;
-  }
-}
-
-/** Stock alerts from inventory service keyed by variant SKU. */
-export async function getCatalogStockAlerts(): Promise<VariantStockAlert[]> {
-  const products = await listAllProducts();
-  const rows: VariantStockAlert[] = [];
-
-  await Promise.all(
-    products.flatMap((product) =>
-      productVariants(product).map(async (variant) => {
-        const quantity = await inventoryQuantityForSku(variant.sku);
-        if (quantity == null) return;
-
-        rows.push({
-          parentId: product.id,
-          parentName: product.name,
-          sku: variant.sku,
-          color: variant.color,
-          size: variant.size,
-          quantity,
-          available: Math.max(0, quantity),
-        });
-      })
-    )
-  );
-
-  return rows.sort((a, b) => a.parentName.localeCompare(b.parentName));
 }
 
 // ── Auth (users) ─────────────────────────────────────────────────────────────

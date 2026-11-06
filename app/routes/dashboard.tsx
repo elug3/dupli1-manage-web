@@ -4,8 +4,6 @@ import {
   type Order,
   type Product,
   type SalesPeriod,
-  type VariantStockAlert,
-  getCatalogStockAlerts,
   getOrders,
   getProducts,
   getSalesReport,
@@ -31,7 +29,6 @@ function isToday(dateStr: string): boolean {
 export default function Dashboard() {
   const { t } = useI18n();
   const [products, setProducts] = useState<Product[]>([]);
-  const [stockAlerts, setStockAlerts] = useState<VariantStockAlert[]>([]);
   const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [errors, setErrors] = useState<string[]>([]);
@@ -79,13 +76,9 @@ export default function Dashboard() {
       getProducts().catch(
         capture(t("dashboard.errorLabelProducts"), [] as Product[])
       ),
-      getCatalogStockAlerts().catch(
-        capture(t("dashboard.errorLabelStockAlerts"), [] as VariantStockAlert[])
-      ),
       getOrders().catch(capture(t("dashboard.errorLabelOrders"), [] as Order[])),
-    ]).then(([prods, alerts, orders]) => {
+    ]).then(([prods, orders]) => {
       setProducts(prods);
-      setStockAlerts(alerts);
       setAllOrders(orders);
       setErrors(failures);
       setLoading(false);
@@ -94,7 +87,7 @@ export default function Dashboard() {
   }, [t]);
 
   // Live order changes keep the stat tiles and the recent-orders table honest;
-  // products and stock alerts still only load once.
+  // products still only load once.
   const handleOrderEvent = useCallback(
     (order: Order) => {
       setAllOrders((current) => mergeOrder(current, order));
@@ -145,7 +138,7 @@ export default function Dashboard() {
         <div className="lg:col-span-2">
           <RecentOrdersTable orders={allOrders.slice(0, 5)} />
         </div>
-        <QuickPanel stockAlerts={stockAlerts} />
+        <QuickPanel />
       </div>
     </div>
   );
@@ -424,17 +417,8 @@ function RecentOrdersTable({ orders }: { orders: Order[] }) {
   );
 }
 
-function QuickPanel({ stockAlerts }: { stockAlerts: VariantStockAlert[] }) {
+function QuickPanel() {
   const { t } = useI18n();
-  const outOfStock = stockAlerts.filter((row) => row.quantity === 0);
-  const lowStock = stockAlerts.filter(
-    (row) => row.quantity > 0 && row.quantity <= 5
-  );
-
-  function alertLabel(row: VariantStockAlert): string {
-    const option = [row.color, row.size].filter(Boolean).join(" / ");
-    return option ? `${row.parentName} (${option})` : row.parentName;
-  }
 
   return (
     <div className="space-y-4">
@@ -473,42 +457,6 @@ function QuickPanel({ stockAlerts }: { stockAlerts: VariantStockAlert[] }) {
         </div>
       </div>
 
-      {(outOfStock.length > 0 || lowStock.length > 0) && (
-        <div className="rounded-2xl border border-amber-200 bg-warn-bg p-5">
-          <h2 className="mb-3 flex items-center gap-2 font-semibold text-amber-900">
-            <span className="text-amber-500">⚠</span> {t("dashboard.stockAlerts")}
-          </h2>
-          <p className="mb-3 text-xs text-amber-800/80">
-            {t("dashboard.stockAlertsHint")}
-          </p>
-          <div className="space-y-2">
-            {outOfStock.map((row) => (
-              <Link
-                key={row.sku}
-                to={`/products/${encodeURIComponent(row.parentId)}`}
-                className="flex items-center justify-between gap-2 text-sm hover:underline"
-              >
-                <span className="truncate text-amber-900">{alertLabel(row)}</span>
-                <span className="shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
-                  {t("dashboard.outOfStock")}
-                </span>
-              </Link>
-            ))}
-            {lowStock.map((row) => (
-              <Link
-                key={row.sku}
-                to={`/products/${encodeURIComponent(row.parentId)}`}
-                className="flex items-center justify-between gap-2 text-sm hover:underline"
-              >
-                <span className="truncate text-amber-900">{alertLabel(row)}</span>
-                <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-                  {t("dashboard.quantityLeft", { count: row.quantity })}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
