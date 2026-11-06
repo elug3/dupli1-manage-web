@@ -36,15 +36,41 @@ export async function proxyProductImagesRequest(
     `${gatewayBase()}/`
   );
 
+  // Forward the validators too, so a browser holding the image gets a 304
+  // instead of the whole file again.
   const headers = new Headers();
-  const accept = request.headers.get("Accept");
-  if (accept) headers.set("Accept", accept);
+  for (const name of FORWARDED_IMAGE_REQUEST_HEADERS) {
+    const value = request.headers.get(name);
+    if (value) headers.set(name, value);
+  }
 
-  return fetch(upstream, {
+  const res = await fetch(upstream, {
     method: request.method === "HEAD" ? "HEAD" : "GET",
     headers,
   });
+  if (res.status !== 200 && res.status !== 304) return res;
+
+  // Object keys end in an upload UUID (or its `.w600.jpg` sibling) and are
+  // never rewritten in place, so the browser may keep them indefinitely.
+  // Storage sends no Cache-Control, which otherwise leaves caching to the
+  // browser's heuristics.
+  const out = new Headers(res.headers);
+  out.set("Cache-Control", PRODUCT_IMAGE_CACHE_CONTROL);
+  return new Response(res.body, {
+    status: res.status,
+    statusText: res.statusText,
+    headers: out,
+  });
 }
+
+const FORWARDED_IMAGE_REQUEST_HEADERS = [
+  "Accept",
+  "If-None-Match",
+  "If-Modified-Since",
+] as const;
+
+export const PRODUCT_IMAGE_CACHE_CONTROL =
+  "public, max-age=31536000, immutable";
 
 export function gatewayRelativePath(pathname: string): string | null {
   for (const prefix of GATEWAY_PREFIXES) {

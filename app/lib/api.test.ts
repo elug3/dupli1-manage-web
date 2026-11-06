@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   type Order,
   conversionRate,
+  mapProduct,
   orderHasFulfillment,
   parseVariantPriceInput,
   permissionGrants,
   productImageSrc,
+  productPreviewImage,
 } from "./api";
 
 function order(partial: Partial<Order> & Pick<Order, "id" | "status">): Order {
@@ -136,5 +138,24 @@ describe("parseVariantPriceInput", () => {
     for (const bad of ["0", "-5", "10.5", "abc", "1e5"]) {
       expect(parseVariantPriceInput(bad)).toEqual({ error: "INVALID_PRICE" });
     }
+  });
+});
+
+describe("productPreviewImage", () => {
+  const full = "/product-images/p1/STYLE/abc";
+
+  it("prefers the ~600px listing image for thumbnails", () => {
+    const product = mapProduct({
+      id: "p1",
+      name: "Bag",
+      defaultImageUrl: full,
+      defaultListingImageUrl: `${full}.w600.jpg`,
+    });
+    expect(productPreviewImage(product)).toBe(`${full}.w600.jpg`);
+  });
+
+  it("falls back to the full-size default when there is no listing image", () => {
+    const product = mapProduct({ id: "p1", name: "Bag", defaultImageUrl: full });
+    expect(productPreviewImage(product)).toBe(full);
   });
 });
