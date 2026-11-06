@@ -21,7 +21,8 @@
     "test:session": "node scripts/test-session-refresh.mjs",
     "test:session:shared": "node scripts/test-session-shared.mjs",
     "mock:gateway": "node scripts/mock-gateway.mjs",
-    "test:sku-color2:browser": "node scripts/test-sku-second-color-browser.mjs"
+    "test:sku-color2:browser": "node scripts/test-sku-second-color-browser.mjs",
+    "test:inspection-video:browser": "node scripts/test-inspection-video-browser.mjs"
   },
   "dependencies": {
     "@react-router/node": "7.16.0",

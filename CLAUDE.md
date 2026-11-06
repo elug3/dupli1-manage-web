@@ -94,7 +94,8 @@ SKU identity: each variant has immutable `skuId` (ULID) and human `sku` composed
 - `GET /order/api/v1/orders?customer_id=` — list orders (admin aggregates across users)
 - `GET /order/api/v1/orders/{id}`
 - `POST /order/api/v1/orders/{id}/confirm` — `paid` → `confirmed` (`order.status.update`, 2-hour SLA)
-- `POST /order/api/v1/orders/{id}/ship` — `confirmed` → `in_transit` (`order.ship`; commits stock)
+- `POST /order/api/v1/orders/{id}/ship` — `confirmed` → `in_transit` (`order.ship`; commits stock). Refused with `409 inspection_video_required` until an inspection video is attached
+- `PUT|GET /order/api/v1/orders/{id}/inspection-video` — **pre-shipment inspection video** (검수영상, backend [docs/order-inspection-video.md](../dupli1/docs/order-inspection-video.md)). `PUT` takes the raw file as the body (not multipart; `video/mp4|quicktime|webm`, ≤100 MB, `order.ship`) and returns the order; `GET` streams it with Range. Replaceable until the order is `fulfilled` or `canceled` (`inspection_video_locked`). The order page's 검수영상 card (`InspectionVideoSection`, `app/lib/inspection-video.ts`) uploads with XHR for progress, plays it inline through the session gateway (which forwards `Range`/`If-Range`), and Ship stays disabled while a confirmed order has none. Note the BFF buffers the body (≤100 MB) so a post-refresh retry can resend it. `npm run test:inspection-video:browser` drives it against `npm run mock:gateway`
 - `POST /order/api/v1/orders/{id}/deliver` — `in_transit` → `delivered` (`order.ship`)
 - `POST /order/api/v1/orders/{id}/cancel/approve` and `…/reject` — customer cancel request (`order.status.update`)
 - `PUT /order/api/v1/orders/{id}/status` — `canceled` or `fulfilled` (`order.status.update`). Cancel refunds the captured payment first (including `in_transit` / `delivered`); a PG rejection leaves the order unchanged.

@@ -376,6 +376,88 @@ function seed() {
 }
 seed();
 
+// ── Inspection videos (검수영상) ─────────────────────────────────────────────
+// Mirrors order's PUT/GET /api/v1/orders/{id}/inspection-video: raw body,
+// Content-Length required, 100 MB cap, mp4/mov/webm, replaceable until the
+// order is fulfilled or canceled, Range-served back.
+
+const inspectionVideos = new Map();
+const INSPECTION_VIDEO_MAX_BYTES = Number(process.env.MOCK_INSPECTION_VIDEO_MAX_BYTES ?? 100_000_000);
+const INSPECTION_VIDEO_TYPES = new Set(["video/mp4", "video/quicktime", "video/webm"]);
+const INSPECTION_VIDEO_EDITABLE = new Set(["paid", "confirmed", "in_transit", "delivered", "disputed"]);
+
+function readRaw(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    req.on("data", (c) => chunks.push(c));
+    req.on("end", () => resolve(Buffer.concat(chunks)));
+    req.on("error", reject);
+  });
+}
+
+async function handleInspectionVideo(req, res, orderId) {
+  const order = orders.get(orderId);
+  if (!order) return send(res, 404, { error: "order not found" });
+  if (req.method === "PUT") {
+    const length = Number(req.headers["content-length"] ?? -1);
+    if (length < 0) return send(res, 411, { error: "Content-Length is required" });
+    if (length > INSPECTION_VIDEO_MAX_BYTES) {
+      req.resume();
+      return send(res, 413, { error: `the video is larger than ${INSPECTION_VIDEO_MAX_BYTES} bytes` });
+    }
+    const type = String(req.headers["content-type"] ?? "").split(";")[0].trim().toLowerCase();
+    const data = await readRaw(req);
+    if (!INSPECTION_VIDEO_TYPES.has(type) || data.length === 0) {
+      return send(res, 400, { error: "unsupported inspection video", reason: "invalid_inspection_video" });
+    }
+    if (["fulfilled", "canceled"].includes(order.status)) {
+      return send(res, 409, { error: "the inspection video is locked", reason: "inspection_video_locked" });
+    }
+    if (!INSPECTION_VIDEO_EDITABLE.has(order.status)) {
+      return send(res, 409, { error: "invalid status transition", reason: "invalid_transition" });
+    }
+    const uploadedAt = new Date().toISOString();
+    inspectionVideos.set(orderId, { data, type, uploadedAt });
+    order.inspection_video = {
+      content_type: type,
+      size_bytes: data.length,
+      uploaded_by: "mock-admin",
+      uploaded_at: uploadedAt,
+    };
+    order.updated_at = uploadedAt;
+    return send(res, 200, order);
+  }
+  if (req.method === "GET" || req.method === "HEAD") {
+    const video = inspectionVideos.get(orderId);
+    if (!video) return send(res, 404, { error: "inspection video not found" });
+    const size = video.data.length;
+    const headers = {
+      "Content-Type": video.type,
+      "Accept-Ranges": "bytes",
+      "Cache-Control": "private, no-store",
+      "Content-Disposition": "inline",
+    };
+    const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range ?? "");
+    if (range) {
+      const start = range[1] ? Number(range[1]) : Math.max(0, size - Number(range[2]));
+      const end = range[1] && range[2] ? Math.min(Number(range[2]), size - 1) : size - 1;
+      if (start >= size || start > end) {
+        res.writeHead(416, { "Content-Range": `bytes */${size}` });
+        return res.end();
+      }
+      res.writeHead(206, {
+        ...headers,
+        "Content-Range": `bytes ${start}-${end}/${size}`,
+        "Content-Length": end - start + 1,
+      });
+      return res.end(req.method === "HEAD" ? undefined : video.data.subarray(start, end + 1));
+    }
+    res.writeHead(200, { ...headers, "Content-Length": size });
+    return res.end(req.method === "HEAD" ? undefined : video.data);
+  }
+  return send(res, 405, { error: "method not allowed" });
+}
+
 function orderList() {
   return [...orders.values()].sort(
     (a, b) => new Date(b.created_at) - new Date(a.created_at)
@@ -808,6 +890,18 @@ const server = http.createServer(async (req, res) => {
     orders.set(order.id, order);
     return send(res, 200, { order });
   }
+  if (path === "/__control/order-status" && method === "POST") {
+    // Moves an order without the console, e.g. to fulfilled to lock its video.
+    const body = await readBody(req).catch(() => ({}));
+    const order = orders.get(body.id);
+    if (!order) return send(res, 404, { error: "order not found" });
+    order.status = body.status;
+    order.inspection_video_locked =
+      order.inspection_video && ["fulfilled", "canceled"].includes(body.status)
+        ? true
+        : undefined;
+    return send(res, 200, order);
+  }
   if (path === "/__control/reset" && method === "POST") {
     return send(res, 200, {
       delivered: broadcast({ event: "reset", data: { reason: "gap" } }),
@@ -1163,6 +1257,29 @@ const server = http.createServer(async (req, res) => {
     Object.assign(order, {
       status: "confirmed",
       confirmed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+    return send(res, 200, order);
+  }
+  m = path.match(/^\/api\/v1\/orders\/([^/]+)\/inspection-video$/);
+  if (m) return handleInspectionVideo(req, res, decodeURIComponent(m[1]));
+  m = path.match(/^\/api\/v1\/orders\/([^/]+)\/ship$/);
+  if (m && method === "POST") {
+    const order = orders.get(decodeURIComponent(m[1]));
+    if (!order) return send(res, 404, { error: "order not found" });
+    if (order.status !== "confirmed") return send(res, 409, { error: "order is not confirmed" });
+    if (!order.inspection_video) {
+      return send(res, 409, {
+        error: "attach the inspection video before shipping",
+        reason: "inspection_video_required",
+      });
+    }
+    const body = await readBody(req).catch(() => ({}));
+    Object.assign(order, {
+      status: "in_transit",
+      carrier: body.carrier,
+      tracking_number: body.tracking_number,
+      shipped_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     });
     return send(res, 200, order);
