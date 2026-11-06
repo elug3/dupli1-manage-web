@@ -186,6 +186,7 @@ export const zhCN: Messages = {
     failedToLoad: "加载商品失败",
     noProductsFound: "未找到商品",
     categoryAll: "全部",
+    colImage: "图片",
     colName: "名称",
     colId: "ID",
     colBrand: "品牌",

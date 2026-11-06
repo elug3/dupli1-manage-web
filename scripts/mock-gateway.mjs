@@ -1166,6 +1166,14 @@ const server = http.createServer(async (req, res) => {
 
   // Products and stock, with product's delete rules: a SKU goes only with
   // an empty stock row, and a product not while any SKU has stock reserved.
+  // The products list, unfiltered and unpaged: enough for /products to
+  // render its rows and their thumbnails (the console falls back to the
+  // first SKU image when a parent has none of its own).
+  if (method === "GET" && path === "/api/v1/products") {
+    const results = [...products.values()].map((p) => ({ ...p, variants: p.variants.map(withSwatch) }));
+    return send(res, 200, { results, total: results.length, limit: 50, offset: 0 });
+  }
+
   m = path.match(/^\/api\/v1\/products\/([^/]+)$/);
   if (m && products.has(decodeURIComponent(m[1]))) {
     const product = products.get(decodeURIComponent(m[1]));
