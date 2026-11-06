@@ -155,12 +155,20 @@ export interface CatalogCodeName {
 }
 
 /**
- * Color master entry: one color. `hex` is the storefront swatch fill
- * ("#rrggbb"); without it the storefront shows a dashed "no color" swatch.
- * Product refuses a second fill (`hex2`). Backend: dupli1
+ * Color master entry: one color. `baseCode` names its base color, the plain
+ * color shoppers filter by. `hex` is an optional fill of its own
+ * ("#rrggbb"); without it the storefront draws the base color's fill, and
+ * without either a dashed "no color" swatch. Product refuses a second fill
+ * (`hex2`) or base (`base2Code`). Backend: dupli1
  * docs/product-color-swatches.md.
  */
 export interface CatalogColor extends CatalogCodeName {
+  hex?: string;
+  baseCode?: string;
+}
+
+/** A base color: the plain palette (BLK, BRN…) shoppers filter by. */
+export interface CatalogBaseColor extends CatalogCodeName {
   hex?: string;
 }
 
@@ -1202,9 +1210,19 @@ export async function listColors(): Promise<CatalogColor[]> {
   return parseCatalogList<CatalogColor>(res, "Failed to list colors");
 }
 
-/** Swatch fill as sent to product: "" means none (and clears on update). */
+/**
+ * A color's swatch fill and base color as sent to product. `hex` "" means
+ * none (and clears on update). `baseCode` "" clears the base color on
+ * update; left out, product keeps it.
+ */
 export interface ColorSwatchInput {
   hex: string;
+  baseCode?: string;
+}
+
+export async function listBaseColors(): Promise<CatalogBaseColor[]> {
+  const res = await authedFetch(productPath("/api/v1/products/catalog/base-colors"));
+  return parseCatalogList<CatalogBaseColor>(res, "Failed to list base colors");
 }
 
 export async function createColor(
@@ -1215,13 +1233,18 @@ export async function createColor(
   const res = await authedFetch(productPath("/api/v1/products/catalog/colors"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ code, name, ...swatch }),
+    body: JSON.stringify({
+      code,
+      name,
+      hex: swatch.hex,
+      ...(swatch.baseCode && { baseCode: swatch.baseCode }),
+    }),
   });
   if (!res.ok) throw new Error(await readError(res, "Failed to create color"));
   return res.json() as Promise<CatalogColor>;
 }
 
-/** Renames a color and sets its swatch fill ("" clears it). */
+/** Renames a color, sets its swatch fill ("" clears it) and, when given, its base color ("" clears it). */
 export async function updateColor(
   code: string,
   name: string,
@@ -1232,7 +1255,11 @@ export async function updateColor(
     {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, ...swatch }),
+      body: JSON.stringify({
+        name,
+        hex: swatch.hex,
+        ...(swatch.baseCode !== undefined && { baseCode: swatch.baseCode }),
+      }),
     }
   );
   if (!res.ok) throw new Error(await readError(res, "Failed to update color"));
