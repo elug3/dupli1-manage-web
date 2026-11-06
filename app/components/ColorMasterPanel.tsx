@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { HelpTip } from "~/components/HelpTip";
 import type { CatalogBaseColor, CatalogColor, ColorSwatchInput } from "~/lib/api";
 import {
   type ColorFilter,
@@ -285,8 +286,10 @@ export function ColorMasterPanel({
             </label>
 
             <fieldset className="space-y-2">
-              <legend className="mb-1 text-xs font-semibold text-ink">{t("catalog.colBaseColor")}</legend>
-              <p className="text-xs text-muted">{t("catalog.baseColorHelp")}</p>
+              <legend className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-ink">
+                {t("catalog.colBaseColor")}
+                <BaseColorHelp align="start" />
+              </legend>
               <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
                 {bases.map((b) => {
                   const on = b.code === draftBase;
@@ -448,19 +451,22 @@ function CreateColorForm({
         aria-label={t("catalog.displayName")}
         required
       />
-      <select
-        value={baseCode}
-        onChange={(e) => setBaseCode(e.target.value)}
-        aria-label={t("catalog.colBaseColor")}
-        className={inputCls}
-      >
-        <option value="">{t("catalog.noBaseColorOption")}</option>
-        {bases.map((b) => (
-          <option key={b.code} value={b.code}>
-            {b.code} — {b.name}
-          </option>
-        ))}
-      </select>
+      <div className="flex min-w-0 items-center gap-2">
+        <select
+          value={baseCode}
+          onChange={(e) => setBaseCode(e.target.value)}
+          aria-label={t("catalog.colBaseColor")}
+          className={`${inputCls} min-w-0 flex-1`}
+        >
+          <option value="">{t("catalog.noBaseColorOption")}</option>
+          {bases.map((b) => (
+            <option key={b.code} value={b.code}>
+              {b.code} — {b.name}
+            </option>
+          ))}
+        </select>
+        <BaseColorHelp align="end" />
+      </div>
       <button
         type="submit"
         disabled={saving}
@@ -473,6 +479,12 @@ function CreateColorForm({
       </div>
     </form>
   );
+}
+
+/** (?) beside a base color control: what a base color is and does. */
+function BaseColorHelp({ align }: { align: "start" | "end" }) {
+  const { t } = useI18n();
+  return <HelpTip label={t("catalog.baseColorHelpLabel")} text={t("catalog.baseColorHelp")} align={align} />;
 }
 
 /** The swatch as the storefront will draw it: solid, or dashed "no color". */

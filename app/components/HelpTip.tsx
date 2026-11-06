@@ -7,8 +7,20 @@ import { useEffect, useId, useRef, useState } from "react";
  *
  * Keep it outside a `<label>`: a click inside one would also toggle the
  * labelled checkbox.
+ *
+ * `align` places the text under the button: centered (default), from its
+ * left edge ("start", for a button near a panel's left side) or ending at
+ * its right edge ("end", near a right side).
  */
-export function HelpTip({ label, text }: { label: string; text: string }) {
+export function HelpTip({
+  label,
+  text,
+  align = "center",
+}: {
+  label: string;
+  text: string;
+  align?: "center" | "start" | "end";
+}) {
   const id = useId();
   const ref = useRef<HTMLSpanElement>(null);
   const [hovered, setHovered] = useState(false);
@@ -54,7 +66,8 @@ export function HelpTip({ label, text }: { label: string; text: string }) {
         id={id}
         role="tooltip"
         className={[
-          "absolute left-1/2 top-full z-20 mt-2 w-64 max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-lg border border-edge bg-surface px-3 py-2 text-xs font-normal leading-relaxed text-ink shadow-lg",
+          "absolute top-full z-20 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-lg border border-edge bg-surface px-3 py-2 text-left text-xs font-normal normal-case leading-relaxed tracking-normal whitespace-normal text-ink shadow-lg",
+          align === "start" ? "left-0" : align === "end" ? "right-0" : "left-1/2 -translate-x-1/2",
           open ? "" : "hidden",
         ].join(" ")}
       >
