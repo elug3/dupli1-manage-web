@@ -1664,8 +1664,21 @@ export interface Order {
   tracking_number?: string;
   /** Free-text carrier name when `carrier` is `other`. */
   carrier_note?: string;
+  /** Pre-shipment inspection video (검수영상); ship refuses without one. */
+  inspection_video?: OrderInspectionVideo;
+  /** Set once the order is fulfilled or canceled: the video can no longer be replaced. */
+  inspection_video_locked?: boolean;
   created_at: string;
   updated_at: string;
+}
+
+/** Metadata of an order's inspection video; the file streams from its own route. */
+export interface OrderInspectionVideo {
+  content_type: string;
+  size_bytes: number;
+  /** User id of the staff member who uploaded it. */
+  uploaded_by?: string;
+  uploaded_at: string;
 }
 
 export type ShipCarrier =
@@ -1800,6 +1813,83 @@ export async function shipOrder(
   });
   if (!res.ok) throw new Error(await readError(res, "Failed to ship order"));
   return published(await res.json());
+}
+
+/** Why order refused an inspection video upload, when it said (`reason`). */
+export class InspectionVideoUploadError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly reason?: string
+  ) {
+    super(message);
+    this.name = "InspectionVideoUploadError";
+  }
+}
+
+/**
+ * Upload (or replace) an order's inspection video. XHR rather than fetch so
+ * the page can show upload progress; the body is the raw file, which order
+ * streams into storage. Resolves with the updated order. `signal` aborts.
+ */
+export function uploadInspectionVideo(
+  orderId: string,
+  file: File,
+  contentType: string,
+  options: {
+    onProgress?: (loaded: number, total: number) => void;
+    signal?: AbortSignal;
+  } = {}
+): Promise<Order> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open(
+      "PUT",
+      `/auth/session/gateway${orderPath(`/api/v1/orders/${encodeURIComponent(orderId)}/inspection-video`)}`
+    );
+    xhr.withCredentials = true;
+    xhr.setRequestHeader("Content-Type", contentType);
+    xhr.setRequestHeader("Accept", "application/json");
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) options.onProgress?.(e.loaded, e.total);
+    };
+    const onAbort = () => xhr.abort();
+    options.signal?.addEventListener("abort", onAbort, { once: true });
+    const done = () => options.signal?.removeEventListener("abort", onAbort);
+    xhr.onload = () => {
+      done();
+      let body: { error?: string; reason?: string } & Partial<Order> = {};
+      try {
+        body = JSON.parse(xhr.responseText || "{}");
+      } catch {
+        // Non-JSON error page from a proxy (e.g. a 413 from nginx).
+      }
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(published(body as Order));
+        return;
+      }
+      reject(
+        new InspectionVideoUploadError(
+          body.error ?? `Upload failed (${xhr.status})`,
+          xhr.status,
+          body.reason
+        )
+      );
+    };
+    xhr.onerror = () => {
+      done();
+      reject(new InspectionVideoUploadError("Network error", 0));
+    };
+    xhr.onabort = () => {
+      done();
+      reject(new DOMException("Upload canceled", "AbortError"));
+    };
+    if (options.signal?.aborted) {
+      xhr.abort();
+      return;
+    }
+    xhr.send(file);
+  });
 }
 
 /** Cancel or fulfill via status API. Use `shipOrder` for `in_transit`. */

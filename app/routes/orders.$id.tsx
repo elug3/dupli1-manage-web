@@ -17,7 +17,12 @@ import {
   shipOrder,
   updateOrderStatus,
 } from "~/lib/api";
+import { InspectionVideoSection } from "~/components/InspectionVideoSection";
 import { useI18n } from "~/lib/i18n";
+import {
+  shipNeedsInspectionVideo,
+  showInspectionVideo,
+} from "~/lib/inspection-video";
 import { useNotify } from "~/lib/notifications";
 
 export function meta() {
@@ -283,6 +288,7 @@ export default function OrderDetail() {
   }
 
   const actions = orderActions(order);
+  const needsVideo = shipNeedsInspectionVideo(order);
 
   return (
     <div className="space-y-6">
@@ -337,11 +343,13 @@ export default function OrderDetail() {
                             : action.status === "canceled"
                               ? t("orders.actionCancel")
                               : t("orders.actionFulfill");
+                  const blocked = action.kind === "ship" && needsVideo;
                   return (
                     <button
                       key={key}
                       type="button"
-                      disabled={busy || updatingAction !== null}
+                      disabled={busy || blocked || updatingAction !== null}
+                      title={blocked ? t("inspectionVideo.shipBlocked") : undefined}
                       onClick={() => handleAction(action)}
                       className={[
                         "rounded-xl px-4 py-2 text-sm font-semibold transition disabled:opacity-50",
@@ -355,6 +363,15 @@ export default function OrderDetail() {
                   );
                 })}
               </div>
+            )}
+            {needsVideo && (
+              <p
+                className="flex items-center gap-1.5 text-xs font-medium text-warn-fg"
+                data-testid="ship-needs-video"
+              >
+                <span aria-hidden>⚠</span>
+                {t("inspectionVideo.shipBlocked")}
+              </p>
             )}
           </div>
         </div>
@@ -408,6 +425,9 @@ export default function OrderDetail() {
       {/* Body */}
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
+          {showInspectionVideo(order) && (
+            <InspectionVideoSection order={order} onOrderChange={setOrder} />
+          )}
           <TimelineSection order={order} />
           <ItemsSection order={order} />
         </div>

@@ -94,6 +94,13 @@ export async function proxyGatewayRequestForPath(
   const lastEventId = request.headers.get("Last-Event-ID");
   if (lastEventId) headers.set("Last-Event-ID", lastEventId);
 
+  // Video playback (order inspection videos) seeks with byte ranges; without
+  // these a player gets the whole file every time and Safari will not play.
+  for (const name of ["Range", "If-Range"]) {
+    const value = request.headers.get(name);
+    if (value) headers.set(name, value);
+  }
+
   const hasBody = request.method !== "GET" && request.method !== "HEAD";
   const payload =
     hasBody ? (body ?? (await request.arrayBuffer())) : undefined;
