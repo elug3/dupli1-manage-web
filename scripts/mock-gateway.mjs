@@ -27,6 +27,11 @@
  * the payment service's shape: every declared switch listed, `engaged`
  * required on PUT, card reported as configured. `POST /__control/kill-switches-reset`
  * releases them; `scripts/test-kill-switches-browser.mjs` drives the page.
+ *
+ * Staff reviews (`GET /api/v1/products/reviews`, `POST …/by-id/{id}/hide`)
+ * seed one visible 5-star Eco Bag review and one 1-star jacket review.
+ * `POST /__control/reviews-reset` restores them. `scripts/test-reviews-browser.mjs`
+ * drives `/reviews`.
  */
 import http from "node:http";
 
@@ -253,6 +258,103 @@ seedProduct(
 
 /** Heartbeat cadence, matching the order service. */
 const HEARTBEAT_MS = 20_000;
+
+function freshReviews() {
+  return [
+    {
+      id: "rev_good",
+      productId: "prod_mock_eco",
+      skuId: "sku_eco_blk",
+      variantLabel: "Black / OS",
+      rating: 5,
+      body: "가죽 결이 곱고 사이즈도 적당해요.",
+      author: "김**",
+      verifiedPurchase: true,
+      createdAt: "2026-11-02T03:00:00.000Z",
+      orderId: "ord_good",
+      customerId: "usr_shopper",
+      photos: [],
+      hidden: false,
+      hiddenReason: "",
+    },
+    {
+      id: "rev_low",
+      productId: "prod_mock_padded",
+      skuId: "sku_puf_blk_m",
+      variantLabel: "Black / M",
+      rating: 1,
+      body: "배송은 왔는데 마감이 거칠어요.",
+      author: "이**",
+      verifiedPurchase: true,
+      createdAt: "2026-11-01T03:00:00.000Z",
+      orderId: "ord_low",
+      customerId: "usr_shopper_2",
+      photos: [],
+      hidden: false,
+      hiddenReason: "",
+    },
+  ];
+}
+
+let staffReviews = freshReviews();
+
+async function handleReviews(req, res, method, path, url) {
+  if (method === "GET" && path === "/api/v1/products/reviews") {
+    const status = url.searchParams.get("status") || "visible";
+    if (status !== "visible" && status !== "hidden") {
+      send(res, 400, { error: "status must be visible or hidden", code: 400, reason: "invalid_review" });
+      return true;
+    }
+    const productId = (url.searchParams.get("productId") || "").trim();
+    const rating = url.searchParams.get("rating");
+    const limit = Math.min(Number(url.searchParams.get("limit") || 50) || 50, 200);
+    let rows = staffReviews.filter((review) => Boolean(review.hidden) === (status === "hidden"));
+    if (productId) rows = rows.filter((review) => review.productId === productId);
+    if (rating) rows = rows.filter((review) => String(review.rating) === rating);
+    rows = [...rows].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+    const cursor = url.searchParams.get("cursor");
+    let start = 0;
+    if (cursor) {
+      const at = rows.findIndex((review) => review.id === cursor);
+      start = at >= 0 ? at : rows.length;
+    }
+    const page = rows.slice(start, start + limit);
+    const next = rows[start + limit];
+    send(res, 200, { reviews: page, ...(next ? { nextCursor: next.id } : {}) });
+    return true;
+  }
+  const hide = path.match(/^\/api\/v1\/products\/reviews\/by-id\/([^/]+)\/hide$/);
+  if (hide && method === "POST") {
+    const review = staffReviews.find((row) => row.id === decodeURIComponent(hide[1]));
+    if (!review) {
+      send(res, 404, { error: "review not found", code: 404, reason: "review_not_found" });
+      return true;
+    }
+    let body;
+    try {
+      body = await readBody(req);
+    } catch {
+      send(res, 400, { error: "invalid json", code: 400 });
+      return true;
+    }
+    const hidden = body.hidden !== false;
+    const reason = String(body.reason ?? "").trim();
+    if (hidden && !reason) {
+      send(res, 400, { error: "reason is required to hide a review", code: 400, reason: "invalid_review" });
+      return true;
+    }
+    if ([...reason].length > 200) {
+      send(res, 400, { error: "reason is at most 200 characters", code: 400, reason: "invalid_review" });
+      return true;
+    }
+    review.hidden = hidden;
+    review.hiddenReason = hidden ? reason : "";
+    review.hiddenBy = hidden ? "usr_mock_admin" : "";
+    send(res, 200, review);
+    return true;
+  }
+  return false;
+}
 
 function readBody(req) {
   return new Promise((resolve, reject) => {
@@ -970,6 +1072,10 @@ const server = http.createServer(async (req, res) => {
     });
     return send(res, 200, item);
   }
+  if (path === "/__control/reviews-reset" && method === "POST") {
+    staffReviews = freshReviews();
+    return send(res, 200, { reviews: staffReviews.length });
+  }
   if (path === "/__control/kill-switches-reset" && method === "POST") {
     killSwitches.clear();
     return send(res, 200, { kill_switches: killSwitchList() });
@@ -1204,6 +1310,10 @@ const server = http.createServer(async (req, res) => {
   // The products list, unfiltered and unpaged: enough for /products to
   // render its rows and their thumbnails (the console falls back to the
   // first SKU image when a parent has none of its own).
+  if (path.startsWith("/api/v1/products/reviews") && (await handleReviews(req, res, method, path, url))) {
+    return;
+  }
+
   if (method === "GET" && path === "/api/v1/products") {
     const results = [...products.values()].map((p) => ({ ...p, variants: p.variants.map(withSwatch) }));
     return send(res, 200, { results, total: results.length, limit: 50, offset: 0 });

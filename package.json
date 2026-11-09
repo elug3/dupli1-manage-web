@@ -14,6 +14,7 @@
     "test:login:browser": "node scripts/test-login-browser.mjs",
     "test:orders:browser": "node scripts/test-order-stream-browser.mjs",
     "test:support:browser": "node scripts/test-support-browser.mjs",
+    "test:reviews:browser": "node scripts/test-reviews-browser.mjs",
     "test:images:browser": "node scripts/test-product-images-browser.mjs",
     "test:catalog:browser": "node scripts/test-catalog-overview-browser.mjs",
     "test:swatches:browser": "node scripts/test-color-swatches-browser.mjs",

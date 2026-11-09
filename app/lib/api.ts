@@ -2084,6 +2084,8 @@ export const PERMISSION_CATALOG = [
   "product.variant.update",
   "product.variant.delete",
   "product.image.upload",
+  // Hide and unhide buyer reviews (support_agent; backend product-reviews-plan).
+  "product.review.moderate",
   "product.master.read",
   "product.master.write",
   "promotion.read",
