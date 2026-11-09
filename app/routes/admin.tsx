@@ -167,6 +167,7 @@ export default function AdminLayout() {
           <div className="space-y-0.5">
             <SidebarLink to="/" icon={<DashboardIcon />} label={t("nav.dashboard")} exact onNavigate={() => setSidebarOpen(false)} />
             <SidebarLink to="/products" icon={<ProductsIcon />} label={t("nav.products")} onNavigate={() => setSidebarOpen(false)} />
+            <SidebarLink to="/reviews" icon={<ReviewsIcon />} label={t("nav.reviews")} onNavigate={() => setSidebarOpen(false)} />
             <SidebarLink to="/catalog" icon={<CatalogIcon />} label={t("nav.catalog")} onNavigate={() => setSidebarOpen(false)} />
             <SidebarLink to="/orders" icon={<OrdersIcon />} label={t("nav.orders")} onNavigate={() => setSidebarOpen(false)} />
             <SidebarLink to="/promotions" icon={<PromotionsIcon />} label={t("nav.promotions")} onNavigate={() => setSidebarOpen(false)} />
@@ -388,6 +389,19 @@ function PromotionsIcon() {
     <svg className="size-[18px]" viewBox="0 0 24 24" fill="none">
       <path d="M12.5 3H7a2 2 0 0 0-2 2v5.5l9.5 9.5a2 2 0 0 0 2.83 0l4.17-4.17a2 2 0 0 0 0-2.83L12.5 3Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
       <circle cx="9" cy="9" r="1" fill="currentColor" />
+    </svg>
+  );
+}
+
+function ReviewsIcon() {
+  return (
+    <svg className="size-[18px]" viewBox="0 0 24 24" fill="none">
+      <path
+        d="m12 3.5 2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 16.8 7.2 18.4l.9-5.4L4.2 9.2l5.4-.8L12 3.5Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }

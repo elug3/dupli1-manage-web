@@ -149,6 +149,10 @@ The whole `/support` page (inbox, product questions, context panel, action error
 
 `npm run test:support:browser` drives all of this against `npm run mock:gateway` (`CHROMIUM_PATH` overrides Playwright's bundled browser). It runs in Korean via the `dupli1_locale` cookie, then checks the questions tab in English.
 
+### Reviews (`/reviews`)
+
+Staff moderation of buyer reviews (`product.review.moderate`). The page lists `GET /product/api/v1/products/reviews` (`?status=visible|hidden`, `?productId=`, `?rating=`) and hides or unhides with `POST …/reviews/by-id/{id}/hide` `{ hidden, reason }` — a reason is required to hide and is at most 200 characters. Both calls go through the session gateway. Contract: backend [docs/product-reviews-plan.md](../dupli1/docs/product-reviews-plan.md). `npm run test:reviews:browser` drives the page against `npm run mock:gateway`.
+
 ### Payment kill switches (`/api/v1/payments`)
 
 Switch a payment method off for every shopper without a deploy (backend [docs/payment-kill-switches.md](../dupli1/docs/payment-kill-switches.md)).
@@ -209,7 +213,7 @@ app/
 
 Route modules use React Router 7 conventions: `loader` for data fetching, `action` for mutations, `default` export for the component.
 
-Admin surfaces: products (parent + variants with inline **price**, **officialPrice**, **attributes** key-value editor, and catalog master fields on PDP), **SKU detail** (`/products/:id/SKU/:skuId`), **catalog masters** (`/catalog`) and the **catalog overview** (`/catalog/overview` — counts per brand and category), orders, **promotional codes** (`/promotions`), users (**Customers / Managers / Services** tabs by `account_type`; service accounts have no password — `/users/new` omits it for them and their detail page's credentials tab is an **API keys** panel that shows a new key's plaintext once and never stores it), **Telegram** (`/telegram` — ops alert subscriptions; `/telegram/:id` edits one chat's alerts), **Support** (`/support` — customer consultation inbox), settings (local UI; manager settings API still sketch on backend — except its **Kill switches** section, which switches a payment method off for real).
+Admin surfaces: products (parent + variants with inline **price**, **officialPrice**, **attributes** key-value editor, and catalog master fields on PDP), **SKU detail** (`/products/:id/SKU/:skuId`), **catalog masters** (`/catalog`) and the **catalog overview** (`/catalog/overview` — counts per brand and category), orders, **promotional codes** (`/promotions`), users (**Customers / Managers / Services** tabs by `account_type`; service accounts have no password — `/users/new` omits it for them and their detail page's credentials tab is an **API keys** panel that shows a new key's plaintext once and never stores it), **Telegram** (`/telegram` — ops alert subscriptions; `/telegram/:id` edits one chat's alerts), **Support** (`/support` — customer consultation inbox), **Reviews** (`/reviews` — hide or unhide buyer reviews), settings (local UI; manager settings API still sketch on backend — except its **Kill switches** section, which switches a payment method off for real).
 
 ## Production access
 
