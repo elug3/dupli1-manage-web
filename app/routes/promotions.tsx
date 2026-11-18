@@ -321,10 +321,10 @@ function PromotionRows({
             )}
           {promotion.apply_mode === "auto" && (
             <span
-              className="ml-2 rounded-full bg-accent/10 px-2 py-0.5 font-sans text-[10px] font-semibold uppercase tracking-wide text-accent"
-              title={t("promotions.tierHint")}
+              className="ml-2 rounded-full bg-warn-bg px-2 py-0.5 font-sans text-[10px] font-semibold uppercase tracking-wide text-warn-fg"
+              title={t("promotions.tierRetiredHint")}
             >
-              {t("promotions.tierShort")}
+              {t("promotions.tierRetiredShort")}
             </span>
           )}
         </td>
@@ -809,21 +809,6 @@ function PromotionFields({
             <p className="text-[11px] text-faint">
               {t("promotions.autoIssueSignupHint")}
             </p>
-          </div>
-        )}
-
-        {form.scope === "single_user" && (
-          <div className="space-y-1.5">
-            <label className="flex items-center gap-2 pt-6 text-sm text-ink">
-              <input
-                type="checkbox"
-                checked={form.tier}
-                onChange={(e) => set("tier", e.target.checked)}
-                className="size-4 rounded border-edge text-accent focus:ring-accent/20"
-              />
-              {t("promotions.tier")}
-            </label>
-            <p className="text-[11px] text-faint">{t("promotions.tierHint")}</p>
           </div>
         )}
 

@@ -343,43 +343,25 @@ describe("auto_issue", () => {
   });
 });
 
-describe("customer tier (apply_mode)", () => {
+describe("retired customer tiers (apply_mode)", () => {
   const base = { ...emptyPromotionForm(), code: "VIP", percent: "10" };
 
-  it("marks a single-user code as a tier", () => {
-    const { input, errorKey } = buildPromotionInput(
-      { ...base, scope: "single_user", tier: true },
-      { includeCode: true }
-    );
-    expect(errorKey).toBeUndefined();
-    expect(input?.apply_mode).toBe("auto");
+  // Tiers were retired; an omitted mode keeps what a stored definition has,
+  // so the console never makes one and never rewrites an old one.
+  it("never sends apply_mode", () => {
+    for (const scope of ["single_user", "global"] as const) {
+      const { input, errorKey } = buildPromotionInput({ ...base, scope }, { includeCode: true });
+      expect(errorKey).toBeUndefined();
+      expect(input && "apply_mode" in input).toBe(false);
+    }
   });
 
-  // Always sent, so unticking or moving to global turns a tier back into a code.
-  it("sends code when unticked or global", () => {
-    expect(
-      buildPromotionInput({ ...base, scope: "single_user", tier: false }, { includeCode: true })
-        .input?.apply_mode
-    ).toBe("code");
-    expect(
-      buildPromotionInput({ ...base, scope: "global", tier: true }, { includeCode: true })
-        .input?.apply_mode
-    ).toBe("code");
-  });
-
-  it("refuses a campaign cap on a tier", () => {
+  it("allows a campaign cap on a single-user code", () => {
     expect(
       buildPromotionInput(
-        { ...base, scope: "single_user", tier: true, maxRedemptions: "100" },
+        { ...base, scope: "single_user", maxRedemptions: "100" },
         { includeCode: true }
       ).errorKey
-    ).toBe("promotions.errTierCap");
-  });
-
-  it("reads a tier back into the edit form", () => {
-    expect(
-      promotionToForm(promotion({ code: "VIP", scope: "single_user", apply_mode: "auto" })).tier
-    ).toBe(true);
-    expect(promotionToForm(promotion({ code: "OPEN10" })).tier).toBe(false);
+    ).toBeUndefined();
   });
 });
