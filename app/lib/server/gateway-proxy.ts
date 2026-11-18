@@ -6,6 +6,7 @@ const GATEWAY_PREFIXES = [
   "/inventory",
   "/order",
   "/notification",
+  "/payment",
 ] as const;
 
 function gatewayBase(): string {
@@ -122,6 +123,10 @@ export async function proxyGatewayRequestForPath(
 
   // Video playback (order inspection videos) seeks with byte ranges; without
   // these a player gets the whole file every time and Safari will not play.
+  // A points grant is keyed by the caller so a retried submit lands once.
+  const idempotencyKey = request.headers.get("Idempotency-Key");
+  if (idempotencyKey) headers.set("Idempotency-Key", idempotencyKey);
+
   for (const name of ["Range", "If-Range"]) {
     const value = request.headers.get(name);
     if (value) headers.set(name, value);

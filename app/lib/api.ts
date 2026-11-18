@@ -5,6 +5,7 @@ import {
   authPath,
   inventoryPath,
   orderPath,
+  paymentPath,
   productPath,
 } from "./gateway";
 import {
@@ -2119,6 +2120,11 @@ export const PERMISSION_CATALOG = [
   "payment.cancel",
   "payment.killswitch.read",
   "payment.killswitch.manage",
+  // Points (적립금): read a customer's balance and history, adjust it, and the
+  // order service's checkout holds (dupli1-order only).
+  "payment.points.read",
+  "payment.points.manage",
+  "payment.points.redeem",
   "notification.telegram.read",
   "notification.telegram.manage",
   // Customer consultation inbox (support service).
@@ -2449,6 +2455,8 @@ export interface SalesPeriod {
   shipping_fee_won: number;
   /** Card surcharge collected, already inside `gross_won`. Absent before the backend added it. */
   card_surcharge_won?: number;
+  /** Points shoppers paid with. Not money received, so not in `gross_won`. Absent before points. */
+  points_won?: number;
   /** Paid orders canceled (refunded) in the period, whenever they were paid. */
   refunds: number;
   refunded_won: number;
@@ -2743,4 +2751,133 @@ export interface NotificationSettings {
   service: string;
   api_version: string;
   features?: Record<string, boolean>;
+}
+
+// ── Points (적립금) ───────────────────────────────────────────────────────────
+// Backend docs/payment-points.md. 1 P = ₩1. Read with payment.points.read,
+// adjust with payment.points.manage.
+
+export type PointsTierCode = "member" | "silver" | "gold" | "diamond" | string;
+
+export interface PointsTier {
+  code: PointsTierCode;
+  /** Earn multiplier in tenths: 15 = 1.5×. */
+  multiplier: number;
+  min_spend_won: number;
+}
+
+export interface PointsTierStatus extends PointsTier {
+  /** Goods paid on fulfilled orders in the window that decides the tier. */
+  spend_won: number;
+  window_from: string;
+  window_to: string;
+  next?: PointsTier;
+}
+
+export type PointEntryKind =
+  | "earn"
+  | "grant"
+  | "spend"
+  | "return"
+  | "clawback"
+  | "adjust"
+  | "expire"
+  | string;
+
+export interface PointEntry {
+  id: string;
+  customer_id: string;
+  kind: PointEntryKind;
+  /** Signed: + arrives, − leaves. */
+  points: number;
+  order_id?: string;
+  ref?: string;
+  /** The reason a manager gave for a grant or adjustment. */
+  note?: string;
+  created_at: string;
+}
+
+export interface PointsSummary {
+  customer_id: string;
+  balance: number;
+  pending: number;
+  expiring: number;
+  expiring_by: string;
+  tier: PointsTierStatus;
+  entries: PointEntry[];
+  next_cursor?: string;
+}
+
+/** An error with the upstream status and reason, so a page can tell 403 apart. */
+export class PointsError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly reason?: string
+  ) {
+    super(message);
+  }
+}
+
+async function pointsError(res: Response, fallback: string): Promise<PointsError> {
+  let message = fallback;
+  let reason: string | undefined;
+  try {
+    const body = (await res.json()) as { error?: string; reason?: string };
+    message = body.error ?? fallback;
+    reason = body.reason;
+  } catch {
+    // keep the fallback
+  }
+  return new PointsError(message, res.status, reason);
+}
+
+function pointsCustomerPath(customerId: string, rest = ""): string {
+  return paymentPath(
+    `/api/v1/payments/points/customers/${encodeURIComponent(customerId)}${rest}`
+  );
+}
+
+export async function getCustomerPoints(
+  customerId: string,
+  limit = 20
+): Promise<PointsSummary> {
+  const res = await authedFetch(pointsCustomerPath(customerId, `?limit=${limit}`));
+  if (!res.ok) throw await pointsError(res, "Failed to load points");
+  return (await res.json()) as PointsSummary;
+}
+
+export async function listCustomerPointEntries(
+  customerId: string,
+  cursor: string,
+  limit = 20
+): Promise<{ entries: PointEntry[]; next_cursor?: string }> {
+  const params = new URLSearchParams({ cursor, limit: String(limit) });
+  const res = await authedFetch(pointsCustomerPath(customerId, `/entries?${params}`));
+  if (!res.ok) throw await pointsError(res, "Failed to load points history");
+  const body = (await res.json()) as { entries?: PointEntry[]; next_cursor?: string };
+  return { entries: body.entries ?? [], next_cursor: body.next_cursor };
+}
+
+/**
+ * Give (positive) or take (negative) points with a reason. `idempotencyKey`
+ * makes a retried grant land once. Taking more than the balance is a 409
+ * `insufficient_points`.
+ */
+export async function adjustCustomerPoints(
+  customerId: string,
+  points: number,
+  reason: string,
+  idempotencyKey: string
+): Promise<PointsSummary> {
+  const res = await authedFetch(pointsCustomerPath(customerId, "/adjust"), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Idempotency-Key": idempotencyKey,
+    },
+    body: JSON.stringify({ points, reason }),
+  });
+  if (!res.ok) throw await pointsError(res, "Failed to adjust points");
+  return (await res.json()) as PointsSummary;
 }
