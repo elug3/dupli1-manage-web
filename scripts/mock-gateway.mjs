@@ -104,6 +104,7 @@ makeUser("jiwoo.kim@example.com", "customer", [], { user_id: "usr_points_demo" }
 }
 
 const products = new Map();
+const banners = new Map();
 const uploadedImages = new Map();
 const stock = new Map();
 
@@ -1328,6 +1329,71 @@ const server = http.createServer(async (req, res) => {
     return send(res, method === "POST" ? 201 : 200, saved);
   }
   if (method === "GET" && path === "/api/v1/products/catalog/editions") return send(res, 200, []);
+
+  // Storefront banners (dupli1 docs/product-storefront-banners.md). Uploads
+  // are kept in memory and served from /product-images/mock/… like variant
+  // images; links and image URLs are checked as product checks them.
+  if (path === "/api/v1/products/banners" && method === "GET") {
+    const live = [...banners.values()]
+      .filter((b) => b.active && b.placement === (new URL(req.url, "http://x").searchParams.get("placement") || "home_hero"))
+      .sort((a, b) => a.sort_order - b.sort_order || Date.parse(b.updated_at) - Date.parse(a.updated_at));
+    return send(res, 200, { banners: live });
+  }
+  if (path === "/api/v1/products/banners/all" && method === "GET") {
+    return send(res, 200, { banners: [...banners.values()] });
+  }
+  if (path === "/api/v1/products/banners/images" && method === "POST") {
+    const part = await readMultipartFile(req);
+    if (!part) return send(res, 400, { error: "missing image field" });
+    if (!["image/jpeg", "image/png", "image/webp"].includes(part.type)) {
+      return send(res, 400, { error: "invalid request: use a JPEG, PNG or WebP image" });
+    }
+    const key = `banner-${uploadedImages.size + 1}-${part.filename}`;
+    uploadedImages.set(key, part);
+    return send(res, 201, { url: `http://localhost:${PORT}/product-images/mock/${encodeURIComponent(key)}` });
+  }
+  if ((path === "/api/v1/products/banners" && method === "POST") ||
+      ((m = path.match(/^\/api\/v1\/products\/banners\/by-id\/([^/]+)(\/active)?$/)))) {
+    const id = m ? decodeURIComponent(m[1]) : `ban_${banners.size + 1}`;
+    const current = banners.get(id);
+    if (m && !current) return send(res, 404, { error: `not found: banner ${id}` });
+    if (m && method === "DELETE" && !m[2]) {
+      banners.delete(id);
+      res.writeHead(204);
+      return res.end();
+    }
+    const body = await readBody(req).catch(() => ({}));
+    const now = new Date().toISOString();
+    if (m && m[2] && method === "PUT") {
+      if (typeof body.active !== "boolean") return send(res, 400, { error: "active is required" });
+      const next = { ...current, active: body.active, updated_at: now, updated_by: "admin@dupli1.com" };
+      banners.set(id, next);
+      return send(res, 200, next);
+    }
+    if (!(method === "POST" || method === "PUT")) return send(res, 405, { error: "method not allowed" });
+    const link = String(body.link_url ?? "").trim();
+    if (!String(body.image_url ?? "").trim()) return send(res, 400, { error: "invalid request: image_url is required" });
+    if (link && !(link.startsWith("https://") || (link.startsWith("/") && !link.startsWith("//")))) {
+      return send(res, 400, { error: "invalid request: link_url must be a storefront path starting with / or an https URL" });
+    }
+    const text = (t) => ({ ko: String(t?.ko ?? "").trim(), en: String(t?.en ?? "").trim(), zh: String(t?.zh ?? "").trim() });
+    const saved = {
+      id,
+      placement: body.placement || "home_hero",
+      image_url: String(body.image_url).trim(),
+      mobile_image_url: String(body.mobile_image_url ?? "").trim(),
+      title: text(body.title),
+      link_url: link,
+      link_label: text(body.link_label),
+      active: Boolean(body.active),
+      sort_order: Number(body.sort_order ?? 0),
+      created_at: current?.created_at ?? now,
+      updated_at: now,
+      updated_by: "admin@dupli1.com",
+    };
+    banners.set(id, saved);
+    return send(res, method === "POST" ? 201 : 200, saved);
+  }
 
   // Variant images. An upload appends with a read-modify-write across a short
   // delay, as product does, so two uploads in flight lose one image: the

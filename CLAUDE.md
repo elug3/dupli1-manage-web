@@ -163,6 +163,19 @@ Switch a payment method off for every shopper without a deploy (backend [docs/pa
 
 UI: the first section of **`/settings`** (`#kill-switches`; the old `/kill-switches` route redirects there, and there is no sidebar entry). `/settings` loads and mutates them via **SSR** `loader`/`action` (`app/lib/server/kill-switches.server.ts`, `intent=kill-switch`) with the operator's token, like `/telegram`; the cards are `KillSwitchesPanel` (`app/components/`). Each switch is a card: blocking takes an optional shopper message (shown at checkout) and a staff-only reason, both behind a confirm; a blocked card shows them, who blocked it and when, and a "turn back on" button. Switches are listed from the backend, so a new key appears without a console change (under its key until it gets a label in `switchLabel`). `npm run test:killswitches:browser` drives it against `npm run mock:gateway`.
 
+### Storefront banners (`/product`)
+
+Image banners on the storefront (backend [docs/product-storefront-banners.md](../dupli1/docs/product-storefront-banners.md)). Staff upload an image, show it and take it down by hand; there is **no schedule**. Only `home_hero` (the home page's top image) exists; while none is shown the storefront keeps its built-in video. The login page's welcome-code text is not a banner and stays in the storefront's code.
+
+- `GET /product/api/v1/products/banners/all` — every banner, shown or not (`banner.manage`). The public `GET …/banners?placement=` is what the storefront reads (live only, cached 60s)
+- `POST …/banners`, `PUT …/banners/by-id/{id}`, `DELETE …/banners/by-id/{id}` — create, edit, delete (`banner.manage`)
+- `PUT …/banners/by-id/{id}/active` `{ active }` — show or take down without touching anything else
+- `POST …/banners/images` — multipart `image` (JPEG, PNG or WebP ≤10 MB, stored as is) → `{ url }`
+
+A banner has a desktop image (about 5:2), an optional phone image (about 4:5; without it phones crop the desktop one), an optional title and link text in ko/en/zh (≤120 chars; an empty language shows the Korean), an optional link (a storefront `/path` or `https://`), `sort_order` (lowest first) and `active`. The storefront shows the first live banner by order, newest edit first on a tie (`shownBanner`).
+
+UI: `/banners` (`app/routes/banners.tsx`, helpers and client in `app/lib/banners.ts`): a status line for the home page, the list with Show / Take down, Edit and Delete, and an editor with both uploads, language tabs and a preview. A `403` shows that the account needs `banner.manage` (in `catalog_admin`). `npm run test:banners:browser` drives it against `npm run mock:gateway`.
+
 ### Inventory (`/inventory`)
 
 `/inventory/api/v1/inventory/{sku}` and `/by-sku-id/{skuId}`, adjust, reservations (served by product).
@@ -213,7 +226,7 @@ app/
 
 Route modules use React Router 7 conventions: `loader` for data fetching, `action` for mutations, `default` export for the component.
 
-Admin surfaces: products (parent + variants with inline **price**, **officialPrice**, **attributes** key-value editor, and catalog master fields on PDP), **SKU detail** (`/products/:id/SKU/:skuId`), **catalog masters** (`/catalog`) and the **catalog overview** (`/catalog/overview` — counts per brand and category), orders, **promotional codes** (`/promotions`), users (**Customers / Managers / Services** tabs by `account_type`; service accounts have no password — `/users/new` omits it for them and their detail page's credentials tab is an **API keys** panel that shows a new key's plaintext once and never stores it), **Telegram** (`/telegram` — ops alert subscriptions; `/telegram/:id` edits one chat's alerts), **Support** (`/support` — customer consultation inbox), settings (local UI; manager settings API still sketch on backend — except its **Kill switches** section, which switches a payment method off for real).
+Admin surfaces: products (parent + variants with inline **price**, **officialPrice**, **attributes** key-value editor, and catalog master fields on PDP), **SKU detail** (`/products/:id/SKU/:skuId`), **catalog masters** (`/catalog`) and the **catalog overview** (`/catalog/overview` — counts per brand and category), orders, **promotional codes** (`/promotions`), users (**Customers / Managers / Services** tabs by `account_type`; service accounts have no password — `/users/new` omits it for them and their detail page's credentials tab is an **API keys** panel that shows a new key's plaintext once and never stores it), **Banners** (`/banners` — storefront images, shown and taken down by hand), **Telegram** (`/telegram` — ops alert subscriptions; `/telegram/:id` edits one chat's alerts), **Support** (`/support` — customer consultation inbox), settings (local UI; manager settings API still sketch on backend — except its **Kill switches** section, which switches a payment method off for real).
 
 ## Production access
 
