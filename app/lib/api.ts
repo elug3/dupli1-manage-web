@@ -1410,7 +1410,7 @@ export interface PromotionConditions {
  */
 export type PromotionAutoIssue = "" | "user_registered";
 
-/** How a promotion reaches a checkout: entered as a code, or applied on its own as a tier. */
+/** How a promotion reaches a checkout. `auto` was a customer tier (VIP auto-discount), retired 2026-11-18: the service refuses new ones and a stored one does nothing. */
 export type PromotionApplyMode = "code" | "auto";
 
 export interface Promotion {
@@ -1464,7 +1464,7 @@ export interface PromotionInput {
   entitlement_ttl_days?: number;
   /** Single-user only; the service refuses anything but `""` on a global code. */
   auto_issue?: PromotionAutoIssue;
-  /** `auto` needs single_user scope and no campaign cap. */
+  /** Never sent by the console; `auto` (customer tiers) is retired. */
   apply_mode?: PromotionApplyMode;
 }
 
