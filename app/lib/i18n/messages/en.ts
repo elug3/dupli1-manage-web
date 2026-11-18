@@ -668,6 +668,7 @@ export const en = {
     notFound: "Order not found",
     failedToUpdateStatus: "Failed to update order status",
     confirmCancel: "Cancel this order?",
+    confirmCancelPoints: "{points} P will be returned to the customer.",
     confirmCancelPaid: "Refund the captured card payment and cancel this order?",
     confirmCancelInTransit:
       "Refund this in-transit order? Stock already committed will not be restocked automatically.",
@@ -790,6 +791,9 @@ export const en = {
     paymentMethod: "Payment method",
     paymentMethodCard: "Paid by card",
     paymentMethodBypass: "Bypass (offline)",
+    paymentMethodPoints: "Paid with points",
+    pointsUsed: "Points used",
+    pointsValue: "{points} P",
     discount: "Discount",
     discountWithCode: "Discount ({code})",
     tierDiscount: "Tier discount ({code})",

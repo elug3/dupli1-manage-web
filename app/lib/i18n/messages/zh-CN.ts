@@ -662,6 +662,7 @@ export const zhCN: Messages = {
     notFound: "订单未找到",
     failedToUpdateStatus: "更新订单状态失败",
     confirmCancel: "取消此订单？",
+    confirmCancelPoints: "{points} P 积分将退还给顾客。",
     confirmCancelPaid: "退还已捕获的卡支付并取消此订单？",
     confirmCancelInTransit:
       "退还此运送中的订单？已出库的库存不会自动回补。",
@@ -784,6 +785,9 @@ export const zhCN: Messages = {
     paymentMethod: "支付方式",
     paymentMethodCard: "刷卡支付",
     paymentMethodBypass: "绕过 (线下)",
+    paymentMethodPoints: "积分支付",
+    pointsUsed: "已用积分",
+    pointsValue: "{points} P",
     discount: "折扣",
     discountWithCode: "折扣（{code}）",
     tierDiscount: "等级折扣（{code}）",

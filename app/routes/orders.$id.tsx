@@ -195,11 +195,19 @@ export default function OrderDetail() {
         order.status === "in_transit" ||
         order.status === "delivered" ||
         order.status === "disputed";
-      const message = stockCommitted
+      const points = order.points_won ?? 0;
+      // A ₩0 order took no card payment, so there is no card refund to warn about.
+      const cardCaptured =
+        order.status !== "pending" && order.payment_id && order.total_won > 0;
+      const base = stockCommitted
         ? t("orderDetail.confirmCancelInTransit")
-        : order.status !== "pending" && order.payment_id
+        : cardCaptured
           ? t("orderDetail.confirmCancelPaid")
           : t("orderDetail.confirmCancel");
+      const message =
+        points > 0
+          ? `${base}\n\n${t("orderDetail.confirmCancelPoints", { points: formatNumber(points) })}`
+          : base;
       if (!window.confirm(message)) return;
     }
     setUpdatingAction(key);
@@ -669,6 +677,11 @@ function OrderItemRow({ item }: { item: OrderItem }) {
   );
 }
 
+/** Points are whole numbers grouped like won (1 P = ₩1), in every locale. */
+function formatNumber(n: number): string {
+  return n.toLocaleString("en-US");
+}
+
 function OrderTotals({ order }: { order: Order }) {
   const { t, formatWon } = useI18n();
   const tierWon = order.tier_discount_won ?? 0;
@@ -678,6 +691,9 @@ function OrderTotals({ order }: { order: Order }) {
   const promotionCode = order.promotion_code || order.coupon_code;
   const shipping = order.shipping_fee_won ?? 0;
   const surcharge = order.card_surcharge_won ?? 0;
+  const points = order.points_won ?? 0;
+  // A ₩0 order was paid in full with points: nothing went through the card.
+  const paidWithPoints = points > 0 && order.total_won === 0;
   return (
     <div className="mt-4 space-y-1.5 border-t border-edge pt-4 text-sm">
       <div className="flex items-center justify-between text-muted">
@@ -710,6 +726,14 @@ function OrderTotals({ order }: { order: Order }) {
           <span>−{formatWon(tierWon)}</span>
         </div>
       )}
+      {points > 0 && (
+        <div className="flex items-center justify-between text-success-fg">
+          <span>{t("orders.pointsUsed")}</span>
+          <span>
+            −{t("orders.pointsValue", { points: formatNumber(points) })}
+          </span>
+        </div>
+      )}
       {surcharge > 0 && (
         <div className="flex items-center justify-between text-muted">
           <span>{t("orders.cardSurcharge")}</span>
@@ -720,7 +744,9 @@ function OrderTotals({ order }: { order: Order }) {
         <div className="flex items-center justify-between text-muted">
           <span>{t("orders.paymentMethod")}</span>
           <span>
-            {order.payment_method === "bypass"
+            {paidWithPoints
+              ? t("orders.paymentMethodPoints")
+              : order.payment_method === "bypass"
               ? t("orders.paymentMethodBypass")
               : order.payment_method === "credit_card"
                 ? t("orders.paymentMethodCard")

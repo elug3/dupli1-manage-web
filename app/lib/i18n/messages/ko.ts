@@ -669,6 +669,7 @@ export const ko: Messages = {
     notFound: "주문을 찾을 수 없습니다",
     failedToUpdateStatus: "주문 상태를 업데이트하지 못했습니다",
     confirmCancel: "이 주문을 취소할까요?",
+    confirmCancelPoints: "사용한 적립금 {points} P는 고객에게 돌려줍니다.",
     confirmCancelPaid: "카드 결제를 환불하고 이 주문을 취소할까요?",
     confirmCancelInTransit:
       "배송 중인 주문을 환불할까요? 이미 출고 확정된 재고는 자동으로 복구되지 않습니다.",
@@ -792,6 +793,9 @@ export const ko: Messages = {
     paymentMethod: "결제 수단",
     paymentMethodCard: "카드 결제",
     paymentMethodBypass: "바이패스 (오프라인)",
+    paymentMethodPoints: "적립금 결제",
+    pointsUsed: "적립금 사용",
+    pointsValue: "{points} P",
     discount: "할인",
     discountWithCode: "할인 ({code})",
     tierDiscount: "등급 할인 ({code})",

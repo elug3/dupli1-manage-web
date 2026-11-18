@@ -373,6 +373,47 @@ function seed() {
       })
     );
   }
+  // Orders that spent points (backend docs/payment-points.md): points come off
+  // the goods before the 10% card surcharge, so 250,000 − 25,000 code −
+  // 20,000 P = 205,000 + 20,500 surcharge = 225,500 charged by card. The
+  // second was paid in full with points: ₩0, no card part.
+  const paidAt = new Date(Date.now() - 20 * 60_000).toISOString();
+  const due = new Date(Date.now() + 100 * 60_000).toISOString();
+  orders.set(
+    "ord_seed_points",
+    makeOrder({
+      id: "ord_seed_points",
+      status: "paid",
+      promotion_code: "WELCOME10",
+      discount_won: 25000,
+      points_won: 20000,
+      payment_method: "credit_card",
+      card_surcharge_won: 20500,
+      total_won: 225500,
+      payment_id: "pay_seed_points",
+      paid_at: paidAt,
+      confirmation_due_at: due,
+      created_at: paidAt,
+      updated_at: paidAt,
+    })
+  );
+  orders.set(
+    "ord_seed_points_only",
+    makeOrder({
+      id: "ord_seed_points_only",
+      status: "paid",
+      items: [{ sku: "CARD-HOLDER-BLK", quantity: 1, unit_price_won: 48000 }],
+      points_won: 48000,
+      payment_method: "credit_card",
+      card_surcharge_won: 0,
+      total_won: 0,
+      payment_id: "pay_seed_points_only",
+      paid_at: paidAt,
+      confirmation_due_at: due,
+      created_at: paidAt,
+      updated_at: paidAt,
+    })
+  );
 }
 seed();
 

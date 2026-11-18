@@ -1636,6 +1636,12 @@ export interface Order {
   payment_method?: "credit_card" | "bypass" | string;
   /** Card surcharge in whole KRW, already inside `total_won`. 0 for bypass. */
   card_surcharge_won?: number;
+  /**
+   * Store credit (1 P = ₩1) that paid part of the goods, already taken off
+   * `total_won` before the surcharge. Absent on orders from before points
+   * (backend docs/payment-points.md).
+   */
+  points_won?: number;
   total_won: number;
   /** Recipient display name from checkout fulfillment snapshot. */
   recipient_name?: string;

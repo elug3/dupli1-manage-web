@@ -109,6 +109,8 @@ Statuses: `pending` → `paid` → `confirmed` → `in_transit` → `delivered` 
 
 Card payments carry a surcharge (10% by default, backend `DUPLI1_ORDER_CARD_SURCHARGE_BPS`). An order records `payment_method` (`credit_card` or `bypass`) and `card_surcharge_won`, which is already inside `total_won`; the order page shows both, and orders placed before the surcharge have neither.
 
+Points (적립금, backend [docs/payment-points.md](../dupli1/docs/payment-points.md)): an order records `points_won`, store credit that paid part of the goods, already taken off `total_won` before the surcharge. The order page shows it as "Points used" under the discounts (in P, not ₩), "Paid with points" as the method when `total_won` is 0, and the cancel confirm says the points will be returned. `npm run mock:gateway` seeds `ord_seed_points` (card + points) and `ord_seed_points_only` (₩0).
+
 Orders from checkout complete include an immutable fulfillment snapshot (`recipient_name`, `recipient_phone`, `shipping_address`) shown in the order expand panel.
 
 #### Live order feed
