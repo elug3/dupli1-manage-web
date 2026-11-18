@@ -18,6 +18,7 @@
     "test:catalog:browser": "node scripts/test-catalog-overview-browser.mjs",
     "test:swatches:browser": "node scripts/test-color-swatches-browser.mjs",
     "test:killswitches:browser": "node scripts/test-kill-switches-browser.mjs",
+    "test:banners:browser": "node scripts/test-banners-browser.mjs",
     "test:session": "node scripts/test-session-refresh.mjs",
     "test:session:shared": "node scripts/test-session-shared.mjs",
     "mock:gateway": "node scripts/mock-gateway.mjs",

@@ -2101,6 +2101,8 @@ export const PERMISSION_CATALOG = [
   "promotion.redeem",
   // Grants and revokes a single-user entitlement.
   "promotion.issue",
+  // Storefront image banners: upload, show / take down, edit, delete.
+  "banner.manage",
   // Pre-rename, dropped when the compatibility window closes.
   "coupon.read",
   "coupon.create",
