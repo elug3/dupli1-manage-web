@@ -58,7 +58,7 @@ const COLOR_MASTERS = new Map([
 ]);
 const ACCESS_TOKEN = process.env.MOCK_ACCESS_TOKEN || "mock-access-token";
 
-const SERVICE_PREFIXES = ["/auth", "/product", "/inventory", "/order", "/notification"];
+const SERVICE_PREFIXES = ["/auth", "/product", "/inventory", "/order", "/notification", "/payment"];
 
 const users = new Map();
 const apiKeys = new Map();
@@ -80,6 +80,8 @@ function makeUser(email, accountType, permissions, extra = {}) {
 }
 
 makeUser(VALID_EMAIL, "manager", ["*"], { user_id: "usr_mock_admin" });
+// A shopper with points history, for the user page's Points tab.
+makeUser("jiwoo.kim@example.com", "customer", [], { user_id: "usr_points_demo" });
 {
   const order = makeUser("order@internal.dupli1", "service", [
     "order.ship",
@@ -373,6 +375,47 @@ function seed() {
       })
     );
   }
+  // Orders that spent points (backend docs/payment-points.md): points come off
+  // the goods before the 10% card surcharge, so 250,000 − 25,000 code −
+  // 20,000 P = 205,000 + 20,500 surcharge = 225,500 charged by card. The
+  // second was paid in full with points: ₩0, no card part.
+  const paidAt = new Date(Date.now() - 20 * 60_000).toISOString();
+  const due = new Date(Date.now() + 100 * 60_000).toISOString();
+  orders.set(
+    "ord_seed_points",
+    makeOrder({
+      id: "ord_seed_points",
+      status: "paid",
+      promotion_code: "WELCOME10",
+      discount_won: 25000,
+      points_won: 20000,
+      payment_method: "credit_card",
+      card_surcharge_won: 20500,
+      total_won: 225500,
+      payment_id: "pay_seed_points",
+      paid_at: paidAt,
+      confirmation_due_at: due,
+      created_at: paidAt,
+      updated_at: paidAt,
+    })
+  );
+  orders.set(
+    "ord_seed_points_only",
+    makeOrder({
+      id: "ord_seed_points_only",
+      status: "paid",
+      items: [{ sku: "CARD-HOLDER-BLK", quantity: 1, unit_price_won: 48000 }],
+      points_won: 48000,
+      payment_method: "credit_card",
+      card_surcharge_won: 0,
+      total_won: 0,
+      payment_id: "pay_seed_points_only",
+      paid_at: paidAt,
+      confirmation_due_at: due,
+      created_at: paidAt,
+      updated_at: paidAt,
+    })
+  );
 }
 seed();
 
@@ -612,6 +655,143 @@ function handleTelegram(res, method, path) {
   if (!sub) return false;
   send(res, 200, sub);
   return true;
+}
+
+// ── Points (적립금) ──────────────────────────────────────────────────────────
+// `GET|POST /api/v1/payments/points/customers/{id}[/entries|/adjust]`, shaped
+// like payment's ledger (backend docs/payment-points.md). `usr_points_demo`
+// is seeded with a history; every other customer starts empty.
+
+const POINT_TIERS = [
+  { code: "member", multiplier: 10, min_spend_won: 0 },
+  { code: "silver", multiplier: 15, min_spend_won: 1_000_000 },
+  { code: "gold", multiplier: 20, min_spend_won: 3_000_000 },
+  { code: "diamond", multiplier: 30, min_spend_won: 5_000_000 },
+];
+const pointBooks = new Map();
+const pointAdjustKeys = new Map();
+
+function daysAgo(days, hour = 11) {
+  const d = new Date(Date.now() - days * 86_400_000);
+  d.setUTCHours(hour, 12, 0, 0);
+  return d.toISOString();
+}
+
+function pointBook(customerId) {
+  let book = pointBooks.get(customerId);
+  if (book) return book;
+  book = { entries: [], pending: 0, expiring: 0, spend_won: 0 };
+  if (customerId === "usr_points_demo") {
+    const rows = [
+      ["grant", 3000, { note: "Welcome gift" }, 210],
+      ["earn", 4500, { order_id: "ord_7Q2K9WJ1" }, 160],
+      ["earn", 6000, { order_id: "ord_8M4D2XA0" }, 98],
+      ["spend", -8000, { order_id: "ord_9B1F7TC3" }, 61],
+      ["return", 8000, { order_id: "ord_9B1F7TC3" }, 60],
+      ["earn", 5000, { order_id: "ord_A3C8VN52" }, 34],
+      ["review", 5000, { order_id: "ord_A3C8VN52", note: "photo" }, 32],
+      ["adjust", 2000, { note: "Late delivery apology for ord_A3C8VN52" }, 30],
+      ["spend", -20000, { order_id: "ord_seed_points" }, 12],
+      ["earn", 7500, { order_id: "ord_B6H1QE47" }, 4],
+      ["expire", -500, {}, 1],
+    ];
+    rows.forEach(([kind, points, extra, ago], i) => {
+      book.entries.unshift({
+        id: `pe_${String(i + 1).padStart(3, "0")}`,
+        customer_id: customerId,
+        kind,
+        points,
+        ...extra,
+        created_at: daysAgo(ago),
+      });
+    });
+    book.pending = 3750;
+    book.expiring = 4500;
+    book.spend_won = 1_840_000;
+  }
+  pointBooks.set(customerId, book);
+  return book;
+}
+
+function pointsSummary(customerId, limit) {
+  const book = pointBook(customerId);
+  const balance = book.entries.reduce((sum, e) => sum + e.points, 0);
+  let tierIndex = 0;
+  POINT_TIERS.forEach((tier, i) => {
+    if (book.spend_won >= tier.min_spend_won) tierIndex = i;
+  });
+  const now = new Date();
+  const page = book.entries.slice(0, limit);
+  return {
+    customer_id: customerId,
+    balance,
+    pending: book.pending,
+    expiring: book.expiring,
+    expiring_by: new Date(now.getTime() + 30 * 86_400_000).toISOString(),
+    tier: {
+      ...POINT_TIERS[tierIndex],
+      spend_won: book.spend_won,
+      window_from: new Date(now.getTime() - 365 * 86_400_000).toISOString(),
+      window_to: now.toISOString(),
+      ...(POINT_TIERS[tierIndex + 1] ? { next: POINT_TIERS[tierIndex + 1] } : {}),
+    },
+    entries: page,
+    ...(book.entries.length > limit ? { next_cursor: page[page.length - 1].id } : {}),
+  };
+}
+
+async function handlePoints(req, res, method, path, url) {
+  const m = path.match(/^\/api\/v1\/payments\/points\/customers\/([^/]+)(\/entries|\/adjust)?$/);
+  if (!m) return false;
+  const customerId = decodeURIComponent(m[1]);
+  const limit = Math.min(Math.max(Number(url.searchParams.get("limit")) || 20, 1), 100);
+  if (method === "GET" && !m[2]) {
+    send(res, 200, pointsSummary(customerId, limit));
+    return true;
+  }
+  if (method === "GET" && m[2] === "/entries") {
+    const { entries } = pointBook(customerId);
+    const cursor = url.searchParams.get("cursor");
+    const start = cursor ? entries.findIndex((e) => e.id === cursor) + 1 : 0;
+    const page = entries.slice(start, start + limit);
+    send(res, 200, {
+      entries: page,
+      ...(start + limit < entries.length ? { next_cursor: page[page.length - 1].id } : {}),
+    });
+    return true;
+  }
+  if (method === "POST" && m[2] === "/adjust") {
+    const body = await readBody(req).catch(() => ({}));
+    const points = body.points;
+    const reason = typeof body.reason === "string" ? body.reason.trim() : "";
+    if (!Number.isInteger(points) || points === 0 || !reason || reason.length > 200) {
+      send(res, 400, { error: "points must be a non-zero whole number and reason 1-200 characters", reason: "invalid_points" });
+      return true;
+    }
+    const key = req.headers["idempotency-key"];
+    if (key && pointAdjustKeys.has(key)) {
+      send(res, 200, pointsSummary(customerId, 20));
+      return true;
+    }
+    const book = pointBook(customerId);
+    const balance = book.entries.reduce((sum, e) => sum + e.points, 0);
+    if (balance + points < 0) {
+      send(res, 409, { error: "not enough points", reason: "insufficient_points", balance });
+      return true;
+    }
+    book.entries.unshift({
+      id: `pe_adj_${Date.now()}`,
+      customer_id: customerId,
+      kind: points > 0 ? "grant" : "adjust",
+      points,
+      note: reason,
+      created_at: new Date().toISOString(),
+    });
+    if (key) pointAdjustKeys.set(key, true);
+    send(res, 200, pointsSummary(customerId, 20));
+    return true;
+  }
+  return false;
 }
 
 async function handleKillSwitches(req, res, method, path) {
@@ -1263,6 +1443,9 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (path.startsWith("/api/v1/notification/") && handleTelegram(res, method, path)) return;
+  if (path.startsWith("/api/v1/payments/points/") && (await handlePoints(req, res, method, path, url))) {
+    return;
+  }
   if (path.startsWith("/api/v1/payments/") && (await handleKillSwitches(req, res, method, path))) {
     return;
   }
@@ -1351,6 +1534,7 @@ const server = http.createServer(async (req, res) => {
         shipping_fee_won: orders * 3000,
         // Every mock order is paid by card: 10% on top, already in gross.
         card_surcharge_won: Math.floor(gross / 11),
+        points_won: Math.floor(gross / 40 / 1000) * 1000,
         refunds,
         refunded_won: refunded,
         net_won: gross - refunded,
@@ -1366,6 +1550,7 @@ const server = http.createServer(async (req, res) => {
       discount_won: sum("discount_won"),
       shipping_fee_won: sum("shipping_fee_won"),
       card_surcharge_won: sum("card_surcharge_won"),
+      points_won: sum("points_won"),
       refunds: sum("refunds"),
       refunded_won: sum("refunded_won"),
       net_won: sum("net_won"),

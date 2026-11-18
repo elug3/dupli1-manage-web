@@ -390,6 +390,7 @@ function SalesTable({
       "orders",
       "gross_won",
       "discount_won",
+      "points_won",
       "shipping_fee_won",
       "card_surcharge_won",
       "refunds",
@@ -404,6 +405,7 @@ function SalesTable({
         p.orders,
         p.gross_won,
         p.discount_won,
+        p.points_won ?? 0,
         p.shipping_fee_won,
         p.card_surcharge_won ?? 0,
         p.refunds,
@@ -424,6 +426,7 @@ function SalesTable({
     String(p.orders),
     formatWon(p.gross_won),
     formatWon(p.discount_won),
+    formatWon(p.points_won ?? 0),
     formatWon(p.shipping_fee_won),
     formatWon(p.card_surcharge_won ?? 0),
     p.refunds > 0 ? `${formatWon(p.refunded_won)} (${p.refunds})` : formatWon(0),
@@ -434,12 +437,14 @@ function SalesTable({
     t("analytics.colOrders"),
     t("analytics.colGross"),
     t("analytics.colDiscounts"),
+    t("analytics.colPoints"),
     t("analytics.colShipping"),
     t("analytics.colCardSurcharge"),
     t("analytics.colRefunds"),
     t("analytics.colNet"),
     t("analytics.colAvg"),
   ];
+  const netIndex = columns.indexOf(t("analytics.colNet"));
 
   return (
     <div className="mt-6">
@@ -480,7 +485,7 @@ function SalesTable({
                     key={columns[i]}
                     className={[
                       "py-2 pl-3 text-right tabular-nums",
-                      i === 5 ? "font-semibold text-ink" : "text-muted",
+                      i === netIndex ? "font-semibold text-ink" : "text-muted",
                     ].join(" ")}
                   >
                     {v}
@@ -504,6 +509,7 @@ function SalesTable({
           </tfoot>
         </table>
       </div>
+      <p className="mt-2 text-xs text-faint">{t("analytics.pointsNote")}</p>
     </div>
   );
 }

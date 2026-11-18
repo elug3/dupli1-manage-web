@@ -17,6 +17,7 @@ import {
   setUserPermissions,
   setUserStatus,
 } from "~/lib/api";
+import { CustomerPointsPanel } from "~/components/CustomerPointsPanel";
 import { useI18n } from "~/lib/i18n";
 import { useNotify } from "~/lib/notifications";
 
@@ -26,10 +27,12 @@ export function meta() {
   return [{ title: "User | Dupli1 Admin" }];
 }
 
-type DetailTab = "state" | "credentials" | "permissions";
+type DetailTab = "state" | "credentials" | "permissions" | "points";
 
 function initialTab(value: string | null): DetailTab {
-  return value === "credentials" || value === "permissions" ? value : "state";
+  return value === "credentials" || value === "permissions" || value === "points"
+    ? value
+    : "state";
 }
 
 /** Expiry choices for a new API key, in days; `null` never expires. */
@@ -114,13 +117,15 @@ export default function UserDetail() {
 
   // Service accounts have no password; their credentials are API keys.
   const isService = user.account_type === "service";
+  const isCustomer = user.account_type === "customer";
 
   const detailTabs: {
     labelKey:
       | "userDetail.tabState"
       | "userDetail.tabCredentials"
       | "userDetail.tabApiKeys"
-      | "userDetail.tabPermissions";
+      | "userDetail.tabPermissions"
+      | "userDetail.tabPoints";
     value: DetailTab;
   }[] = [
     { labelKey: "userDetail.tabState", value: "state" },
@@ -131,6 +136,10 @@ export default function UserDetail() {
       value: "credentials",
     },
     { labelKey: "userDetail.tabPermissions", value: "permissions" },
+    // Points (적립금) belong to shoppers only.
+    ...(isCustomer
+      ? [{ labelKey: "userDetail.tabPoints" as const, value: "points" as const }]
+      : []),
   ];
 
   return (
@@ -178,6 +187,9 @@ export default function UserDetail() {
             ))}
           {activeTab === "permissions" && (
             <PermissionsTab user={user} onUpdated={setUser} />
+          )}
+          {activeTab === "points" && isCustomer && (
+            <CustomerPointsPanel customerId={user.user_id} email={user.email} />
           )}
         </div>
       </div>

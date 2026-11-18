@@ -4,6 +4,8 @@ export const PRODUCT_PREFIX = "/product";
 export const INVENTORY_PREFIX = "/inventory";
 export const ORDER_PREFIX = "/order";
 export const NOTIFICATION_PREFIX = "/notification";
+/** Payment (points ledger). Reached only through the session gateway. */
+export const PAYMENT_PREFIX = "/payment";
 
 export function authPath(path: string): string {
   return `${AUTH_PREFIX}${path}`;
@@ -23,4 +25,8 @@ export function orderPath(path: string): string {
 
 export function notificationPath(path: string): string {
   return `${NOTIFICATION_PREFIX}${path}`;
+}
+
+export function paymentPath(path: string): string {
+  return `${PAYMENT_PREFIX}${path}`;
 }
