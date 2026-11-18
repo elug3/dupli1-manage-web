@@ -1448,6 +1448,7 @@ export const zhCN: Messages = {
     colPoints: "积分",
     colDetail: "订单 / 原因",
     kind_earn: "获得",
+    kind_review: "评价奖励",
     kind_grant: "发放",
     kind_spend: "使用",
     kind_return: "退回",

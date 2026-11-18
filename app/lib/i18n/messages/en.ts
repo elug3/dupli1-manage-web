@@ -1460,6 +1460,7 @@ export const en = {
     colPoints: "Points",
     colDetail: "Order / reason",
     kind_earn: "Earned",
+    kind_review: "Review reward",
     kind_grant: "Granted",
     kind_spend: "Spent",
     kind_return: "Returned",

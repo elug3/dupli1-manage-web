@@ -1460,6 +1460,7 @@ export const ko: Messages = {
     colPoints: "적립금",
     colDetail: "주문 / 사유",
     kind_earn: "적립",
+    kind_review: "리뷰 적립",
     kind_grant: "지급",
     kind_spend: "사용",
     kind_return: "반환",

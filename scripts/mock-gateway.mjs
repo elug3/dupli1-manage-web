@@ -689,6 +689,7 @@ function pointBook(customerId) {
       ["spend", -8000, { order_id: "ord_9B1F7TC3" }, 61],
       ["return", 8000, { order_id: "ord_9B1F7TC3" }, 60],
       ["earn", 5000, { order_id: "ord_A3C8VN52" }, 34],
+      ["review", 5000, { order_id: "ord_A3C8VN52", note: "photo" }, 32],
       ["adjust", 2000, { note: "Late delivery apology for ord_A3C8VN52" }, 30],
       ["spend", -20000, { order_id: "ord_seed_points" }, 12],
       ["earn", 7500, { order_id: "ord_B6H1QE47" }, 4],
