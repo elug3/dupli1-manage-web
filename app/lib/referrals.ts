@@ -158,6 +158,8 @@ export interface ReferralLine {
   status: string;
   paid_at?: string;
   fulfilled_at?: string;
+  /** Code history only: when a canceled order was canceled (refunded). */
+  canceled_at?: string;
   subtotal_won: number;
   discount_won: number;
   points_won: number;
@@ -198,6 +200,69 @@ export interface ReferralReport {
     open_orders: number;
     open_commission_won: number;
   };
+}
+
+/** One code's commission for a KST month: its orders fulfilled that month. */
+export interface ReferralCodeMonth {
+  month: string;
+  orders: number;
+  base_won: number;
+  commission_won: number;
+  income_tax_won: number;
+  local_tax_won: number;
+  withholding_won: number;
+  net_won: number;
+}
+
+/** `GET /api/v1/orders/reports/referrals/codes/{code}`. */
+export interface ReferralCodeHistory {
+  code: string;
+  /** Names snapshotted on its orders, in order of first use. */
+  referrer_names: string[];
+  timezone: string;
+  withholding_bps: number;
+  summary: {
+    /** Every paid order, canceled ones too. */
+    orders: number;
+    fulfilled_orders: number;
+    open_orders: number;
+    canceled_orders: number;
+    /** Distinct shoppers among the orders not canceled. */
+    customers: number;
+    /** Goods before the discount, and the discount, over the orders not canceled. */
+    subtotal_won: number;
+    discount_won: number;
+    base_won: number;
+    commission_won: number;
+    open_commission_won: number;
+  };
+  /** Months with fulfilled orders, newest first. */
+  months: ReferralCodeMonth[];
+  /** Every paid order, newest payment first. */
+  orders: ReferralLine[];
+}
+
+export type ReferralOrderFilter = "all" | "fulfilled" | "open" | "canceled";
+
+export const REFERRAL_OPEN_STATUSES = ["paid", "confirmed", "in_transit", "delivered", "disputed"];
+
+export function referralOrderKind(status: string): Exclude<ReferralOrderFilter, "all"> | null {
+  if (status === "fulfilled") return "fulfilled";
+  if (status === "canceled") return "canceled";
+  return REFERRAL_OPEN_STATUSES.includes(status) ? "open" : null;
+}
+
+export function filterReferralOrders(lines: ReferralLine[], filter: ReferralOrderFilter): ReferralLine[] {
+  return filter === "all" ? lines : lines.filter((l) => referralOrderKind(l.status) === filter);
+}
+
+export function isReferralOrderFilter(value: string | null): value is ReferralOrderFilter {
+  return value === "all" || value === "fulfilled" || value === "open" || value === "canceled";
+}
+
+/** The console path of a code's detail page. */
+export function referralCodePath(code: string): string {
+  return `/referrals/${encodeURIComponent(code)}`;
 }
 
 export class ReferralError extends Error {
@@ -261,6 +326,15 @@ export async function getReferralReport(month: string): Promise<ReferralReport> 
   return (await res.json()) as ReferralReport;
 }
 
+/** One code's paid orders and monthly commission. A `403` means the account lacks `order.read.all`. */
+export async function getReferralCodeHistory(code: string): Promise<ReferralCodeHistory> {
+  const res = await authedFetch(
+    orderPath(`/api/v1/orders/reports/referrals/codes/${encodeURIComponent(code)}`)
+  );
+  if (!res.ok) throw await errorFrom(res, "Failed to load the code's orders");
+  return (await res.json()) as ReferralCodeHistory;
+}
+
 /** The current month in Seoul, `YYYY-MM`. */
 export function currentMonthKST(now = new Date()): string {
   return new Date(now.getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 7);
@@ -311,4 +385,28 @@ export function referralReportCsv(report: ReferralReport): string {
     }
   }
   return "﻿" + rows.map((r) => r.map(csvCell).join(",")).join("\n") + "\n";
+}
+
+/**
+ * Every paid order of one code: what it sold and what it earns. Canceled
+ * orders earn nothing and open ones only once they are fulfilled, so the
+ * `earns` column says which.
+ */
+export function referralCodeOrdersCsv(history: ReferralCodeHistory): string {
+  const rows: (string | number)[][] = [
+    [
+      "code", "order_id", "customer_id", "status", "paid_at", "fulfilled_at", "canceled_at",
+      "subtotal_won", "discount_won", "base_won", "commission_bps", "commission_won", "earns",
+    ],
+  ];
+  for (const l of history.orders) {
+    const kind = referralOrderKind(l.status);
+    rows.push([
+      history.code, l.order_id, l.customer_id, l.status, l.paid_at ?? "", l.fulfilled_at ?? "",
+      l.canceled_at ?? "", l.subtotal_won, l.discount_won, l.base_won, l.commission_bps,
+      kind === "canceled" ? 0 : l.commission_won,
+      kind === "fulfilled" ? "earned" : kind === "canceled" ? "no" : "when fulfilled",
+    ]);
+  }
+  return "\uFEFF" + rows.map((r) => r.map(csvCell).join(",")).join("\n") + "\n";
 }

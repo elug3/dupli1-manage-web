@@ -5,8 +5,15 @@ import {
   buildReferralInput,
   currentMonthKST,
   emptyReferralForm,
+  filterReferralOrders,
   isMonth,
+  isReferralOrderFilter,
+  type ReferralCodeHistory,
+  type ReferralLine,
   type ReferralReport,
+  referralCodeOrdersCsv,
+  referralCodePath,
+  referralOrderKind,
   referralReportCsv,
   referralToForm,
   shiftMonth,
@@ -118,5 +125,39 @@ describe("referralReportCsv", () => {
     expect(lines).toHaveLength(3);
     expect(lines[1]).toContain("ord-1");
     expect(lines[2]).toBe("2026-11,허경호,TOTAL,HUH15,,,,850000,,42500,1270,120,1390,41110");
+  });
+});
+
+describe("referral code history", () => {
+  const line = (order_id: string, status: string, commission_won: number): ReferralLine => ({
+    order_id, customer_id: "c1", code: "HUH15", status, subtotal_won: 100000, discount_won: 15000,
+    points_won: 0, base_won: 85000, commission_bps: 500, commission_won,
+  });
+  const orders = [line("a", "in_transit", 4250), line("b", "canceled", 4250), line("c", "fulfilled", 4250)];
+
+  it("sorts each order into fulfilled, open or canceled", () => {
+    expect(referralOrderKind("fulfilled")).toBe("fulfilled");
+    expect(referralOrderKind("disputed")).toBe("open");
+    expect(referralOrderKind("canceled")).toBe("canceled");
+    expect(referralOrderKind("pending")).toBeNull();
+    expect(filterReferralOrders(orders, "open").map((l) => l.order_id)).toEqual(["a"]);
+    expect(filterReferralOrders(orders, "all")).toHaveLength(3);
+    expect(isReferralOrderFilter("canceled")).toBe(true);
+    expect(isReferralOrderFilter("refunded")).toBe(false);
+  });
+
+  it("links a code by its path", () => {
+    expect(referralCodePath("HUH15")).toBe("/referrals/HUH15");
+    expect(referralCodePath("A/B")).toBe("/referrals/A%2FB");
+  });
+
+  it("writes a canceled order as earning nothing", () => {
+    const history = { code: "HUH15", orders } as unknown as ReferralCodeHistory;
+    const csv = referralCodeOrdersCsv(history);
+    expect(csv.startsWith("\uFEFFcode,order_id")).toBe(true);
+    const rows = csv.trim().split("\n").slice(1);
+    expect(rows[0].endsWith(",4250,when fulfilled")).toBe(true);
+    expect(rows[1].endsWith(",0,no")).toBe(true);
+    expect(rows[2].endsWith(",4250,earned")).toBe(true);
   });
 });

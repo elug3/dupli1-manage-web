@@ -33,7 +33,9 @@
  * referrer name required, commission defaulting to 500 bps), seeded with the
  * referral code HUH15. `GET /api/v1/orders/reports/referrals?month=` computes
  * order's commission report from seeded referred orders: fulfilled in the
- * KST month, 3.3% withheld. `scripts/test-referrals-browser.mjs` drives it.
+ * KST month, 3.3% withheld; `…/reports/referrals/codes/{code}` is one code's
+ * paid orders and monthly commission for its detail page.
+ * `scripts/test-referrals-browser.mjs` drives both.
  */
 import http from "node:http";
 
@@ -412,8 +414,46 @@ function referredOrders() {
     o("ord_ref_2", "fulfilled", 480_000, kstDay(y, mo, 1), "usr_2"),
     o("ord_ref_prev", "fulfilled", 2_000_000, kstDay(prev[0], prev[1], 15)),
     o("ord_ref_open", "in_transit", 300_000, undefined),
-    o("ord_ref_refunded", "canceled", 900_000, undefined),
+    { ...o("ord_ref_refunded", "canceled", 900_000, undefined, "usr_3"), canceled_at: kstDay(y, mo, 1) },
   ];
+}
+
+/** Order's GET /api/v1/orders/reports/referrals/codes/{code}: one code's paid orders. */
+function referralCodeHistory(code) {
+  const open = new Set(["paid", "confirmed", "in_transit", "delivered", "disputed"]);
+  const orders = referredOrders()
+    .filter((o) => o.code === code && o.paid_at)
+    .sort((a, b) => Date.parse(b.paid_at) - Date.parse(a.paid_at) || a.id.localeCompare(b.id));
+  const summary = { orders: 0, fulfilled_orders: 0, open_orders: 0, canceled_orders: 0, customers: 0, subtotal_won: 0, discount_won: 0, base_won: 0, commission_won: 0, open_commission_won: 0 };
+  const customers = new Set();
+  const months = new Map();
+  const names = [];
+  const lines = orders.map((o) => {
+    const base = o.subtotal_won - o.discount_won;
+    const line = { order_id: o.id, customer_id: o.customer_id, code: o.code, status: o.status, paid_at: o.paid_at, fulfilled_at: o.fulfilled_at, canceled_at: o.canceled_at, subtotal_won: o.subtotal_won, discount_won: o.discount_won, points_won: o.points_won, base_won: base, commission_bps: o.commission_bps, commission_won: Math.floor((base * o.commission_bps) / 10000) };
+    summary.orders++;
+    if (!names.includes(o.referrer_name)) names.unshift(o.referrer_name);
+    if (o.status === "canceled") { summary.canceled_orders++; return line; }
+    customers.add(o.customer_id);
+    summary.subtotal_won += o.subtotal_won; summary.discount_won += o.discount_won;
+    if (o.status === "fulfilled") {
+      summary.fulfilled_orders++; summary.base_won += base; summary.commission_won += line.commission_won;
+      const key = new Date(Date.parse(o.fulfilled_at) + 9 * 3600 * 1000).toISOString().slice(0, 7);
+      const m = months.get(key) ?? { month: key, orders: 0, base_won: 0, commission_won: 0 };
+      m.orders++; m.base_won += base; m.commission_won += line.commission_won;
+      months.set(key, m);
+    } else if (open.has(o.status)) {
+      summary.open_orders++; summary.open_commission_won += line.commission_won;
+    }
+    return line;
+  });
+  summary.customers = customers.size;
+  const monthRows = [...months.values()].sort((a, b) => b.month.localeCompare(a.month)).map((m) => {
+    const income = Math.floor((m.commission_won * 3) / 100 / 10) * 10;
+    const local = Math.floor(income / 10 / 10) * 10;
+    return { ...m, income_tax_won: income, local_tax_won: local, withholding_won: income + local, net_won: m.commission_won - income - local };
+  });
+  return { code, referrer_names: names, timezone: "Asia/Seoul", withholding_bps: 330, summary, months: monthRows, orders: lines };
 }
 
 function referralReport(month) {
@@ -1741,6 +1781,12 @@ const server = http.createServer(async (req, res) => {
   }
   if (m && method === "GET" && shopperOrders.has(decodeURIComponent(m[1]))) {
     return send(res, 200, shopperOrders.get(decodeURIComponent(m[1])));
+  }
+  const refCode = path.match(/^\/api\/v1\/orders\/reports\/referrals\/codes\/([^/]*)$/);
+  if (method === "GET" && refCode) {
+    const code = decodeURIComponent(refCode[1]).trim().toUpperCase();
+    if (!code) return send(res, 400, { error: "code is required" });
+    return send(res, 200, referralCodeHistory(code));
   }
   if (method === "GET" && path === "/api/v1/orders/reports/referrals") {
     const month = url.searchParams.get("month") || new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 7);

@@ -32,6 +32,7 @@ export default [
     route("orders/:id", "routes/orders.$id.tsx"),
     route("promotions", "routes/promotions.tsx"),
     route("referrals", "routes/referrals.tsx"),
+    route("referrals/:code", "routes/referrals.$code.tsx"),
     route("banners", "routes/banners.tsx"),
     route("analytics", "routes/analytics.tsx"),
     route("telegram", "routes/telegram.tsx"),

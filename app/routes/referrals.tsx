@@ -1,40 +1,29 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import {
-  REFERRER_NAME_MAX,
   type ReferralCode,
   ReferralError,
-  type ReferralFormState,
   type ReferralReport,
   type ReferrerStatement,
   bpsToPercentText,
-  buildReferralInput,
-  createReferralCode,
   currentMonthKST,
-  emptyReferralForm,
   getReferralReport,
   isMonth,
   listReferralCodes,
+  referralCodePath,
   referralReportCsv,
-  referralToForm,
   shiftMonth,
-  updateReferralCode,
 } from "~/lib/referrals";
+import ReferralEditor, { referralBtnCls, referralCardCls } from "~/components/ReferralEditor";
 import { expiresOnFromISO } from "~/lib/promotions";
 import { useI18n } from "~/lib/i18n";
-import { useNotify } from "~/lib/notifications";
 
 export function meta() {
   return [{ title: "Referral codes | Dupli1 Admin" }];
 }
 
-const inputCls =
-  "w-full rounded-xl border border-edge bg-panel px-4 py-2.5 text-sm text-ink outline-none transition placeholder:text-soft focus:border-accent focus:ring-2 focus:ring-accent/20";
-const cardCls =
-  "rounded-2xl border border-edge bg-surface shadow-[0_1px_4px_rgba(28,27,31,0.04)]";
-const btnCls =
-  "rounded-xl border border-edge px-3 py-1.5 text-xs font-semibold text-ink transition hover:bg-subtle disabled:opacity-50";
-const labelCls = "mb-1.5 block text-xs font-semibold text-muted";
+const cardCls = referralCardCls;
+const btnCls = referralBtnCls;
 
 /**
  * Secret referral codes (backend docs/product-referral-codes.md): the codes,
@@ -152,7 +141,11 @@ function CodesTable({ codes, onEdit }: { codes: ReferralCode[]; onEdit: (code: s
             const expired = !!c.expires_at && new Date(c.expires_at).getTime() < Date.now();
             return (
               <tr key={c.code} className="border-b border-edge/60 last:border-0" data-testid="referral-row">
-                <td className="px-5 py-3 font-mono font-semibold text-ink">{c.code}</td>
+                <td className="px-5 py-3">
+                  <Link to={referralCodePath(c.code)} className="font-mono font-semibold text-accent hover:underline">
+                    {c.code}
+                  </Link>
+                </td>
                 <td className="px-5 py-3 text-ink">{c.referrer_name}</td>
                 <td className="px-5 py-3 text-ink">
                   {c.benefit?.discount_type === "fixed"
@@ -186,160 +179,6 @@ function CodesTable({ codes, onEdit }: { codes: ReferralCode[]; onEdit: (code: s
         </tbody>
       </table>
     </div>
-  );
-}
-
-function ReferralEditor({
-  initial,
-  onCancel,
-  onSaved,
-}: {
-  initial?: ReferralCode;
-  onCancel: () => void;
-  onSaved: (code: ReferralCode) => void;
-}) {
-  const { t } = useI18n();
-  const { notify } = useNotify();
-  const create = !initial;
-  const [form, setForm] = useState<ReferralFormState>(() => (initial ? referralToForm(initial) : emptyReferralForm()));
-  const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const set = <K extends keyof ReferralFormState>(key: K, value: ReferralFormState[K]) =>
-    setForm((f) => ({ ...f, [key]: value }));
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    const built = buildReferralInput(form, { create });
-    if (!built.input) {
-      setError(t(built.errorKey ?? "referrals.failedToSave"));
-      return;
-    }
-    setError(null);
-    setSaving(true);
-    try {
-      const result = create
-        ? await createReferralCode(built.input)
-        : await updateReferralCode(initial.code, built.input);
-      notify(create ? t("referrals.createdNotice", { code: result.code }) : t("referrals.savedNotice", { code: result.code }));
-      onSaved(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t("referrals.failedToSave"));
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <form onSubmit={submit} className={`${cardCls} space-y-5 p-6`} data-testid="referral-editor">
-      <h2 className="text-sm font-semibold text-ink">
-        {create ? t("referrals.newCode") : t("referrals.editCode", { code: initial.code })}
-      </h2>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <label className={labelCls} htmlFor="ref-code">{t("referrals.fieldCode")}</label>
-          <input
-            id="ref-code"
-            className={`${inputCls} font-mono uppercase`}
-            value={form.code}
-            disabled={!create}
-            onChange={(e) => set("code", e.target.value.toUpperCase())}
-            placeholder="HUH15"
-            autoComplete="off"
-          />
-          <p className="mt-1 text-xs text-muted">{t("referrals.fieldCodeHint")}</p>
-        </div>
-        <div>
-          <label className={labelCls} htmlFor="ref-referrer">{t("referrals.fieldReferrer")}</label>
-          <input
-            id="ref-referrer"
-            className={inputCls}
-            value={form.referrerName}
-            maxLength={REFERRER_NAME_MAX}
-            onChange={(e) => set("referrerName", e.target.value)}
-            placeholder="허경호"
-            autoComplete="off"
-          />
-          <p className="mt-1 text-xs text-muted">{t("referrals.fieldReferrerHint")}</p>
-        </div>
-        <div>
-          <span className={labelCls}>{t("referrals.fieldDiscount")}</span>
-          <div className="flex gap-2">
-            <select
-              aria-label={t("referrals.fieldDiscountType")}
-              className="w-20 shrink-0 rounded-xl border border-edge bg-panel px-3 py-2.5 text-sm text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
-              value={form.discountType}
-              onChange={(e) => set("discountType", e.target.value as ReferralFormState["discountType"])}
-            >
-              <option value="percent">%</option>
-              <option value="fixed">₩</option>
-            </select>
-            {form.discountType === "percent" ? (
-              <input
-                id="ref-percent"
-                aria-label={t("referrals.fieldPercent")}
-                className={inputCls}
-                inputMode="numeric"
-                value={form.percent}
-                onChange={(e) => set("percent", e.target.value)}
-              />
-            ) : (
-              <input
-                id="ref-fixed"
-                aria-label={t("referrals.fieldFixed")}
-                className={inputCls}
-                inputMode="numeric"
-                value={form.fixedWon}
-                onChange={(e) => set("fixedWon", e.target.value)}
-              />
-            )}
-          </div>
-          <p className="mt-1 text-xs text-muted">{t("referrals.fieldDiscountHint")}</p>
-        </div>
-        <div>
-          <label className={labelCls} htmlFor="ref-commission">{t("referrals.fieldCommission")}</label>
-          <div className="flex items-center gap-2">
-            <input
-              id="ref-commission"
-              className={inputCls}
-              inputMode="decimal"
-              value={form.commissionPercent}
-              onChange={(e) => set("commissionPercent", e.target.value)}
-            />
-            <span className="text-sm text-muted">%</span>
-          </div>
-          <p className="mt-1 text-xs text-muted">{t("referrals.fieldCommissionHint")}</p>
-        </div>
-        <div>
-          <label className={labelCls} htmlFor="ref-expires">{t("referrals.fieldExpires")}</label>
-          <input
-            id="ref-expires"
-            type="date"
-            className={inputCls}
-            value={form.expiresOn}
-            onChange={(e) => set("expiresOn", e.target.value)}
-          />
-          <p className="mt-1 text-xs text-muted">{t("referrals.fieldExpiresHint")}</p>
-        </div>
-        <label className="flex items-center gap-2 self-center text-sm text-ink">
-          <input type="checkbox" checked={form.active} onChange={(e) => set("active", e.target.checked)} />
-          {t("referrals.fieldActive")}
-        </label>
-      </div>
-      <p className="text-xs text-muted">{t("referrals.rulesNote")}</p>
-      {error && <p className="text-sm text-danger-fg" role="alert">{error}</p>}
-      <div className="flex gap-2">
-        <button
-          type="submit"
-          disabled={saving}
-          className="rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-accent-hover disabled:opacity-60"
-        >
-          {saving ? t("referrals.saving") : create ? t("referrals.create") : t("referrals.save")}
-        </button>
-        <button type="button" onClick={onCancel} className="rounded-xl border border-edge px-4 py-2.5 text-sm font-semibold text-ink hover:bg-subtle">
-          {t("referrals.cancel")}
-        </button>
-      </div>
-    </form>
   );
 }
 
@@ -469,7 +308,14 @@ function Statement({ s }: { s: ReferrerStatement }) {
       <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-edge px-4 py-3">
         <div>
           <span className="text-base font-semibold text-ink">{s.referrer_name}</span>
-          <span className="ml-2 font-mono text-xs text-muted">{s.codes.join(", ")}</span>
+          <span className="ml-2 font-mono text-xs">
+            {s.codes.map((code, i) => (
+              <span key={code}>
+                {i > 0 && <span className="text-muted">, </span>}
+                <Link to={referralCodePath(code)} className="text-accent hover:underline">{code}</Link>
+              </span>
+            ))}
+          </span>
         </div>
         <dl className="flex flex-wrap gap-x-5 gap-y-1 text-sm tabular-nums">
           <div><dt className="inline text-muted">{t("referrals.orders")} </dt><dd className="inline font-semibold text-ink">{s.orders}</dd></div>
