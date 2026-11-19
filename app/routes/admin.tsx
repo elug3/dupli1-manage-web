@@ -170,6 +170,7 @@ export default function AdminLayout() {
             <SidebarLink to="/catalog" icon={<CatalogIcon />} label={t("nav.catalog")} onNavigate={() => setSidebarOpen(false)} />
             <SidebarLink to="/orders" icon={<OrdersIcon />} label={t("nav.orders")} onNavigate={() => setSidebarOpen(false)} />
             <SidebarLink to="/promotions" icon={<PromotionsIcon />} label={t("nav.promotions")} onNavigate={() => setSidebarOpen(false)} />
+            <SidebarLink to="/referrals" icon={<ReferralsIcon />} label={t("nav.referrals")} onNavigate={() => setSidebarOpen(false)} />
             <SidebarLink to="/banners" icon={<BannersIcon />} label={t("nav.banners")} onNavigate={() => setSidebarOpen(false)} />
             <SidebarLink to="/analytics" icon={<AnalyticsIcon />} label={t("nav.analytics")} onNavigate={() => setSidebarOpen(false)} />
             <SidebarLink to="/users" icon={<UsersIcon />} label={t("nav.users")} onNavigate={() => setSidebarOpen(false)} />
@@ -380,6 +381,14 @@ function UsersIcon() {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+    </svg>
+  );
+}
+
+function ReferralsIcon() {
+  return (
+    <svg className="size-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7zM19 8v6M22 11h-6" />
     </svg>
   );
 }

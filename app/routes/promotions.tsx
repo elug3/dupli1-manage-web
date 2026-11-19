@@ -69,7 +69,8 @@ export default function Promotions() {
     setLoading(true);
     setError(null);
     getPromotions()
-      .then(setPromotions)
+      // Referral codes are secret and have their own page (/referrals).
+      .then((all) => setPromotions(all.filter((p) => p.kind !== "referral")))
       .catch((err) => {
         setPromotions([]);
         setError({ message: err instanceof Error ? err.message : undefined });
