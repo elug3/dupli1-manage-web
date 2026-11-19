@@ -118,6 +118,69 @@ async function main() {
   check("a month with nothing fulfilled has no lines", (await report.getByTestId("statement-line").count()) === 0);
   check("…but still shows the open order", (await report.getByTestId("statement-open").count()) === 1);
 
+  console.log("\nCode detail page");
+  await page.goto(`${BASE}/referrals`, { waitUntil: "load" });
+  await rows.first().waitFor({ timeout: 15000 });
+  await rows.filter({ hasText: "HUH15" }).getByRole("link", { name: "HUH15" }).click();
+  await page.waitForURL((url) => url.pathname === "/referrals/HUH15", { timeout: 15000 });
+  const detail = page.getByTestId("referral-detail");
+  await detail.getByTestId("code-order").first().waitFor({ timeout: 15000 });
+  check("the header names the referrer", (await detail.textContent()).includes("허경호"));
+  const stats = await detail.getByTestId("code-stats").textContent();
+  check("5 paid orders: 3 fulfilled, 1 open, 1 canceled", stats.includes("5") && stats.includes("3 fulfilled · 1 open · 1 canceled"));
+  check("2 customers, the refunded one left out", /Customers\s*2/.test(stats));
+  // 850,000 + 408,000 + 1,700,000 at 5% (the rate on the orders, not today's 7%)
+  check("₩147,900 earned, ₩12,750 waiting", stats.includes("147,900") && stats.includes("12,750"));
+  const settings = await detail.getByTestId("code-settings").textContent();
+  check("settings show today's 7% rate", settings.includes("7% of goods after discount"));
+  check("…and unlimited uses", settings.includes("Unlimited per shopper"));
+  const months = detail.getByTestId("code-month");
+  check("two months earned", (await months.count()) === 2);
+  check("this month nets ₩60,840", (await months.first().getByTestId("code-month-net").textContent()).includes("60,840"));
+  check("last month nets ₩82,200", (await months.nth(1).getByTestId("code-month-net").textContent()).includes("82,200"));
+  check("the newest month is marked so far", (await months.first().textContent()).includes("so far"));
+  const orderRows = detail.getByTestId("code-order");
+  check("every paid order is listed", (await orderRows.count()) === 5);
+  const refunded = orderRows.filter({ hasText: "ord_ref_refunded" });
+  check("the refunded order earns ₩0", (await refunded.getByTestId("code-order-commission").textContent()).includes("0") && (await refunded.textContent()).includes("refunded"));
+  await detail.getByRole("tab", { name: /^Open/ }).click();
+  await page.waitForURL((url) => url.searchParams.get("show") === "open");
+  await orderRows.nth(1).waitFor({ state: "detached", timeout: 5000 }).catch(() => {});
+  check("the Open filter shows the order in transit", (await orderRows.count()) === 1 && (await orderRows.first().textContent()).includes("ord_ref_open"));
+  await detail.getByRole("tab", { name: /^All/ }).click();
+  const codeCsv = page.waitForEvent("download", { timeout: 5000 }).catch(() => null);
+  await detail.getByTestId("code-orders").getByRole("button", { name: "Download CSV" }).click();
+  check("the orders CSV downloads", (await codeCsv)?.suggestedFilename() === "referral-HUH15-orders.csv");
+  if (SHOTS) await page.screenshot({ path: `${SHOTS}/referral-detail-en.png`, fullPage: true });
+
+  await detail.getByRole("button", { name: "Turn off" }).click();
+  await detail.getByTestId("turn-off-confirm").getByRole("button", { name: "Turn off" }).click();
+  await detail.getByRole("button", { name: "Turn back on" }).waitFor({ timeout: 10000 });
+  check("turning off saves active false", (await stored("HUH15"))?.active === false);
+  check("…and keeps the rate", (await stored("HUH15"))?.commission_bps === 700);
+  check("the badge says Off", (await detail.getByTestId("code-status").first().textContent()) === "Off");
+  await detail.getByRole("button", { name: "Turn back on" }).click();
+  await detail.getByRole("button", { name: "Turn off" }).waitFor({ timeout: 10000 });
+  check("turning back on saves active true", (await stored("HUH15"))?.active === true);
+
+  await detail.getByRole("button", { name: "Edit code" }).click();
+  await page.getByTestId("referral-editor").waitFor();
+  await page.fill("#ref-referrer", "허경호 (KH)");
+  await page.getByTestId("referral-editor").getByRole("button", { name: "Save" }).click();
+  await page.getByTestId("referral-editor").waitFor({ state: "detached", timeout: 10000 });
+  check("editing from the detail page saves", (await stored("HUH15"))?.referrer_name === "허경호 (KH)");
+  check("…and earlier orders keep their name", (await detail.textContent()).includes("Earlier orders were placed under 허경호"));
+
+  await page.goto(`${BASE}/referrals/NOPE99`, { waitUntil: "load" });
+  await page.getByTestId("referral-not-found").waitFor({ timeout: 15000 });
+  check("an unknown code says so", (await page.getByTestId("referral-not-found").textContent()).includes("NOPE99"));
+
+  await page.goto(`${BASE}/referrals?month=2000-01`, { waitUntil: "load" });
+  await page.getByTestId("referrer-statement").first().waitFor({ timeout: 15000 });
+  await page.getByTestId("referrer-statement").first().getByRole("link", { name: "HUH15" }).click();
+  await page.waitForURL((url) => url.pathname === "/referrals/HUH15", { timeout: 15000 });
+  check("a statement links to its code", true);
+
   console.log("\nKorean");
   await page.context().addCookies([{ name: "dupli1_locale", value: "ko", url: BASE }]);
   await page.goto(`${BASE}/referrals`, { waitUntil: "load" });
@@ -125,6 +188,10 @@ async function main() {
   check("the page is in Korean", (await page.locator("h1").textContent()).includes("추천 코드"));
   check("the report says 지급액", (await page.getByTestId("commission-report").textContent()).includes("지급액"));
   if (SHOTS) await page.screenshot({ path: `${SHOTS}/referrals-ko.png`, fullPage: true });
+  await page.goto(`${BASE}/referrals/HUH15`, { waitUntil: "load" });
+  await page.getByTestId("code-order").first().waitFor({ timeout: 15000 });
+  check("the detail page is in Korean", (await page.getByTestId("code-settings").textContent()).includes("고객당 무제한"));
+  if (SHOTS) await page.screenshot({ path: `${SHOTS}/referral-detail-ko.png`, fullPage: true });
   await page.context().addCookies([{ name: "dupli1_locale", value: "en", url: BASE }]);
 
   check("no page errors", pageErrors.length === 0, pageErrors.join(" | "));
