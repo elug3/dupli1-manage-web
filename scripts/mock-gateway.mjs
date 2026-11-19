@@ -27,6 +27,13 @@
  * the payment service's shape: every declared switch listed, `engaged`
  * required on PUT, card reported as configured. `POST /__control/kill-switches-reset`
  * releases them; `scripts/test-kill-switches-browser.mjs` drives the page.
+ *
+ * Promotional codes (`/api/v1/products/promotions`) are kept in memory with
+ * product's referral rules (kind fixed on create, referral codes global, a
+ * referrer name required, commission defaulting to 500 bps), seeded with the
+ * referral code HUH15. `GET /api/v1/orders/reports/referrals?month=` computes
+ * order's commission report from seeded referred orders: fulfilled in the
+ * KST month, 3.3% withheld. `scripts/test-referrals-browser.mjs` drives it.
  */
 import http from "node:http";
 
@@ -302,6 +309,148 @@ function readMultipartFile(req) {
     });
     req.on("error", reject);
   });
+}
+
+// ── Promotional codes and referral commission (dupli1 docs/product-referral-codes.md)
+const promotions = new Map();
+function seedPromotions() {
+  promotions.clear();
+  const now = new Date().toISOString();
+  promotions.set("HUH15", {
+    code: "HUH15", scope: "global", description: "", active: true, kind: "referral",
+    referrer_name: "허경호", commission_bps: 500, max_per_customer: 1, redemption_count: 3,
+    benefit: { target: "goods", discount_type: "percent", discount_fraction: 0.15, apply_to: "entire_subtotal" },
+    conditions: { version: 0 }, discount: 0, expires: "", updated_at: now,
+  });
+  promotions.set("WINTER10", {
+    code: "WINTER10", scope: "global", description: "Winter sale", active: true,
+    max_per_customer: 1, redemption_count: 0,
+    benefit: { target: "goods", discount_type: "percent", discount_fraction: 0.1, apply_to: "entire_subtotal" },
+    conditions: { version: 0 }, discount: 0, expires: "", updated_at: now,
+  });
+}
+seedPromotions();
+
+function endOfDayKST(date) {
+  return new Date(Date.parse(`${date}T23:59:59.999+09:00`)).toISOString();
+}
+
+function promotionProblem(p) {
+  if (p.kind && p.kind !== "referral") return `kind "${p.kind}" is not one of "", referral`;
+  if (p.kind !== "referral") {
+    if ((p.referrer_name ?? "").trim() || p.commission_bps) return "referrer_name and commission_bps are only for referral codes (kind referral)";
+    return null;
+  }
+  if (!(p.referrer_name ?? "").trim()) return "a referral code needs a referrer_name";
+  if ([...p.referrer_name.trim()].length > 80) return "referrer_name must be at most 80 characters";
+  if (!(p.commission_bps >= 0 && p.commission_bps <= 10000)) return "commission_bps must be between 0 and 10000";
+  if (p.scope !== "global") return "a referral code must be global";
+  return null;
+}
+
+function applyPromotionBody(p, body) {
+  for (const k of ["description", "terms", "active", "benefit", "conditions", "max_redemptions", "referrer_name", "commission_bps"]) {
+    if (body[k] !== undefined) p[k] = body[k];
+  }
+  if (typeof p.referrer_name === "string") p.referrer_name = p.referrer_name.trim();
+  if (body.expires_on !== undefined) p.expires_at = body.expires_on ? endOfDayKST(body.expires_on) : null;
+  p.updated_at = new Date().toISOString();
+  return p;
+}
+
+async function handlePromotions(req, res, method, path) {
+  if (path === "/api/v1/products/promotions" && method === "GET") {
+    const results = [...promotions.values()].sort((a, b) => a.code.localeCompare(b.code));
+    return send(res, 200, { total: results.length, results });
+  }
+  if (path === "/api/v1/products/promotions" && method === "POST") {
+    const body = await readBody(req).catch(() => ({}));
+    const code = String(body.code ?? "").trim().toUpperCase();
+    if (!code) return send(res, 400, { error: "code is required" });
+    if (promotions.has(code)) return send(res, 409, { error: "promotion already exists" });
+    const p = applyPromotionBody({
+      code, scope: body.scope || "global", active: true, kind: body.kind || "", max_per_customer: 1,
+      redemption_count: 0, conditions: { version: 0 }, description: "", discount: 0, expires: "",
+    }, body);
+    if (p.kind === "referral" && body.commission_bps === undefined) p.commission_bps = 500;
+    const problem = promotionProblem(p);
+    if (problem) return send(res, 400, { error: problem });
+    if (!p.kind) delete p.kind;
+    promotions.set(code, p);
+    return send(res, 201, p);
+  }
+  const m = path.match(/^\/api\/v1\/products\/promotions\/by-code\/([^/]+)$/);
+  if (m && method === "PUT") {
+    const code = decodeURIComponent(m[1]).toUpperCase();
+    const current = promotions.get(code);
+    if (!current) return send(res, 404, { error: "promotion not found" });
+    const body = await readBody(req).catch(() => ({}));
+    if (body.kind !== undefined) return send(res, 400, { error: "kind is set when a code is created and cannot be changed" });
+    const next = applyPromotionBody(structuredClone(current), body);
+    const problem = promotionProblem(next);
+    if (problem) return send(res, 400, { error: problem });
+    promotions.set(code, next);
+    return send(res, 200, next);
+  }
+  return null;
+}
+
+/** Referred orders as order stores them: rate snapshotted at checkout. */
+function referredOrders() {
+  const kstDay = (y, m, d) => new Date(Date.UTC(y, m - 1, d, 3)).toISOString();
+  const now = new Date(Date.now() + 9 * 3600 * 1000);
+  const y = now.getUTCFullYear();
+  const mo = now.getUTCMonth() + 1;
+  const prev = mo === 1 ? [y - 1, 12] : [y, mo - 1];
+  const o = (id, status, subtotal, fulfilledAt, customer = "usr_points_demo") => ({
+    id, customer_id: customer, status, code: "HUH15", referrer_name: "허경호", commission_bps: 500,
+    subtotal_won: subtotal, discount_won: Math.floor(subtotal * 0.15), points_won: 0,
+    paid_at: fulfilledAt ?? kstDay(y, mo, 1), fulfilled_at: fulfilledAt,
+  });
+  return [
+    o("ord_ref_1", "fulfilled", 1_000_000, kstDay(y, mo, 1)),
+    o("ord_ref_2", "fulfilled", 480_000, kstDay(y, mo, 1), "usr_2"),
+    o("ord_ref_prev", "fulfilled", 2_000_000, kstDay(prev[0], prev[1], 15)),
+    o("ord_ref_open", "in_transit", 300_000, undefined),
+    o("ord_ref_refunded", "canceled", 900_000, undefined),
+  ];
+}
+
+function referralReport(month) {
+  const [y, m] = month.split("-").map(Number);
+  const start = Date.parse(`${month}-01T00:00:00+09:00`);
+  const nextMonth = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, "0")}`;
+  const end = Date.parse(`${nextMonth}-01T00:00:00+09:00`);
+  const open = new Set(["paid", "confirmed", "in_transit", "delivered", "disputed"]);
+  const by = new Map();
+  const statement = (name) => {
+    if (!by.has(name)) by.set(name, { referrer_name: name, codes: new Set(), orders: 0, base_won: 0, commission_won: 0, lines: [], open_orders: 0, open_commission_won: 0, open: [] });
+    return by.get(name);
+  };
+  for (const o of referredOrders()) {
+    const base = o.subtotal_won - o.discount_won;
+    const line = { order_id: o.id, customer_id: o.customer_id, code: o.code, status: o.status, paid_at: o.paid_at, fulfilled_at: o.fulfilled_at, subtotal_won: o.subtotal_won, discount_won: o.discount_won, points_won: o.points_won, base_won: base, commission_bps: o.commission_bps, commission_won: Math.floor((base * o.commission_bps) / 10000) };
+    const at = o.fulfilled_at ? Date.parse(o.fulfilled_at) : NaN;
+    if (o.status === "fulfilled" && at >= start && at < end) {
+      const s = statement(o.referrer_name);
+      s.lines.push(line); s.orders++; s.base_won += base; s.commission_won += line.commission_won; s.codes.add(o.code);
+    } else if (open.has(o.status)) {
+      const s = statement(o.referrer_name);
+      s.open.push(line); s.open_orders++; s.open_commission_won += line.commission_won; s.codes.add(o.code);
+    }
+  }
+  const totals = { orders: 0, base_won: 0, commission_won: 0, withholding_won: 0, net_won: 0, open_orders: 0, open_commission_won: 0 };
+  const referrers = [...by.values()].map((s) => {
+    const income = Math.floor((s.commission_won * 3) / 100 / 10) * 10;
+    const local = Math.floor(income / 10 / 10) * 10;
+    const out = { ...s, codes: [...s.codes].sort(), income_tax_won: income, local_tax_won: local, withholding_won: income + local, net_won: s.commission_won - income - local };
+    totals.orders += out.orders; totals.base_won += out.base_won; totals.commission_won += out.commission_won;
+    totals.withholding_won += out.withholding_won; totals.net_won += out.net_won;
+    totals.open_orders += out.open_orders; totals.open_commission_won += out.open_commission_won;
+    return out;
+  });
+  const last = new Date(end - 86400000 + 9 * 3600 * 1000).toISOString().slice(0, 10);
+  return { month, from: `${month}-01`, to: last, timezone: "Asia/Seoul", withholding_bps: 330, referrers, totals };
 }
 
 function send(res, status, body) {
@@ -1118,6 +1267,10 @@ const server = http.createServer(async (req, res) => {
         : undefined;
     return send(res, 200, order);
   }
+  if (path === "/__control/promotions-reset" && method === "POST") {
+    seedPromotions();
+    return send(res, 200, { ok: true });
+  }
   if (path === "/__control/reset" && method === "POST") {
     return send(res, 200, {
       delivered: broadcast({ event: "reset", data: { reason: "gap" } }),
@@ -1329,6 +1482,11 @@ const server = http.createServer(async (req, res) => {
     return send(res, method === "POST" ? 201 : 200, saved);
   }
   if (method === "GET" && path === "/api/v1/products/catalog/editions") return send(res, 200, []);
+
+  if (path.startsWith("/api/v1/products/promotions")) {
+    const handled = await handlePromotions(req, res, method, path);
+    if (handled !== null) return handled;
+  }
 
   // Storefront banners (dupli1 docs/product-storefront-banners.md). Uploads
   // are kept in memory and served from /product-images/mock/… like variant
@@ -1583,6 +1741,11 @@ const server = http.createServer(async (req, res) => {
   }
   if (m && method === "GET" && shopperOrders.has(decodeURIComponent(m[1]))) {
     return send(res, 200, shopperOrders.get(decodeURIComponent(m[1])));
+  }
+  if (method === "GET" && path === "/api/v1/orders/reports/referrals") {
+    const month = url.searchParams.get("month") || new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 7);
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return send(res, 400, { error: "month must be YYYY-MM" });
+    return send(res, 200, referralReport(month));
   }
   if (method === "GET" && path === "/api/v1/orders/reports/sales") {
     const granularity = url.searchParams.get("granularity") ?? "week";

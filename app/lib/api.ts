@@ -1439,6 +1439,15 @@ export interface Promotion {
   apply_mode?: PromotionApplyMode;
   /** Customer-facing copy stating what the code requires. */
   terms?: string;
+  /**
+   * `referral` for a secret referral code (backend docs/product-referral-codes.md),
+   * absent for every other code. Referral codes live on `/referrals`, not `/promotions`.
+   */
+  kind?: "" | "referral";
+  /** Referral codes only: who referred the shopper (a name, not an account). */
+  referrer_name?: string;
+  /** Referral codes only: commission per fulfilled order, basis points (500 = 5%). */
+  commission_bps?: number;
   updated_at?: string;
   /** Pre-Phase-2 columns. Still read so an old row prices correctly; nothing writes them. */
   discount: number;
@@ -1466,6 +1475,10 @@ export interface PromotionInput {
   auto_issue?: PromotionAutoIssue;
   /** Never sent by the console; `auto` (customer tiers) is retired. */
   apply_mode?: PromotionApplyMode;
+  /** Create only; the service refuses a change of kind. */
+  kind?: "" | "referral";
+  referrer_name?: string;
+  commission_bps?: number;
 }
 
 export type PromotionUpdate = PromotionInput;

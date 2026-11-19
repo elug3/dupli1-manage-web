@@ -153,6 +153,15 @@ The whole `/support` page (inbox, product questions, context panel, action error
 
 `npm run test:support:browser` drives all of this against `npm run mock:gateway` (`CHROMIUM_PATH` overrides Playwright's bundled browser). It runs in Korean via the `dupli1_locale` cookie, then checks the questions tab in English.
 
+### Referral codes (`/product`, `/order`)
+
+Secret referral codes (backend [docs/product-referral-codes.md](../dupli1/docs/product-referral-codes.md), Linear SER-105): a promotional code with `kind: "referral"`, a `referrer_name` (a plain name, **not** an account) and `commission_bps` (default 500 = 5%). Shoppers type it in the ordinary code box and the storefront never says it is a referral, so the console never writes `description` or `terms` on one (those reach shoppers). One shopper may use it on any number of orders; goods only, no ₩ cap, never with another code.
+
+- `GET|POST /product/api/v1/products/promotions`, `PUT …/by-code/{code}` — the same promotion routes; `kind` and `scope: "global"` go on create only (product answers `400` to a change of kind)
+- `GET /order/api/v1/orders/reports/referrals?month=YYYY-MM` — commission per referrer for a KST month (`order.read.all`): orders **fulfilled** in the month, base = goods after the code's discount, commission per order rounded down, 3.3% withheld (income tax 3% + local 0.3%, each to ₩10), `net_won` to transfer, plus `open` orders paid but not yet fulfilled
+
+UI: `/referrals` (`app/routes/referrals.tsx`, helpers and client in `app/lib/referrals.ts`): the codes with an editor (code, referrer, % or ₩ off, commission %, valid until, live), and **Commission by month** with ←/→ and `?month=`, totals, one statement per referrer with its orders and the withholding split, open orders folded away, and a CSV for paying by hand. `/promotions` leaves referral codes out. `npm run test:referrals:browser` drives it against `npm run mock:gateway` (seeded `HUH15` for 허경호 and referred orders).
+
 ### Payment kill switches (`/api/v1/payments`)
 
 Switch a payment method off for every shopper without a deploy (backend [docs/payment-kill-switches.md](../dupli1/docs/payment-kill-switches.md)).
@@ -226,7 +235,7 @@ app/
 
 Route modules use React Router 7 conventions: `loader` for data fetching, `action` for mutations, `default` export for the component.
 
-Admin surfaces: products (parent + variants with inline **price**, **officialPrice**, **attributes** key-value editor, and catalog master fields on PDP), **SKU detail** (`/products/:id/SKU/:skuId`), **catalog masters** (`/catalog`) and the **catalog overview** (`/catalog/overview` — counts per brand and category), orders, **promotional codes** (`/promotions`), users (**Customers / Managers / Services** tabs by `account_type`; service accounts have no password — `/users/new` omits it for them and their detail page's credentials tab is an **API keys** panel that shows a new key's plaintext once and never stores it), **Banners** (`/banners` — storefront images, shown and taken down by hand), **Telegram** (`/telegram` — ops alert subscriptions; `/telegram/:id` edits one chat's alerts), **Support** (`/support` — customer consultation inbox), settings (local UI; manager settings API still sketch on backend — except its **Kill switches** section, which switches a payment method off for real).
+Admin surfaces: products (parent + variants with inline **price**, **officialPrice**, **attributes** key-value editor, and catalog master fields on PDP), **SKU detail** (`/products/:id/SKU/:skuId`), **catalog masters** (`/catalog`) and the **catalog overview** (`/catalog/overview` — counts per brand and category), orders, **promotional codes** (`/promotions`), users (**Customers / Managers / Services** tabs by `account_type`; service accounts have no password — `/users/new` omits it for them and their detail page's credentials tab is an **API keys** panel that shows a new key's plaintext once and never stores it), **Banners** (`/banners` — storefront images, shown and taken down by hand), **Referral codes** (`/referrals` — secret codes and the monthly commission owed per referrer), **Telegram** (`/telegram` — ops alert subscriptions; `/telegram/:id` edits one chat's alerts), **Support** (`/support` — customer consultation inbox), settings (local UI; manager settings API still sketch on backend — except its **Kill switches** section, which switches a payment method off for real).
 
 ## Production access
 
