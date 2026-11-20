@@ -566,9 +566,9 @@ function seed() {
     );
   }
   // Orders that spent points (backend docs/payment-points.md): points come off
-  // the goods before the 10% card surcharge, so 250,000 − 25,000 code −
-  // 20,000 P = 205,000 + 20,500 surcharge = 225,500 charged by card. The
-  // second was paid in full with points: ₩0, no card part.
+  // the goods, so 250,000 − 25,000 code − 20,000 P = 205,000 charged by card
+  // (no card surcharge since SER-110). The second was paid in full with
+  // points: ₩0, no card part.
   const paidAt = new Date(Date.now() - 20 * 60_000).toISOString();
   const due = new Date(Date.now() + 100 * 60_000).toISOString();
   orders.set(
@@ -580,8 +580,8 @@ function seed() {
       discount_won: 25000,
       points_won: 20000,
       payment_method: "credit_card",
-      card_surcharge_won: 20500,
-      total_won: 225500,
+      card_surcharge_won: 0,
+      total_won: 205000,
       payment_id: "pay_seed_points",
       paid_at: paidAt,
       confirmation_due_at: due,
@@ -1807,8 +1807,9 @@ const server = http.createServer(async (req, res) => {
         gross_won: gross,
         discount_won: orders * 8000,
         shipping_fee_won: orders * 3000,
-        // Every mock order is paid by card: 10% on top, already in gross.
-        card_surcharge_won: Math.floor(gross / 11),
+        // The 10% card surcharge was removed (SER-110): only the oldest
+        // periods still hold orders charged one, already in gross.
+        card_surcharge_won: i < 2 ? Math.floor(gross / 11) : 0,
         points_won: Math.floor(gross / 40 / 1000) * 1000,
         refunds,
         refunded_won: refunded,
