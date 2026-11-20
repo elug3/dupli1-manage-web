@@ -422,28 +422,33 @@ function SalesTable({
     URL.revokeObjectURL(url);
   };
 
-  const cells = (p: SalesPeriod) => [
-    String(p.orders),
-    formatWon(p.gross_won),
-    formatWon(p.discount_won),
-    formatWon(p.points_won ?? 0),
-    formatWon(p.shipping_fee_won),
-    formatWon(p.card_surcharge_won ?? 0),
-    p.refunds > 0 ? `${formatWon(p.refunded_won)} (${p.refunds})` : formatWon(0),
-    formatWon(p.net_won),
-    formatWon(p.average_order_won),
+  // The card surcharge was removed (SER-110), so only a range that still holds
+  // orders charged one before shows the column. The CSV keeps it either way.
+  const showSurcharge = (report.totals.card_surcharge_won ?? 0) > 0;
+  const salesColumns: { label: string; cell: (p: SalesPeriod) => string }[] = [
+    { label: t("analytics.colOrders"), cell: (p) => String(p.orders) },
+    { label: t("analytics.colGross"), cell: (p) => formatWon(p.gross_won) },
+    { label: t("analytics.colDiscounts"), cell: (p) => formatWon(p.discount_won) },
+    { label: t("analytics.colPoints"), cell: (p) => formatWon(p.points_won ?? 0) },
+    { label: t("analytics.colShipping"), cell: (p) => formatWon(p.shipping_fee_won) },
+    ...(showSurcharge
+      ? [
+          {
+            label: t("analytics.colCardSurcharge"),
+            cell: (p: SalesPeriod) => formatWon(p.card_surcharge_won ?? 0),
+          },
+        ]
+      : []),
+    {
+      label: t("analytics.colRefunds"),
+      cell: (p) =>
+        p.refunds > 0 ? `${formatWon(p.refunded_won)} (${p.refunds})` : formatWon(0),
+    },
+    { label: t("analytics.colNet"), cell: (p) => formatWon(p.net_won) },
+    { label: t("analytics.colAvg"), cell: (p) => formatWon(p.average_order_won) },
   ];
-  const columns = [
-    t("analytics.colOrders"),
-    t("analytics.colGross"),
-    t("analytics.colDiscounts"),
-    t("analytics.colPoints"),
-    t("analytics.colShipping"),
-    t("analytics.colCardSurcharge"),
-    t("analytics.colRefunds"),
-    t("analytics.colNet"),
-    t("analytics.colAvg"),
-  ];
+  const cells = (p: SalesPeriod) => salesColumns.map((c) => c.cell(p));
+  const columns = salesColumns.map((c) => c.label);
   const netIndex = columns.indexOf(t("analytics.colNet"));
 
   return (

@@ -1646,9 +1646,12 @@ export interface Order {
   tier_discount_won?: number;
   /** Flat delivery charge in whole KRW, snapshotted at order creation. */
   shipping_fee_won?: number;
-  /** What the order was priced for; absent on orders from before the card surcharge. */
+  /** How the order is paid; absent on orders from before the backend recorded it. */
   payment_method?: "credit_card" | "bypass" | string;
-  /** Card surcharge in whole KRW, already inside `total_won`. 0 for bypass. */
+  /**
+   * The old 10% card surcharge in whole KRW, already inside `total_won`. Only
+   * card orders placed before SER-110 removed it have one; new orders are 0.
+   */
   card_surcharge_won?: number;
   /**
    * Store credit (1 P = ₩1) that paid part of the goods, already taken off
@@ -2468,7 +2471,10 @@ export interface SalesPeriod {
   gross_won: number;
   discount_won: number;
   shipping_fee_won: number;
-  /** Card surcharge collected, already inside `gross_won`. Absent before the backend added it. */
+  /**
+   * Card surcharge collected, already inside `gross_won`. Only orders placed
+   * before SER-110 removed it carry one, so recent periods are 0.
+   */
   card_surcharge_won?: number;
   /** Points shoppers paid with. Not money received, so not in `gross_won`. Absent before points. */
   points_won?: number;
