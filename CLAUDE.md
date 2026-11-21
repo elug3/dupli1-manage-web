@@ -11,6 +11,8 @@ For concise, machine-focused guidance for AI coding agents, see [AGENTS.md](AGEN
 - **Three languages.** Every user-visible string goes into `ko.ts`, `en.ts` and `zh-CN.ts` under `app/lib/i18n/messages/`.
 - **Private data stays server-side.** Customer and operator-private data loads through SSR `loader`/`action`; no tokens in the browser.
 - **New screens** follow the `add-admin-page` skill. **Before committing**, ask the `reviewer` agent to look at the diff.
+- **Instruction changes need a reason.** Any edit to `CLAUDE.md`, `AGENTS.md` or `.claude/**` states why (what happened, why the old text allowed it, why the new text fixes it) in the commit message, in its own commit.
+- **Pipeline:** `ship-feature` runs plan, tests, implement, review, verify; it commits when review passes and does not push unless asked.
 - Never skip, disable or weaken a test or lint rule to get green. Keep CLAUDE.md additions short; link to backend docs instead of copying them.
 
 ## Purpose
