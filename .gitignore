@@ -6,3 +6,4 @@ vpn/*.conf
 
 # Claude Code local settings
 .claude/settings.local.json
+.claude/pipeline/
