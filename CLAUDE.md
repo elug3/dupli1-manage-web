@@ -12,7 +12,7 @@ For concise, machine-focused guidance for AI coding agents, see [AGENTS.md](AGEN
 - **Private data stays server-side.** Customer and operator-private data loads through SSR `loader`/`action`; no tokens in the browser.
 - **New screens** follow the `add-admin-page` skill. **Before committing**, ask the `reviewer` agent to look at the diff.
 - **Instruction changes need a reason.** Any edit to `CLAUDE.md`, `AGENTS.md` or `.claude/**` states why (what happened, why the old text allowed it, why the new text fixes it) in the commit message, in its own commit.
-- **Pipeline:** `ship-feature` runs plan, tests, implement, review, verify; it commits when review passes and does not push unless asked.
+- **Pipeline:** `ship-feature` runs plan, tests, implement, review, verify; it commits when review passes, then pushes and opens a draft PR (never merges).
 - Never skip, disable or weaken a test or lint rule to get green. Keep CLAUDE.md additions short; link to backend docs instead of copying them.
 
 ## Purpose
