@@ -3,3 +3,7 @@ node_modules/
 .react-router/
 vpn/*.conf
 !vpn/*.conf.example
+
+# Claude Code local settings
+.claude/settings.local.json
+.claude/pipeline/

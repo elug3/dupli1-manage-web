@@ -4,6 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 For concise, machine-focused guidance for AI coding agents, see [AGENTS.md](AGENTS.md).
 
+## Working agreements
+
+- **Verify before done.** Run the `verify-change` skill (`npm test`, `npm run typecheck`, `npm run lint`, plus the matching `test:*:browser`). Say which checks ran and which did not.
+- **Contract first.** Endpoint shapes and permissions come from `../dupli1` (docs and handlers), never guessed. Money is `*_won`.
+- **Three languages.** Every user-visible string goes into `ko.ts`, `en.ts` and `zh-CN.ts` under `app/lib/i18n/messages/`.
+- **Private data stays server-side.** Customer and operator-private data loads through SSR `loader`/`action`; no tokens in the browser.
+- **New screens** follow the `add-admin-page` skill. **Before committing**, ask the `reviewer` agent to look at the diff.
+- **Instruction changes need a reason.** Any edit to `CLAUDE.md`, `AGENTS.md` or `.claude/**` states why (what happened, why the old text allowed it, why the new text fixes it) in the commit message, in its own commit.
+- **Pipeline:** `ship-feature` runs plan, tests, implement, review, verify; it commits when review passes, then pushes and opens a draft PR (never merges).
+- Never skip, disable or weaken a test or lint rule to get green. Keep CLAUDE.md additions short; link to backend docs instead of copying them.
+
 ## Purpose
 
 `dupli1-manage-web` is the admin/management dashboard for the Dupli1 e-commerce platform. It is the counterpart to `dupli1-web` (customer-facing storefront) and connects to the same Go microservices via an nginx gateway.
